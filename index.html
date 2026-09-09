@@ -119,6 +119,28 @@
         .clear-btn:active {
             background-color: #d32f2f;
         }
+        /* ★画像生成スタジオ専用のダウンロードボタンのスタイル */
+        .studio-btn-container {
+            display: none; /* 通常時は非表示 */
+            flex-direction: row;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .btn-studio {
+            height: 45px;
+            padding: 0 15px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .btn-studio:active { transform: scale(0.95); }
+        .btn-p { background-color: #1a1a1a; } /* 問題用（ダークグレー） */
+        .btn-s { background-color: #70AD47; } /* 正解用（境界線の緑） */
     </style>
 </head>
 <body>
@@ -139,6 +161,13 @@
                 <button class="btn-common check-btn" id="checkBtn" onclick="checkAnswer()">Check</button>
             </div>
         </div>
+    </div>
+
+    <canvas id="puzzleCanvas" width="400" height="400"></canvas>
+    <!-- ★追加：スタジオモード専用のボタン置き場 -->
+    <div class="studio-btn-container" id="studioContainer">
+        <button class="btn-studio btn-p" onclick="downloadPuzzleImage(false)">📸 問題画像をダウンロード</button>
+        <button class="btn-studio btn-s" onclick="downloadPuzzleImage(true)">🎉 正解画像をダウンロード</button>
     </div>
 
 <script>
@@ -427,110 +456,205 @@ function loadPuzzleFromUrlOrId(defaultId) {
     const totalBits = parseHashIdToBits(hashId);
     buildAnswerGridFromBits(totalBits);
 }
-function drawPuzzle() {
+// ★【核心修正】「鉱脈地図」X出題用のタイトル・フォント・緑線描画を完全再現したグラフィックエンジン
+function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
+    // URLから日数(day)とモード(mode)のパラメータを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const dayValue = urlParams.get('day') || "XXX";
+    const modeValue = urlParams.get('mode') || "";
+
+    // スタジオモードならボタンを画面に出現させる
+    if (modeValue === "make") {
+        document.getElementById('studioContainer').style.display = 'flex';
+    }
+
+    // キャンバス全体のサイズを、上部タイトルバー（高さ50px）を含めたサイズに拡張
+    const titleBarHeight = 50;
+    canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + titleBarHeight;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            const x = OFFSET + c * CELL_PIXEL;
-            const y = OFFSET + r * CELL_PIXEL;
-            ctx.fillStyle = COLOR_PALETTE[userGrid[r][c]];
-            ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
+    // ─── 1. 上部黒タイトルバーの描画 ───
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, titleBarHeight);
+
+    // タイトル文字の描画（Biomeフォントを最優先、無ければsans-serifへ滑らかにフォールバック）
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px "Biome", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    
+    // 通常時、または問題画像書き出し時は「Day 450」、正解画像書き出し時は「Day 450 Solution」
+    let titleText = `Day${dayValue}`;
+    if (isSolutionImage) titleText += " Solution";
+    ctx.fillText(titleText, 15, titleBarHeight / 2);
+
+    // ─── 2. 盤面マスの色塗り ───
+    // 画像書き出し時（isSolutionImageやisProblemImageが真のとき）は、
+    // マスの中身の色塗りを完全にスキップ（真っ白）にし、通常プレイ時のみカラフルに塗る
+    if (!isSolutionImage && !isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL;
+                const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                ctx.fillStyle = COLOR_PALETTE[userGrid[r][c]];
+                ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
+            }
+        }
+        // 孤立マス警告のエラー表示
+        if (errorDisplayState.show && errorDisplayState.isolatedCells.length > 0) {
+            ctx.fillStyle = 'rgba(255, 59, 48, 0.6)'; 
+            errorDisplayState.isolatedCells.forEach(cell => {
+                ctx.fillRect(OFFSET + cell.c * CELL_PIXEL, OFFSET + cell.r * CELL_PIXEL + titleBarHeight, CELL_PIXEL, CELL_PIXEL);
+            });
         }
     }
 
-    if (errorDisplayState.show && errorDisplayState.isolatedCells.length > 0) {
-        ctx.fillStyle = 'rgba(255, 59, 48, 0.6)'; 
-        errorDisplayState.isolatedCells.forEach(cell => {
-            ctx.fillRect(OFFSET + cell.c * CELL_PIXEL, OFFSET + cell.r * CELL_PIXEL, CELL_PIXEL, CELL_PIXEL);
-        });
-    }
-
-    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 1;
-    for (let i = 0; i <= GRID_SIZE; i++) {
+    // ─── 3. グリッド（細い破線）を描画 ───
+    ctx.strokeStyle = '#cccccc'; 
+    ctx.lineWidth = 1;
+    // サンプル画像のように、内側の線を綺麗な点線（破線）にする設定
+    ctx.setLineDash([2, 3]); 
+    for (let i = 1; i < GRID_SIZE; i++) {
         const pos = OFFSET + i * CELL_PIXEL;
-        ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, pos); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, OFFSET + GRID_SIZE * CELL_PIXEL); ctx.stroke();
+        // 横の破線
+        ctx.beginPath(); ctx.moveTo(OFFSET, pos + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, pos + titleBarHeight); ctx.stroke();
+        // 縦の破線
+        ctx.beginPath(); ctx.moveTo(pos, OFFSET + titleBarHeight); ctx.lineTo(pos, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.stroke();
     }
+    ctx.setLineDash([]); // 実線に戻す
 
-    ctx.fillStyle = '#444444'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // ─── 4. 座標記号・数字の描画（Biomeフォント適用） ───
+    ctx.fillStyle = '#000000';
+    ctx.font = '20px "Biome", sans-serif'; // 座標文字にもBiomeを適用
+    ctx.textAlign = 'center'; 
+    ctx.textBaseline = 'middle';
+    
     const xLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
-    for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText(xLabels[i], OFFSET + i * CELL_PIXEL, OFFSET - 18); }
-    for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET - 18, OFFSET + i * CELL_PIXEL); }
+    for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText(xLabels[i], OFFSET + i * CELL_PIXEL, OFFSET - 18 + titleBarHeight); }
+    for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET - 18, OFFSET + i * CELL_PIXEL + titleBarHeight); }
+    
     const cellXLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-    for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18); }
-    for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2); }
+    for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18 + titleBarHeight); }
+    for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
 
+    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画 ───
     ctx.lineCap = 'square';
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            const currentIdx = userGrid[r][c]; 
             const x = OFFSET + c * CELL_PIXEL;
-            const y = OFFSET + r * CELL_PIXEL;
+            const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
 
-            if (c === GRID_SIZE - 1) {
-                ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
-                ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-            } else {
-                const rightIdx = userGrid[r][c + 1];
-                if (currentIdx !== 0 && rightIdx !== 0 && currentIdx !== rightIdx) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 4;
-                    ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                }
-            }
-
-            if (r === GRID_SIZE - 1) {
-                ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
-                ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-            } else {
-                const bottomIdx = userGrid[r + 1][c];
-                if (currentIdx !== 0 && bottomIdx !== 0 && currentIdx !== bottomIdx) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 4;
-                    ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                }
-            }
-
+            // 外枠（一番外側の黒い太線）の描画
             ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
             if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, y); ctx.lineTo(OFFSET, y + CELL_PIXEL); ctx.stroke(); }
-            if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET); ctx.lineTo(x + CELL_PIXEL, OFFSET); ctx.stroke(); }
+            if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET + titleBarHeight); ctx.lineTo(x + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
+            if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
+            if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
+
+            // 内壁の境界線（緑の太線）の描画判定
+            // 「問題画像（isProblemImage）」の時は緑線を完全に非表示にする
+            // 「通常プレイ時」はuserGridを、「正解画像書き出し時（isSolutionImage）」はanswerGridを正確に参照する
+            if (!isProblemImage) {
+                const targetGrid = isSolutionImage ? answerGrid : userGrid;
+                const currentIdx = targetGrid[r][c];
+
+                if (c < GRID_SIZE - 1) {
+                    const rightIdx = targetGrid[r][c + 1];
+                    if (currentIdx !== 0 && rightIdx !== 0 && currentIdx !== rightIdx) {
+                        ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; // サンプルの太さに合わせて5pxに強化
+                        ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    }
+                }
+                if (r < GRID_SIZE - 1) {
+                    const bottomIdx = targetGrid[r + 1][c];
+                    if (currentIdx !== 0 && bottomIdx !== 0 && currentIdx !== bottomIdx) {
+                        ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5;
+                        ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    }
+                }
+            }
         }
     }
 
-    ctx.strokeStyle = '#000000'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    problemLines.forEach(line => {
-        ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL);
-        ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL); ctx.stroke();
-    });
+    // ─── 6. 鉱脈（黒の斜線）の描画（サンプルのように影付きの美麗エフェクトに対応） ───
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    // サンプルの立体感を出すため、Canvasのシャドウ機能（影）を付与
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 3;
 
-    if (errorDisplayState.show) {
+    problemLines.forEach(line => {
+        ctx.beginPath(); 
+        ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); 
+        ctx.stroke();
+    });
+    // 影の設定をリセット（他への影響を防ぐ）
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+
+    // 通常プレイ時のエラー丸印等の描画
+    if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
         ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
         errorDisplayState.wrongLines.forEach(line => {
-            ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL);
-            ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
+            ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
-
         ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
         errorDisplayState.wrongLines.forEach(line => {
             const rx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.7) * CELL_PIXEL;
-            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL;
+            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
         });
-
         errorDisplayState.blackAlertLines.forEach(line => {
             const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
-            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL;
+            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
-
         errorDisplayState.invalidVertices.forEach(v => {
-            ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
+}
+
+// ★追加：Canvasのグラフィックを極高画質なPNGとして瞬時にダウンロードさせる関数
+// ★【核心修正】ご指定の日本語ファイル名（DayXXX問題.png / DayXXX答え.png）に完全対応
+function downloadPuzzleImage(isSolution) {
+    // 1. ダウンロード用に一時的に専用モードでCanvasを再描画
+    if (isSolution) {
+        drawPuzzle(true, false); // 正解画像モード
+    } else {
+        drawPuzzle(false, true); // 問題画像モード
+    }
+
+    // 2. URLから日数を取得して、ご指定通りの日本語ファイル名を生成
+    const urlParams = new URLSearchParams(window.location.search);
+    const dayValue = urlParams.get('day') || "XXX";
+    
+    // ★ご要望：ファイル名を「DayXXX問題.png」「DayXXX答え.png」に修正
+    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+
+    // 3. バイナリデータをリンクに変換して、裏で一瞬でダウンロードを実行
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    // 4. ダウンロードが終わったら、プレイヤーが遊ぶための通常画面の見た目にスッと戻す
+    drawPuzzle();
+}
+
+// マウスタッチイベント内の、titleBarHeight分の座標のズレ（y軸に+50pxした影響）の補正
+function getCellFromCoords(x, y) {
+    const titleBarHeight = 50;
+    const c = Math.floor((x - OFFSET) / CELL_PIXEL); 
+    const r = Math.floor((y - OFFSET - titleBarHeight) / CELL_PIXEL); // ★y座標からタイトルバーの高さを引いて補正
+    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) return { r, c }; return null;
 }
 
 function checkAnswer() {
