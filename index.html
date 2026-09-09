@@ -763,22 +763,25 @@ canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; i
 canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); handleActionMove(e.clientX - rect.left, e.clientY - rect.top); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 // ★スマホ特有のマルチタッチ配列から、1本目の指の座標を100%正確に取得・追従するロジック
+// ★二重発火（ゴーストクリック）を完全に遮断し、タップとスワイプを両立させる修正コード
 canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault(); // ★重要：裏で勝手に疑似マウスクリックが発生するのを完全に禁止
     isDrawing = true;
     const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0]; // 1本目の指のデータを厳密に取得
+    const touch = e.touches[0];
     handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
 });
 
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return;
-    e.preventDefault(); // ★重要：色塗り中にスマホ画面が上下左右にガタガタ動くのを防止
+    e.preventDefault(); // 色塗り中にスマホ画面が上下左右にガタガタ動くのを防止
     const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0]; // 移動中の指の座標を正確に追従
+    const touch = e.touches[0];
     handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
-}, { passive: false }); // preventDefaultを確実に有効化するためのオプション
+}, { passive: false });
 
 canvas.addEventListener('touchend', function(e) {
+    e.preventDefault(); // ★重要：指を離したあとの余計なマウスアップイベントを禁止
     if (isDrawing) {
         isDrawing = false;
         handleActionEnd();
