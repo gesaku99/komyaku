@@ -618,18 +618,31 @@ function checkAnswer() {
         blockVerticesMap[colorId] = vList;
     }
 
+    // ★【根本解決】隣のブロックのフチとの誤認を完全シャットアウトする親ブロック照合システム
     const badVertices = [];
     problemLines.forEach(pLine => {
-        [pLine.start, pLine.end].forEach(pt => {
-            let targetColorId = null;
-            for (let colorId in blocks) {
-                if (blocks[colorId].some(c => pt.x >= c.c && pt.x <= c.c+1 && pt.y >= c.r && pt.y <= c.r+1)) { targetColorId = colorId; break; }
+        // この鉱脈線分を「完全に内部に含んでいる」本当の親ブロックの色IDを特定する
+        let trueParentColorId = null;
+        for (let colorId in blocks) {
+            if (checkInside(pLine.start, pLine.end, blocks[colorId])) {
+                trueParentColorId = colorId;
+                break;
             }
-            if (targetColorId) {
-                const isVertex = blockVerticesMap[targetColorId].some(v => v.x === pt.x && v.y === pt.y);
-                if (!isVertex && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) badVertices.push(pt);
-            }
-        });
+        }
+
+        // 本当の親ブロックが見つかった場合、そのブロックの頂点リストと厳密に照合する
+        if (trueParentColorId) {
+            [pLine.start, pLine.end].forEach(pt => {
+                const isVertex = blockVerticesMap[trueParentColorId].some(v => v.x === pt.x && v.y === pt.y);
+                // 自分自身の親ブロックにとって「本当の角」になっていない場合のみエラーとする
+                if (!isVertex && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                    badVertices.push(pt);
+                }
+            });
+        } else {
+            // 万が一、どのブロックの内部にも入っていない浮いた線があればエラー
+            badVertices.push(pLine.start);
+        }
     });
 
     if (badVertices.length > 0) {
