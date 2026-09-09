@@ -24,6 +24,9 @@
             background-color: #ffffff;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* タップ時の青い一瞬の光を消す */
+            -webkit-touch-callout: none;              /* 長押しメニューを禁止 */
+            user-select: none;                        /* 文字選択を禁止 */
         }
         .controls-wrapper {
             display: flex;
@@ -759,9 +762,28 @@ function selectColor(colorId) {
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; isDrawing = true; const rect = canvas.getBoundingClientRect(); handleActionStart(e.clientX - rect.left, e.clientY - rect.top); });
 canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); handleActionMove(e.clientX - rect.left, e.clientY - rect.top); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
-canvas.addEventListener('touchstart', function(e) { isDrawing = true; const rect = canvas.getBoundingClientRect(); const touch = e.touches; handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top); });
-canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); const touch = e.touches; handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top); });
-canvas.addEventListener('touchend', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
+// ★スマホ特有のマルチタッチ配列から、1本目の指の座標を100%正確に取得・追従するロジック
+canvas.addEventListener('touchstart', function(e) {
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0]; // 1本目の指のデータを厳密に取得
+    handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+
+canvas.addEventListener('touchmove', function(e) {
+    if (!isDrawing) return;
+    e.preventDefault(); // ★重要：色塗り中にスマホ画面が上下左右にガタガタ動くのを防止
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0]; // 移動中の指の座標を正確に追従
+    handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
+}, { passive: false }); // preventDefaultを確実に有効化するためのオプション
+
+canvas.addEventListener('touchend', function(e) {
+    if (isDrawing) {
+        isDrawing = false;
+        handleActionEnd();
+    }
+});
 
 const undoStack = []; const redoStack = []; 
 
