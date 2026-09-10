@@ -12,6 +12,9 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     // ─── 1. 上部黒タイトルバーの描画 ───
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, titleBarHeight);
