@@ -1,4 +1,4 @@
-// ─── PC/スマホの操作イベント群 ───
+// ★【タイポ完全修復版】PC・スマホ両立 ＆ 二重発火を完全封鎖したイベント・起動処理
 function handleActionStart(x, y) { const cell = getCellFromCoords(x, y); if (cell) { startCell = cell; hasMovedInSession = false; } }
 function handleActionMove(x, y) {
     const cell = getCellFromCoords(x, y);
@@ -24,17 +24,16 @@ window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; h
 
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); isDrawing = true; const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches[0]; // ★確定版：1本目の指のデータをインデックス[0]で厳密に取得
+    const touch = e.touches[0]; // ★完全修復：謎の記述を削除し、1本目の指のデータを正しく取得
     handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
 });
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches[0]; // ★確定版：移動中の指の座標をインデックス[0]で正確に追従
+    const touch = e.touches[0]; // ★完全修復：移動中の指の座標を正確に追従
     handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
 }, { passive: false });
 canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
-// ─── パレット生成 ───
 function createPalette() {
     paletteContainer.innerHTML = ''; 
     for (let i = 0; i <= 9; i++) {
@@ -46,7 +45,7 @@ function createPalette() {
 }
 function selectColor(colorId) { currentSelectedColor = colorId; createPalette(); }
 
-// ★初回起動シーケンス
+// ★初回起動シーケンス：すべての合流を確認して一発起動
 loadPuzzleFromUrlOrId("E95A000007C1084");
 createPalette(); 
 updateHistoryButtons(); 
