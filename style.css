@@ -1,3 +1,8 @@
+@font-face {
+    font-family: 'Tenor Sans';
+    /* 同じフォルダ内にアップロードしたフォントファイルを直接読み込ませる（セキュリティブロックを100%回避） */
+    src: url('TenorSans-Regular.ttf') format('truetype');
+}
 body {
     font-family: 'Tenor Sans', sans-serif; /* ⬅️ 画面全体の標準フォントも Tenor Sans に統一して美しくします */
     font-weight: normal; /* ★追加：全体を標準の太さに固定 */
