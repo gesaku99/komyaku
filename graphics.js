@@ -7,7 +7,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         document.getElementById('studioContainer').style.display = 'flex';
     }
 
-    const titleBarHeight = 50;
+    const titleBarHeight = 30;
     
     // 1. まず、画面上の「見た目の大きさ（論理サイズ）」を計算
     const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
@@ -183,7 +183,7 @@ function downloadPuzzleImage(isSolution) {
 }
 
 function getCellFromCoords(x, y) {
-    const titleBarHeight = 50;
+    const titleBarHeight = 30;
     const c = Math.floor((x - OFFSET) / CELL_PIXEL); 
     const r = Math.floor((y - OFFSET - titleBarHeight) / CELL_PIXEL); 
     if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) return { r, c }; return null;
