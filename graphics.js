@@ -8,12 +8,27 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
 
     const titleBarHeight = 50;
-    canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + titleBarHeight;
+    
+    // 1. まず、画面上の「見た目の大きさ（論理サイズ）」を計算
+    const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+    const logicalHeight = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + titleBarHeight;
+    
+    // 2. ★重要：X投稿用に、Canvasの内部のドット数（解像度）を「3倍」に巨大化させる
+    const scaleFactor = 3; 
+    canvas.width = logicalWidth * scaleFactor;
+    canvas.height = logicalHeight * scaleFactor;
+    
+    // 3. 巨大化したCanvasが画面からはみ出さないよう、CSSで元のスマートなサイズにギュッと凝縮させる
+    canvas.style.width = logicalWidth + "px";
+    canvas.style.height = logicalHeight + "px";
+    
+    // 4. すべての描画命令（線や文字）を、自動的に3倍の大きさでクッキリ描くように設定
+    ctx.scale(scaleFactor, scaleFactor);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    // 一度画面をクリアし、真っ白な高解像度の下地を敷く
+    ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
     // ─── 1. 上部黒タイトルバーの描画 ───
     ctx.fillStyle = '#0a0a0a';
