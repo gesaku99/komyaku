@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>鉱脈地図 - パズルゲーム</title>
     <link rel="stylesheet" href="style.css">
-    <!-- ★JavaScriptを5つに細かく隔離分割して順番に読み込ませます -->
     <script src="loader.js" defer></script>
     <script src="decoder.js" defer></script>
     <script src="analyzer.js" defer></script>
     <script src="graphics.js" defer></script>
-    <script src="logic.js" defer></script>
+    <!-- ★変更：logic.jsをさらに2つに分離して順番に読み込ませます -->
+    <script src="logic_check.js" defer></script>
+    <script src="logic_event.js" defer></script>
 </head>
 <body>
 
