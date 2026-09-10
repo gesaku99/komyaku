@@ -1,5 +1,7 @@
+@import url('https://googleapis.com');
+
 body {
-    font-family: sans-serif;
+    font-family: 'Tenor Sans', sans-serif; /* ⬅️ 画面全体の標準フォントも Tenor Sans に統一して美しくします */
     display: flex;
     flex-direction: column;
     align-items: center;

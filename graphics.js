@@ -20,7 +20,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.fillRect(0, 0, canvas.width, titleBarHeight);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px "Biome", sans-serif';
+    ctx.font = '26px "Tenor Sans", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     
@@ -59,7 +59,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
     // ─── 4. 座標記号・数字の描画（Biomeフォント適用） ───
     ctx.fillStyle = '#000000';
-    ctx.font = '20px "Biome", sans-serif'; 
+    ctx.font = '20px "Tenor Sans", sans-serif';
     ctx.textAlign = 'center'; 
     ctx.textBaseline = 'middle';
     
