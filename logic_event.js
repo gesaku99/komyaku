@@ -46,6 +46,9 @@ function createPalette() {
 function selectColor(colorId) { currentSelectedColor = colorId; createPalette(); }
 
 // ★初回起動シーケンス：すべての合流を確認して一発起動
-loadPuzzleFromUrlOrId("E95A000007C1084");
-createPalette(); 
-updateHistoryButtons(); 
+// ★重要：インターネットからのWebフォント読み込みが100%完了したことを検知してから起動する
+document.fonts.ready.then(function() {
+    loadPuzzleFromUrlOrId("E95A000007C1084");
+    createPalette(); 
+    updateHistoryButtons(); 
+});
