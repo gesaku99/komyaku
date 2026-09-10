@@ -98,3 +98,34 @@ function updateHistoryButtons() {
     undoBtn.disabled = (undoStack.length === 0);
     redoBtn.disabled = (redoStack.length === 0);
 }
+// ★消滅していた問題サイズ自動識別・URL同期ローダー関数
+function loadPuzzleFromUrlOrId(defaultId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    let hashId = urlParams.get('id') || defaultId;
+    
+    hashId = hashId.trim().toUpperCase();
+    
+    // ハッシュIDの文字数から3x3〜8x8までの盤面サイズを全自動で特定
+    if (hashId.length === 4) { GRID_SIZE = 3; }        
+    else if (hashId.length === 6) { GRID_SIZE = 4; }   
+    else if (hashId.length === 10) { GRID_SIZE = 5; }  
+    else if (hashId.length === 15) { GRID_SIZE = 6; }  
+    else if (hashId.length === 21) { GRID_SIZE = 7; }  
+    else if (hashId.length === 28) { GRID_SIZE = 8; }  
+    else {
+        GRID_SIZE = 6; // デフォルトを6x6に設定
+        hashId = defaultId;
+    }
+    
+    // 現在ロードしているハッシュIDをアドレスバーのURL(?id=XXXX)に同期
+    history.replaceState(null, '', `${window.location.pathname}?id=${hashId}`);
+    
+    canvas.width = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+    canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+    
+    userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    answerGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    
+    const totalBits = parseHashIdToBits(hashId);
+    buildAnswerGridFromBits(totalBits);
+}
