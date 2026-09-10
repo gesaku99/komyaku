@@ -1,5 +1,6 @@
 body {
     font-family: 'Tenor Sans', sans-serif; /* ⬅️ 画面全体の標準フォントも Tenor Sans に統一して美しくします */
+    font-weight: normal; /* ★追加：全体を標準の太さに固定 */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -10,7 +11,8 @@ body {
     user-select: none;   
 }
 h1 {
-    font-size: 20px;
+    font-size: 24px;
+    font-weight: normal; /* ★追加：全体を標準の太さに固定 */
     margin: 10px 0;
 }
 canvas {
