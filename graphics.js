@@ -46,7 +46,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     // ─── 3. グリッド（細い破線）を描画 ───
     ctx.strokeStyle = '#cccccc'; 
     ctx.lineWidth = 1;
-    ctx.setLineDash(); // 内枠を綺麗な点線（破線）にする設定
+    ctx.setLineDash([]); // 内枠を綺麗な点線（破線）にする設定
     for (let i = 1; i < GRID_SIZE; i++) {
         const pos = OFFSET + i * CELL_PIXEL;
         ctx.beginPath(); ctx.moveTo(OFFSET, pos + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, pos + titleBarHeight); ctx.stroke();
