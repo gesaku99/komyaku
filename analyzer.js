@@ -86,5 +86,6 @@ function generateProblemLinesFromAnswer() {
             }
         }
         blockLines.forEach(line => problemLines.push(line));
+        drawPuzzle();
     }
 }
