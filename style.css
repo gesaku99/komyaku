@@ -1,0 +1,135 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 10px;
+    touch-action: none; 
+    user-select: none;   
+}
+h1 {
+    font-size: 20px;
+    margin: 10px 0;
+}
+canvas {
+    background-color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; 
+    -webkit-touch-callout: none;              
+    user-select: none;                        
+}
+.controls-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+.palette-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    width: 275px; 
+    padding: 15px;
+    background: #000000; 
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.color-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid #555; 
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.1s;
+    box-sizing: border-box;
+}
+.color-btn.active {
+    border-color: #ffffff;
+    transform: scale(1.15);
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+.side-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+.history-container {
+    display: flex;
+    flex-direction: row; 
+    gap: 8px;
+}
+.btn-common {
+    background-color: #333333;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color 0.1s, opacity 0.1s;
+}
+.btn-common:active {
+    background-color: #555555;
+}
+.btn-common:disabled {
+    background-color: #cccccc;
+    color: #888888;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.6;
+}
+.history-btn {
+    width: 55px;
+    height: 45px;
+    font-size: 12px;
+}
+.action-container {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+.check-btn {
+    width: 55px; 
+    height: 40px;
+    font-size: 11px;
+    background-color: #4caf50; 
+}
+.check-btn:active {
+    background-color: #45a049;
+}
+.clear-btn {
+    width: 55px;
+    height: 40px;
+    font-size: 11px;
+    background-color: #f44336; 
+}
+.clear-btn:active {
+    background-color: #d32f2f;
+}
+.studio-btn-container {
+    display: none; 
+    flex-direction: row;
+    gap: 15px;
+    margin-top: 15px;
+}
+.btn-studio {
+    height: 45px;
+    padding: 0 15px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+.btn-studio:active { transform: scale(0.95); }
+.btn-p { background-color: #1a1a1a; } 
+.btn-s { background-color: #70AD47; } 
