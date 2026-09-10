@@ -68,4 +68,5 @@ function buildAnswerGridFromBits(bits) {
     }
     // 復元された部屋データをベースに、鉱脈の自動逆算（analyzer.js）へと引き継ぐ
     generateProblemLinesFromAnswer();
+    drawPuzzle(); // ★追加：すべての解読が終わったこの瞬間に、画面を初めて描画させる！
 }
