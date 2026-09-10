@@ -118,7 +118,9 @@ function loadPuzzleFromUrlOrId(defaultId) {
     }
     
     // 現在ロードしているハッシュIDをアドレスバーのURL(?id=XXXX)に同期
-    history.replaceState(null, '', `${window.location.pathname}?id=${hashId}`);
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('id', hashId);
+    history.replaceState(null, '', `${window.location.pathname}?${currentParams.toString()}`);
     
     canvas.width = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
