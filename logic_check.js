@@ -19,24 +19,54 @@ function checkAnswer() {
         }
     }
 
-    function checkInside(p1, p2, cells) {
-        const samples = 20;
-        for (let i = 1; i < samples; i++) {
-            const ratio = i / samples;
-            const sx = p1.x + (p2.x - p1.x) * ratio; const sy = p1.y + (p2.y - p1.y) * ratio;
-            const mc = Math.floor(sx); const mr = Math.floor(sy);
-            if (Math.abs(sx - Math.round(sx)) < 0.0001 || Math.abs(sy - Math.round(sy)) < 0.0001) {
-                const offsets = [{dr:0, dc:0}, {dr:-1, dc:0}, {dr:0, dc:-1}, {dr:-1, dc:-1}]; let f = false;
-                for (let o of offsets) {
-                    if (cells.some(cell => cell.r === Math.floor(sy + o.dr * 0.01) && cell.c === Math.floor(sx + o.dc * 0.01))) { f = true; break; }
-                }
-                if (!f) return false;
-            } else {
-                if (!cells.some(cell => cell.r === mr && cell.c === mc)) return false;
+        function checkInside(p1, p2, cells) {
+        // 1. 直線の始点と終点のどちらかが、そもそも自分の部屋（cells）に含まれていなければ即アウト
+        const p1Cell = cells.find(c => p1.x >= c.c && p1.x <= c.c + 1 && p1.y >= c.r && p1.y <= c.r + 1);
+        const p2Cell = cells.find(c => p2.x >= c.c && p2.x <= c.c + 1 && p2.y >= c.r && p2.y <= c.r + 1);
+        if (!p1Cell || !p2Cell) return false;
+
+        // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップする
+        const walls = [];
+        cells.forEach(cell => {
+            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r} };
+            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1} };
+            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1} };
+            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1} };
+
+            [top, bottom, left, right].forEach(wall => {
+                const isInternalEdge = cells.some(other => {
+                    if (wall === top) return other.c === cell.c && other.r === cell.r - 1;
+                    if (wall === bottom) return other.c === cell.c && other.r === cell.r + 1;
+                    if (wall === left) return other.r === cell.r && other.c === cell.c - 1;
+                    if (wall === right) return other.r === cell.r && other.c === cell.c + 1;
+                    return false;
+                });
+                if (!isInternalEdge) walls.push(wall);
+            });
+        });
+
+        // 3. 【線分交差チェック】鉱脈（p1-p2）と、部屋の壁が物理的に「交差」しているか数式で判定
+        function isIntersecting(s1, e1, s2, e2) {
+            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+                return true;
+            }
+            return false;
+        }
+
+        // いずれか一本の壁にでもぶつかったら、それは「部屋の外にはみ出した線」なので即座にフェイク（false）
+        for (let wall of walls) {
+            if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
+                return false;
             }
         }
         return true;
     }
+
 
     function checkTouching(p1, p2, vList) {
         for (let v of vList) {
