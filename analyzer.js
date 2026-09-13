@@ -12,8 +12,16 @@ function generateProblemLinesFromAnswer() {
 
     function isInside(p1, p2, cells) {
     // 1. 直線の始点と終点のどちらかが、そもそも自分の部屋（cells）に含まれていなければ即アウト
-    const p1Cell = cells.find(c => p1.x >= c.c && p1.x <= c.c + 1 && p1.y >= c.r && p1.y <= c.r + 1);
-    const p2Cell = cells.find(c => p2.x >= c.c && p2.x <= c.c + 1 && p2.y >= c.r && p2.y <= c.r + 1);
+    // 凹角(270度)の格子点ジャストの接触をセーフにするため、0.01マスだけ内側に入った点（インナーポイント）で判定する
+    const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
+    const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
+    const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
+    const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
+
+    const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
+    const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
+    
+    // 始点と終点の「すぐ内側」がどちらも自分の部屋に包まれていれば、それは270度凹角を通る「絶対に安全な線」である
     if (!p1Cell || !p2Cell) return false;
 
     // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップする
