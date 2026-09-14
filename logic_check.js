@@ -19,54 +19,59 @@ function checkAnswer() {
         }
     }
 
-        function checkInside(p1, p2, cells) {
-        // 1. 直線の始点と終点のどちらかが、そもそも自分の部屋（cells）に含まれていなければ即アウト
-        // 凹角(270度)の格子点ジャストの接触をセーフにするため、0.01マスだけ内側に入った点（インナーポイント）で判定する
+    // ★【完全同期版】270度凹角の救済と、厳密な壁との交差判定を100%完全に移植した確定コード
+    function checkInside(p1, p2, cells) {
+        // 1. 直線の始点と終点が、部屋の内部（マスの中心付近）に存在するか厳密にチェック
+        // 凹角(270度)の格子点ジャストの接触をセーフにするため、0.001マスだけ内側に入った点（インナーポイント）で判定する
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
         const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
-    
+
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-    
-        // 始点と終点の「すぐ内側」がどちらも自分の部屋に包まれていれば、それは270度凹角を通る「絶対に安全な線」である
         if (!p1Cell || !p2Cell) return false;
 
-        // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップする
+        // 2. 部屋のすべての「本物の外壁（境界線）」を一本ずつリストアップする
         const walls = [];
         cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r} };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1} };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1} };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1} };
+            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
+            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
+            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
+            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
 
             [top, bottom, left, right].forEach(wall => {
+                // オブジェクト完全一致バグを解決：単純な文字列フラグ(dir)で上下左右を正確に判定
                 const isInternalEdge = cells.some(other => {
-                    if (wall === top) return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall === bottom) return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall === left) return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall === right) return other.r === cell.r && other.c === cell.c + 1;
+                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
+                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
+                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
+                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
                     return false;
                 });
-                if (!isInternalEdge) walls.push(wall);
+                if (!isInternalEdge) {
+                    walls.push({ p1: wall.p1, p2: wall.p2 });
+                }
             });
         });
 
-        // 3. 【線分交差チェック】鉱脈（p1-p2）と、部屋の壁が物理的に「交差」しているか数式で判定
+        // 3. 鉱脈（p1-p2）と、部屋の壁が物理的に「またぎ越しているか」を100%正確に判定
         function isIntersecting(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-                return true;
+            // 0の境界線（端点での接触）を除外し、完全に跨いだ時だけを検知する安全設計
+            const cross1 = ((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001));
+            const cross2 = ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001));
+
+            if (cross1 && cross2) {
+                return true; 
             }
-            return false;
+            return false; 
         }
 
-        // いずれか一本の壁にでもぶつかったら、それは「部屋の外にはみ出した線」なので即座にフェイク（false）
         for (let wall of walls) {
             if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
                 return false;
@@ -74,7 +79,6 @@ function checkAnswer() {
         }
         return true;
     }
-
 
     function checkTouching(p1, p2, vList) {
         for (let v of vList) {
