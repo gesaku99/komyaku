@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鉱脈地図 - パズルゲーム</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="loader.js" defer></script>
+    <script src="decoder.js" defer></script>
+    <script src="analyzer.js" defer></script>
+    <script src="graphics.js" defer></script>
+    <!-- ★変更：logic.jsをさらに2つに分離して順番に読み込ませます -->
+    <script src="logic_check.js" defer></script>
+    <script src="logic_event.js" defer></script>
+</head>
+<body>
+
+    <h1>鉱脈地図</h1>
+    <canvas id="puzzleCanvas"></canvas>
+    
+    <!-- スタジオモード専用のボタン置き場 -->
+    <div class="studio-btn-container" id="studioContainer">
+        <button class="btn-studio btn-p" onclick="downloadPuzzleImage(false)">📸 問題画像をダウンロード</button>
+        <button class="btn-studio btn-s" onclick="downloadPuzzleImage(true)">🎉 正解画像をダウンロード</button>
+    </div>
+
+    <div class="controls-wrapper">
+        <div class="palette-container" id="palette"></div>
+        <div class="side-container">
+            <div class="history-container">
+                <button class="btn-common history-btn" id="undoBtn" onclick="undo()">Undo</button>
+                <button class="btn-common history-btn" id="redoBtn" onclick="redo()">Redo</button>
+            </div>
+            <div class="action-container">
+                <button class="btn-common clear-btn" id="clearBtn" onclick="clearGrid()">Clear</button>
+                <button class="btn-common check-btn" id="checkBtn" onclick="checkAnswer()">Check</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
