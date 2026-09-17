@@ -44,15 +44,34 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 
     // ─── 2. 盤面マスの色塗り ───
+// ─── ✨ 修正後（盤面用） ───
     if (!isSolutionImage && !isProblemImage) {
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const x = OFFSET + c * CELL_PIXEL;
                 const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-                ctx.fillStyle = COLOR_PALETTE[userGrid[r][c]];
+                
+                const colorNum = userGrid[r][c];
+                
+                // 初期状態（null）なら白のままスルー
+                if (colorNum === null || colorNum === undefined) {
+                    continue;
+                }
+
+                // 0番〜9番の色をマスに塗る
+                ctx.fillStyle = COLOR_PALETTE[colorNum];
                 ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
+                
+                // ★9番（薄いグレー）だった場合のみ中点・を描画
+                if (colorNum === 9) {
+                    ctx.fillStyle = '#555555';
+                    ctx.beginPath();
+                    ctx.arc(x + CELL_PIXEL / 2, y + CELL_PIXEL / 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
         }
+
         if (errorDisplayState.show && errorDisplayState.isolatedCells.length > 0) {
             ctx.fillStyle = 'rgba(255, 59, 48, 0.6)'; 
             errorDisplayState.isolatedCells.forEach(cell => {

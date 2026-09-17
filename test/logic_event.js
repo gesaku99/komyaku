@@ -34,12 +34,26 @@ canvas.addEventListener('touchmove', function(e) {
 }, { passive: false });
 canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
+// ─── ✨ 修正後（logic_event.js 内の createPalette 関数） ───
 function createPalette() {
     paletteContainer.innerHTML = ''; 
     for (let i = 0; i <= 9; i++) {
-        const btn = document.createElement('div'); btn.className = 'color-btn';
+        const btn = document.createElement('div'); 
+        btn.className = 'color-btn';
         if (i === currentSelectedColor) btn.classList.add('active');
-        btn.style.backgroundColor = COLOR_PALETTE[i]; btn.onclick = () => { currentSelectedColor = i; createPalette(); };
+        btn.style.backgroundColor = COLOR_PALETTE[i]; 
+        btn.onclick = () => { currentSelectedColor = i; createPalette(); };
+        
+        // ★追加：もしパレットの右端（9番目）の薄グレーボタンなら、真ん中に「・」を表示する
+        if (i === 9) {
+            btn.innerText = '・';
+            btn.style.color = '#555555';
+            btn.style.textAlign = 'center';
+            btn.style.lineHeight = '30px'; // ボタンの縦サイズ（CSSの設定）に合わせて美しく中央寄せ
+            btn.style.fontSize = '20px';
+            btn.style.fontWeight = 'bold';
+        }
+        
         paletteContainer.appendChild(btn);
     }
 }

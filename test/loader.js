@@ -13,8 +13,8 @@ let answerGrid = [];
 let userGrid = [];         
 
 const COLOR_PALETTE = [
-    '#ffffff', '#add8e6', '#ffcccb', '#90ee90', '#ffffe0',
-    '#e6e6fa', '#ffe4e1', '#ffb6c1', '#dda0dd', '#ffa07a'
+    '#ff3b30', '#ff9500', '#ffcc00', '#4cd964', '#5ac8fa', // ★白を消して前に詰めました（赤が0番になります）
+    '#007aff', '#5856d6', '#ff2d55', '#a2845e', '#e0e0e0'  // ★最後の9番に「薄いグレー」を追加しました
 ];
 
 let currentSelectedColor = 1; 
@@ -125,7 +125,7 @@ function loadPuzzleFromUrlOrId(defaultId) {
     canvas.width = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     
-    userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
     answerGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
     
     const totalBits = parseHashIdToBits(hashId);
