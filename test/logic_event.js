@@ -49,7 +49,7 @@ function createPalette() {
             btn.innerText = '・';
             btn.style.color = '#555555';
             btn.style.textAlign = 'center';
-            btn.style.lineHeight = '30px'; // ボタンの縦サイズ（CSSの設定）に合わせて美しく中央寄せ
+            btn.style.lineHeight = '40px'; // ボタンの縦サイズ（CSSの設定）に合わせて美しく中央寄せ
             btn.style.fontSize = '20px';
             btn.style.fontWeight = 'bold';
         }

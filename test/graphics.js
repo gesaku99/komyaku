@@ -124,14 +124,16 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
                 if (c < GRID_SIZE - 1) {
                     const rightIdx = targetGrid[r][c + 1];
-                    if (currentIdx !== 0 && rightIdx !== 0 && currentIdx !== rightIdx) {
+                    // ★重要：現在地もお隣さんも「白(null)」ではなく、かつ「違う色」のときだけ緑の境界線を描く
+                    if (currentIdx !== null && rightIdx !== null && currentIdx !== rightIdx) {
                         ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; 
-                        ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); // ★完全修修復：ctx.を付与！
+                        ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                     }
                 }
                 if (r < GRID_SIZE - 1) {
                     const bottomIdx = targetGrid[r + 1][c];
-                    if (currentIdx !== 0 && bottomIdx !== 0 && currentIdx !== bottomIdx) {
+                    // ★重要：現在地も下側もお隣さんも「白(null)」ではなく、かつ「違う色」のときだけ緑の境界線を描く
+                    if (currentIdx !== null && bottomIdx !== null && currentIdx !== bottomIdx) {
                         ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5;
                         ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                     }

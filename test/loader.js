@@ -13,8 +13,16 @@ let answerGrid = [];
 let userGrid = [];         
 
 const COLOR_PALETTE = [
-    '#ff3b30', '#ff9500', '#ffcc00', '#4cd964', '#5ac8fa', // ★白を消して前に詰めました（赤が0番になります）
-    '#007aff', '#5856d6', '#ff2d55', '#a2845e', '#e0e0e0'  // ★最後の9番に「薄いグレー」を追加しました
+    '#b4fbc2', // 0番: 緑 (Light Green)
+    '#bce2fe', // 1番: 水 (Light Blue)
+    '#ff9ea0', // 2番: 赤 (Light Red)
+    '#ffffa6', // 3番: 黄 (Light Yellow)
+    '#fbb3fe', // 4番: 桃 (Light Pink)
+    '#ffca73', // 5番: 橙 (Orange)
+    '#c28eff', // 6番: 紫 (Purple)
+    '#f2cab3', // 7番: 茶 (Light Brown)
+    '#00e5ff', // 8番: 濃い青 (Deep Blue - 水色と完全に区別可能)
+    '#e0e0e0'  // 9番: 薄グレー (中点「・」描画用)
 ];
 
 let currentSelectedColor = 1; 
