@@ -1,21 +1,51 @@
-// ★【タイポ完全修復版】PC・スマホ両立 ＆ 二重発火を完全封鎖したイベント・起動処理
-function handleActionStart(x, y) { const cell = getCellFromCoords(x, y); if (cell) { startCell = cell; hasMovedInSession = false; } }
+// ★【確定版】初期選択0番(薄緑) ＆ 白マス(null)ベースの色消しドラッグ完全対応システム
+let currentSelectedColor = 0; // ★追加：初期選択カラーを0番（薄い緑）に完全固定！
+let isErasingMode = false;     // 現在のドラッグが「色消しモード」かどうかを記憶するフラグ
+
+function handleActionStart(x, y) {
+    const cell = getCellFromCoords(x, y);
+    if (cell) {
+        startCell = cell;
+        hasMovedInSession = false;
+        // 始点にすでに色（0〜9）が塗られていれば、白(null)に戻す「消しゴムモード」をONにする
+        isErasingMode = (userGrid[cell.r][cell.c] !== null);
+    }
+}
+
 function handleActionMove(x, y) {
     const cell = getCellFromCoords(x, y);
     if (cell && startCell) {
         if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
-        const oldColor = userGrid[cell.r][cell.c]; const newColor = currentSelectedColor;
-        if (oldColor !== newColor) { userGrid[cell.r][cell.c] = newColor; recordChange(cell.r, cell.c, oldColor, newColor); drawPuzzle(); }
+        
+        const oldColor = userGrid[cell.r][cell.c];
+        // 消しゴムモードなら「null（白）」を、通常ならパレットの選択色を塗る
+        const newColor = isErasingMode ? null : currentSelectedColor;
+        
+        if (oldColor !== newColor) {
+            userGrid[cell.r][cell.c] = newColor;
+            recordChange(cell.r, cell.c, oldColor, newColor);
+            drawPuzzle();
+        }
     }
 }
+
 function handleActionEnd() {
     if (!startCell) return;
     if (!hasMovedInSession) {
-        const oldColor = userGrid[startCell.r][startCell.c]; let newColor = currentSelectedColor;
-        if (oldColor > 0) newColor = 0; 
-        if (oldColor !== newColor) { userGrid[startCell.r][startCell.c] = newColor; recordChange(startCell.r, startCell.c, oldColor, newColor); drawPuzzle(); }
+        // シングルクリック/タップ時のトグル挙動（色が塗られていれば白に、白ければパレット色に）
+        const oldColor = userGrid[startCell.r][startCell.c];
+        let newColor = currentSelectedColor;
+        if (oldColor !== null) newColor = null; 
+        if (oldColor !== newColor) {
+            userGrid[startCell.r][startCell.c] = newColor;
+            recordChange(startCell.r, startCell.c, oldColor, newColor);
+            drawPuzzle();
+        }
     }
-    updateHistoryButtons(); startCell = null; hasMovedInSession = false;
+    updateHistoryButtons();
+    startCell = null;
+    hasMovedInSession = false;
+    isErasingMode = false; // ドラッグ終了時にモードをリセット
 }
 
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; isDrawing = true; const rect = canvas.getBoundingClientRect(); handleActionStart(e.clientX - rect.left, e.clientY - rect.top); });
