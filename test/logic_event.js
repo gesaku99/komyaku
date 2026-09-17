@@ -1,5 +1,4 @@
 // ★【確定版】初期選択0番(薄緑) ＆ 白マス(null)ベースの色消しドラッグ完全対応システム
-let currentSelectedColor = 0; // ★追加：初期選択カラーを0番（薄い緑）に完全固定！
 let isErasingMode = false;     // 現在のドラッグが「色消しモード」かどうかを記憶するフラグ
 
 function handleActionStart(x, y) {

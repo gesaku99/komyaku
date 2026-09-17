@@ -25,7 +25,7 @@ const COLOR_PALETTE = [
     '#e0e0e0'  // 9番: 薄グレー (中点「・」描画用)
 ];
 
-let currentSelectedColor = 1; 
+let currentSelectedColor = 0; 
 let isDrawing = false;
 let startCell = null;
 let hasMovedInSession = false;
