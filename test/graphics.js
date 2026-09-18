@@ -249,8 +249,8 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 const stepX = dx > 0 ? 1 : -1;
                 const stepY = dy > 0 ? 1 : -1;
 
-                let tMaxX = dx !== 0 ? (Math.floor(p1.x + (dx > 0 ? 1 : 0)) - p1.x) / dx : Infinity;
-                let tMaxY = dy !== 0 ? (Math.floor(p1.y + (dy > 0 ? 1 : 0)) - p1.y) / dy : Infinity;
+                let tMaxX = dx !== 0 ? ((dx > 0 ? Math.floor(p1.x) + 1 : Math.ceil(p1.x) - 1) - p1.x) / dx : Infinity;
+                let tMaxY = dy !== 0 ? ((dy > 0 ? Math.floor(p1.y) + 1 : Math.ceil(p1.y) - 1) - p1.y) / dy : Infinity;
                 const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
                 const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
 
