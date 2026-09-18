@@ -188,7 +188,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
 
     // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（壁判定完全撤去・確定版） ───
-    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
+    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV) {
         // 次元の統一：関数内での計算用に、純粋な「マス目の整数座標（0, 1, 2...）」として定義します
         const p1 = { x: assistStartV.c, y: assistStartV.r };
         const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
