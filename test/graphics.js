@@ -237,6 +237,47 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.textAlign = 'center'; 
             ctx.textBaseline = 'middle';
             ctx.fillText(distSq.toString(), mx, my + 0.5);
+            // 💡【ステップ7-3追記】：該当ブロックの本物の正解鉱脈すべてに黒丸をループ描画（Tenor Sans）
+            // 始点格子点(p1)の周囲4マスのうち、何かしらの色（0〜8）が塗られているマスの部屋色（ブロック）を取得
+            let targetBlockColor = null;
+            const rStart = assistStartV.r, cStart = assistStartV.c;
+            const checkOffsets = [{r:-1, c:-1}, {r:-1, c:0}, {r:0, c:-1}, {r:0, c:0}];
+            
+            for (let offset of checkOffsets) {
+                const nr = rStart + offset.r, nc = cStart + offset.c;
+                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+                    if (userGrid[nr][nc] !== null && userGrid[nr][nc] !== undefined) {
+                        targetBlockColor = userGrid[nr][nc];
+                        break;
+                    }
+                }
+            }
+
+            // 何かしらの色が塗られているブロックに接している場合のみ、本物鉱脈の上に黒丸を表示
+            if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
+                problemLines.forEach(line => {
+                    const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
+                    const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
+                    
+                    if (lc1 === targetBlockColor || lc2 === targetBlockColor) {
+                        const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                        const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                        const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+
+                        ctx.fillStyle = '#ffffff'; 
+                        ctx.strokeStyle = '#000000'; 
+                        ctx.lineWidth = 2;
+                        ctx.beginPath(); 
+                        ctx.arc(bx, by, 12, 0, Math.PI * 2); 
+                        ctx.fill(); 
+                        ctx.stroke();
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                        ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                    }
+                });
+            }
         }
         
         ctx.setLineDash([]); // 点線設定を安全にクリア
