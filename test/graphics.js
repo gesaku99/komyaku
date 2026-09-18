@@ -239,8 +239,8 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
             // 4. ✨完璧な通過順列挙：オレンジ線の角度から、通過するマスの順番を厳密に計算して配列化
             let targetBlockColor = null;
-            const dx = p2.x - startX; // startX = p1.x 
-            const dy = p2.y - startY; // startY = p1.y
+            const dx = p2.x - p1.x 
+            const dy = p2.y - p1.y
             const traversedCells = [];
 
             if (dx !== 0 || dy !== 0) {
