@@ -4,13 +4,15 @@ const paletteContainer = document.getElementById('palette');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 
-const CELL_PIXEL = 60;     
-const OFFSET = 50;         
+const CELL_PIXEL = 60;
+const OFFSET = 50;
 
-let GRID_SIZE = 5;       
-let problemLines = [];     
-let answerGrid = [];       
-let userGrid = [];         
+let GRID_SIZE = 5;
+let problemLines = [];
+let answerGrid = [];
+let userGrid = [];
+// ★追加：手動で引いた壁のリスト。各壁は { r1, c1, r2, c2 } の形で格子点の座標を記憶します
+let userWalls = [];
 
 const COLOR_PALETTE = [
     '#b4fbc2', // 0番: 緑 (Light Green)

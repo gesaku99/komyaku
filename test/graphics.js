@@ -134,6 +134,18 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         }
     }
 
+    // ★追加：プレイヤーが手動で引いた壁（userWalls）の描画
+    ctx.strokeStyle = '#70AD47'; 
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    userWalls.forEach(wall => {
+        ctx.beginPath();
+        // 格子点座標（c1, r1）から（c2, r2）へ線を引く
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+        ctx.stroke();
+    });
+
     // ─── 6. 鉱脈（黒の斜線）の描画 ───
     ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
