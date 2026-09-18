@@ -290,30 +290,114 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-                // 4. ✨作者様の完璧なアルゴリズム：オレンジ線が「最初に通過する（侵入する）マスの中心点（+0.5マス進んだ場所）」の部屋の色を厳密に特定
-                const vectorX = p2.x - p1.x;
-                const vectorY = p2.y - p1.y;
-                const len = Math.sqrt(vectorX ** 2 + vectorY ** 2);
-                
-                const scanC = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.x + (vectorX / len) * 0.5)));
-                const scanR = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.y + (vectorY / len) * 0.5)));
-                const targetBlockColor = userGrid[scanR][scanC];
+                // 4. ✨【完全幾何学・確定版】：オレンジ線の角度（傾き）から、マスの境界線をどの順番で通過するかを1マスずつ厳密に計算して配列化する
+                let targetBlockColor = null;
 
-                // 未着色（null）の部屋はスルー。何かしらの色（0〜9）が塗られている当事者のブロックだけを判定
-                if (targetBlockColor !== null && targetBlockColor !== undefined && typeof problemLines !== 'undefined') {
-                    // 5. 該当ブロックに属する本物の正解の鉱脈が「2本以上」ある時は、すべてに漏れなく黒丸をループ描画する！
+                const startX = p1.x;
+                const startY = p1.y;
+                const endX = p2.x;
+                const endY = p2.y;
+
+                const dx = endX - startX;
+                const dy = endY - startY;
+
+                // 通過するマスのインデックス(c, r)を、踏み込んだ順番通りに格納する配列
+                const traversedCells = [];
+
+                if (dx !== 0 || dy !== 0) {
+                    // 現在線が踏み込んでいるマスの座標（最初は、線の進行方向の1マス目を特定）
+                    let currentC = Math.floor(startX + (dx > 0 ? 0 : (dx < 0 ? -1 : 0)));
+                    let currentR = Math.floor(startY + (dy > 0 ? 0 : (dy < 0 ? -1 : 0)));
+                    
+                    // 各軸の進む方向（+1 または -1）
+                    const stepX = dx > 0 ? 1 : -1;
+                    const stepY = dy > 0 ? 1 : -1;
+
+                    // 次に「縦の境界線」「横の境界線」にぶつかるまでの、線全体の進捗比率（t）の初期値
+                    // 格子点からスタートするため、0を避けて最初の境界線までの距離を正確に計算
+                    let tMaxX = dx !== 0 ? (Math.floor(startX + (dx > 0 ? 1 : 0)) - startX) / dx : Infinity;
+                    let tMaxY = dy !== 0 ? (Math.floor(startY + (dy > 0 ? 1 : 0)) - startY) / dy : Infinity;
+
+                    // 1マスの境界線をまたぐのに必要な進捗比率（t）の増分（角度から求まる歩幅）
+                    const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
+                    const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+
+                    if (tMaxX === 0) tMaxX += tDeltaX;
+                    if (tMaxY === 0) tMaxY += tDeltaY;
+
+                    // 💡オレンジ線の角度から、縦横の境界線を「どの順番で通過するか」をゴールに達するまで1マスずつ完璧に辿る
+                    while (true) {
+                        // 画面内の有効なマスであれば、通過した順番通りに配列へカチッと登録
+                        if (currentC >= 0 && currentC < GRID_SIZE && currentR >= 0 && currentR < GRID_SIZE) {
+                            // 重複を防いで配列に登録
+                            if (traversedCells.length === 0 || 
+                                traversedCells[traversedCells.length - 1].c !== currentC || 
+                                traversedCells[traversedCells.length - 1].r !== currentR) {
+                                traversedCells.push({ c: currentC, r: currentR });
+                            }
+                        }
+
+                        // ゴール（終点格子点）に完全に到達したらループを終了
+                        if (tMaxX > 1 && tMaxY > 1) {
+                            break;
+                        }
+
+                        // 📐 角度（傾き）の比較：次にぶつかる境界線が「縦」か「横」かをデジタルに判定して1マス進める
+                        if (tMaxX < tMaxY) {
+                            // 次に縦の境界線をまたぐ場合 ➡ 横方向（c）に1マス移動
+                            tMaxX += tDeltaX;
+                            currentC += stepX;
+                        } else if (tMaxX > tMaxY) {
+                            // 次に横の境界線をまたぐ場合 ➡ 縦方向（r）に1マス移動
+                            tMaxY += tDeltaY;
+                            currentR += stepY;
+                        } else {
+                            // 💡ジャスト45度などの斜め移動で、縦横の境界線（格子点）に同時にカチッとぶつかった場合
+                            tMaxX += tDeltaX;
+                            tMaxY += tDeltaY;
+                            currentC += stepX;
+                            currentR += stepY;
+                        }
+                    }
+                }
+
+                // 💡作者様ご指定ルール：求めた順番通りにマスの所属ブロックをチェックしていく
+                for (let cell of traversedCells) {
+                    const color = userGrid[cell.r][cell.c]; // [r][c] で統一された盤面色を取得
+
+                    // 💡nullの間は該当ブロックなしとして、次の通過マスへ進む
+                    if (color === null || color === undefined) {
+                        continue;
+                    }
+
+                    // 💡null以外に踏み込んだその瞬間に、その番号のブロックを該当（ロックオン）としてマークし、走査を終了！
+                    targetBlockColor = color;
+                    break;
+                }
+
+                // 💡テスト(1)合格：色付きマスに一度もぶつからなければ、黒丸表示は1つも表示されません。
+                if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
+                    // 5. 該当ブロックに属する本物の正解の鉱脈の上に黒丸をループ描画（Tenor Sans）
                     problemLines.forEach(line => {
-                        const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
-                        const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
+                        // 鉱脈の所属ブロックを調べる際も、境界線上を避けて、鉱脈の「真ん中（中心点）」の座標にあるマスの部屋色を引き抜く
+                        const midX = Math.floor((line.start.x + line.end.x) / 2);
+                        const midY = Math.floor((line.start.y + line.end.y) / 2);
+                        const blockColorOfLine = userGrid[midY][midX];
                         
-                        // 当事者ブロックの色と一致する鉱脈だけを正確に狙い撃ち（他のブロックへの黒丸暴発を完全シャットアウト！）
-                        if (lc1 === targetBlockColor || lc2 === targetBlockColor) {
+                        // オレンジ線が「最初にぶつかった色」と,鉱脈の所属色が完全に一致する時だけ黒丸を表示！
+                        if (blockColorOfLine === targetBlockColor) {
                             const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
                             const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
                             const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
 
-                            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-                            ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                            ctx.fillStyle = '#ffffff'; 
+                            ctx.strokeStyle = '#000000'; 
+                            ctx.lineWidth = 2;
+                            ctx.beginPath(); 
+                            ctx.arc(bx, by, 12, 0, Math.PI * 2); 
+                            ctx.fill(); 
+                            ctx.stroke();
+                            
                             ctx.fillStyle = '#000000';
                             ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
                             ctx.fillText(bDistSq.toString(), bx, by + 0.5);
