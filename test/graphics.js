@@ -187,7 +187,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         });
     }
 
-    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（Tenor Sans完全同期） ───
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（幾何学侵入判定・複数黒丸完全対応版） ───
     if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
         const p1 = assistStartV;
         const p2 = assistCurrentV;
@@ -197,26 +197,24 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         const x2 = OFFSET + p2.c * CELL_PIXEL;
         const y2 = OFFSET + p2.r * CELL_PIXEL + titleBarHeight;
 
-        // 💡ご指定ルール：ドラッグ中は、アシスト機能継続を示すために始点のオレンジ点線の丸を絶対に常時残す！
+        // 💡仕様通り：ドラッグ中は、アシスト機能継続を示すために【始点のオレンジ点線の丸】を常に一番最初に描画する
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); // 綺麗な点線
+        ctx.setLineDash([4, 4]); // 美しい点線
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
-        // もし終点（指の現在地）が始点と違う格子点に吸着していれば、終点側にも点線丸を描く
+        // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と衝突のチェックを開始
         if (p1.r !== p2.r || p1.c !== p2.c) {
-            ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
-
+            
             // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差、または接触しているか調べる
             let isCollidingWithWall = false;
 
-            // 部屋の外壁および手動の壁をすべてチェック（ベクトルの外積判定を応用）
             function isIntersectingAssist(s1, e1, s2, e2) {
                 const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
                 const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
                 const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
                 const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
-                // 接触（値が0）も含めて1ミリでも触れたら衝突とみなす厳格判定（ジャスト通過も衝突！）
+                // 接触（値が0）も含めて1ミリでも触れたら衝突とみなす厳格判定
                 if (((d1 >= -0.0001 && d2 <= 0.0001) || (d1 <= 0.0001 && d2 >= -0.0001)) && 
                     ((d3 >= -0.0001 && d4 <= 0.0001) || (d3 <= 0.0001 && d4 >= -0.0001))) {
                     return true;
@@ -234,7 +232,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                     const rightW = { p1: {x: wx + 1, y: wy}, p2: {x: wx + 1, y: wy + 1} };
 
                     const currentIdx = userGrid[r][c];
-                    // 1ミリでも異なる部屋との境界線（または外壁）があれば壁として抽出
                     [topW, bottomW, leftW, rightW].forEach((w, idx) => {
                         let isWall = false;
                         if (idx === 0) isWall = (r === 0 || currentIdx !== userGrid[r - 1][c]);
@@ -249,7 +246,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 }
             }
             // B. ユーザーが手動で引いた壁（userWalls）との交差もチェック
-            if (typeof userWalls !== 'undefined') {
+            if (typeof userWalls !== 'undefined' && userWalls) {
                 userWalls.forEach(w => {
                     if (isIntersectingAssist(p1, p2, {x: w.c1, y: w.r1}, {x: w.c2, y: w.r2})) {
                         isCollidingWithWall = true;
@@ -257,9 +254,13 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 });
             }
 
-            // 💡ご指定ルール：壁に衝突していない（対角線として成立している）ときのみ線と丸を美しく描画！
+            // 💡仕様変更①：壁に衝突していない（対角線として成立している）とき【のみ】、終点丸や仮線、丸のすべてを解禁して描画する！
             if (!isCollidingWithWall) {
-                ctx.setLineDash([]); // 実線に戻す
+                // 1. 終点側のオレンジ点線丸を描画
+                ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
+
+                // 2. 仮のオレンジ直線を実線で描画
+                ctx.setLineDash([]); 
                 ctx.strokeStyle = '#ff9500';
                 ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
@@ -267,48 +268,54 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 // 長さの2乗(distSq)の計算
                 const distSq = (p2.c - p1.c) ** 2 + (p2.r - p1.r) ** 2;
 
-                // ① 仮の鉱脈の上の「オレンジ丸 ＋ 長さ」の描画（Tenor Sans適用）
+                // 3. 仮の鉱脈の上の「オレンジ丸 ＋ 長さ」の描画（Tenor Sans）
                 const mx = (x1 + x2) / 2;
                 const my = (y1 + y2) / 2;
                 ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 
                 ctx.fillStyle = '#ff9500';
-                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; // ★すべての数字フォントを Tenor Sans へ統一
+                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-                // ② 連動：始点の格子点が触れている、その該当ブロックの「本物の正解の鉱脈」を探して黒丸を重ねる
-                const startCellCoords = getCellFromCoords((x1 + OFFSET + (p2.c > p1.c ? 5 : -5)) / 2, (y1 + OFFSET + titleBarHeight + (p2.r > p1.r ? 5 : -5)) / 2);
-                if (startCellCoords && typeof problemLines !== 'undefined') {
-                    const currentBlockColor = userGrid[startCellCoords.r][startCellCoords.c];
-                    if (currentBlockColor !== null && currentBlockColor !== undefined) {
-                        // 本物の問題の鉱脈リストの中から、両端のいずれかがこの部屋の色（ブロック）に接しているものを1つ探す
-                        problemLines.forEach(line => {
-                            // 簡易的に、始点の部屋の色と一致するか、あるいは幾何学的に近い本物の線を探し出す
-                            const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
-                            const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
-                            if (lc1 === currentBlockColor || lc2 === currentBlockColor) {
-                                // 本物の鉱脈の上に「白背景の黒丸 ＋ 鉱脈長」を美しくレンダリング
-                                const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
-                                const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
-                                const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                // 4. ✨仕様変更②：オレンジ線が「物理的に侵入している部屋の色」を1ドット単位で超厳密に特定（混線をシャットアウト）
+                // 始点格子点からオレンジ線の方向へ、ほんのわずか（0.1マス分）だけ進んだ先の座標にあるマスの部屋色をピンポイントでスキャン
+                const vectorX = p2.c - p1.c;
+                const vectorY = p2.r - p1.r;
+                const len = Math.sqrt(vectorX ** 2 + vectorY ** 2);
+                
+                const scanC = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.c + (vectorX / len) * 0.1)));
+                const scanR = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.r + (vectorY / len) * 0.1)));
+                const targetBlockColor = userGrid[scanR][scanC];
 
-                                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-                                ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                                ctx.fillStyle = '#000000';
-                                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; // ★ここも完全に Tenor Sans 統一
-                                ctx.fillText(bDistSq.toString(), bx, by + 0.5);
-                            }
-                        });
-                    }
+                if (targetBlockColor !== null && targetBlockColor !== undefined && typeof problemLines !== 'undefined') {
+                    // 5. ✨仕様変更③：該当ブロックに属する本物の正解の鉱脈が「2本以上」ある時は、すべてに漏れなく黒丸をループ描画する！
+                    problemLines.forEach(line => {
+                        // 本物の正解鉱脈が、この侵入した部屋の色（ブロック）に接しているか厳密に判定
+                        const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
+                        const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
+                        
+                        if (lc1 === targetBlockColor || lc2 === targetBlockColor) {
+                            // 本物の鉱脈の上に「白背景の黒丸 ＋ 鉱脈長」をレンダリング（Tenor Sans）
+                            const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                            const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                            const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+
+                            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+                            ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                            ctx.fillStyle = '#000000';
+                            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                            ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                        }
+                    });
                 }
             }
         }
-        ctx.setLineDash([]); // 点線設定を完全に解除
+        ctx.setLineDash([]); // 点線設定を完全にリセット
     }
 
-    // ─── 8. 判定エラーの赤丸・黒丸の表示（既存のロジックをTenor Sansへ完全統一） ───
+    // ─── 8. 判定エラーの赤丸・黒丸の表示（Tenor Sans完全統一） ───
     if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
         ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
         errorDisplayState.wrongLines.forEach(line => {
@@ -316,7 +323,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
         
-        // ★正誤判定時の文字フォント設定を完全に Tenor Sans へ上書き統一！
         ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
         errorDisplayState.wrongLines.forEach(line => {
