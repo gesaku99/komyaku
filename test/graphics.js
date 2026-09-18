@@ -61,14 +61,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 // 0番〜9番の色をマスに塗る
                 ctx.fillStyle = COLOR_PALETTE[colorNum];
                 ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
-                
-                // ★9番（薄いグレー）だった場合のみ中点・を描画
-                if (colorNum === 9) {
-                    ctx.fillStyle = '#555555';
-                    ctx.beginPath();
-                    ctx.arc(x + CELL_PIXEL / 2, y + CELL_PIXEL / 2, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                }
             }
         }
 

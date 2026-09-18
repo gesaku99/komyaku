@@ -73,16 +73,6 @@ function createPalette() {
         btn.style.backgroundColor = COLOR_PALETTE[i]; 
         btn.onclick = () => { currentSelectedColor = i; createPalette(); };
         
-        // ★追加：もしパレットの右端（9番目）の薄グレーボタンなら、真ん中に「・」を表示する
-        if (i === 9) {
-            btn.innerText = '・';
-            btn.style.color = '#555555';
-            btn.style.textAlign = 'center';
-            btn.style.lineHeight = '40px'; // ボタンの縦サイズ（CSSの設定）に合わせて美しく中央寄せ
-            btn.style.fontSize = '20px';
-            btn.style.fontWeight = 'bold';
-        }
-        
         paletteContainer.appendChild(btn);
     }
 }
