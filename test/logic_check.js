@@ -4,7 +4,7 @@ function checkAnswer() {
     let hasWhite = false;
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (userGrid[r][c] === 0) { hasWhite = true; break; }
+            if (userGrid[r][c] === null) { hasWhite = true; break; }
         }
         if (hasWhite) break;
     }
