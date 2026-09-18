@@ -337,11 +337,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                             }
                         }
 
-                        // ゴール（終点格子点）に完全に到達したらループを終了
-                        if (tMaxX > 1 && tMaxY > 1) {
-                            break;
-                        }
-
                         // 📐 角度（傾き）の比較：次にぶつかる境界線が「縦」か「横」かをデジタルに判定して1マス進める
                         if (tMaxX < tMaxY) {
                             // 次に縦の境界線をまたぐ場合 ➡ 横方向（c）に1マス移動
@@ -357,6 +352,11 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                             tMaxY += tDeltaY;
                             currentC += stepX;
                             currentR += stepY;
+                        }
+
+                        // ゴール（終点格子点）に完全に到達したらループを終了
+                        if (tMaxX > 1 && tMaxY > 1) {
+                            break;
                         }
                     }
                 }
