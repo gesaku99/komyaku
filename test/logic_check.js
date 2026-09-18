@@ -211,7 +211,7 @@ function checkAnswer() {
         });
     }
 
-    if (isCorrect) { alert("✨ 🎉 正解です！！ 🎉 ✨\nすべてのブロック形状と最長対角線が一致しました！"); }
+    if (isCorrect) { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }
     else {
         const targetBlackLines = [];
         errorBlockIds.forEach(colorId => {
