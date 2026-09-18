@@ -187,19 +187,38 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         });
     }
 
-    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（始点点線丸・完全復活版） ───
-    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV) {
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（ステップ7-1：直線・終点丸追加版） ───
+    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
         // 💻 画面描画用（ピクセル座標）の計算
         const x1 = OFFSET + assistStartV.c * CELL_PIXEL;
         const y1 = OFFSET + assistStartV.r * CELL_PIXEL + titleBarHeight;
+        const x2 = OFFSET + assistCurrentV.c * CELL_PIXEL;
+        const y2 = OFFSET + assistCurrentV.r * CELL_PIXEL + titleBarHeight;
 
-        // 💡 100%確実に始点のオレンジ点線丸を画面に描き出す命令
+        // ① 始点のオレンジ点線丸（すでに復帰している完璧なコード）
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); // 綺麗な点線にする設定
+        ctx.setLineDash(); // 点線設定
         ctx.beginPath(); 
         ctx.arc(x1, y1, 15, 0, Math.PI * 2); 
         ctx.stroke();
+
+        // 💡追加：もし「始点」と「現在の指の吸着先（終点）」が異なる格子点にいるときだけ、線と終点丸を描く
+        if (assistStartV.c !== assistCurrentV.c || assistStartV.r !== assistCurrentV.r) {
+            // ② 終点側のオレンジ点線丸を描画
+            ctx.beginPath();
+            ctx.arc(x2, y2, 15, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // ③ 始点と終点をまっすぐ結ぶ「オレンジの仮の直線」を実線で描画
+            ctx.setLineDash([]); // 実線に戻す
+            ctx.strokeStyle = '#ff9500';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
         
         ctx.setLineDash([]); // 点線設定を安全にクリア
     }
