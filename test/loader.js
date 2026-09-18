@@ -24,7 +24,7 @@ const COLOR_PALETTE = [
     '#c28eff', // 6番: 紫 (Purple)
     '#f2cab3', // 7番: 茶 (Light Brown)
     '#00e5ff', // 8番: 濃い青 (Deep Blue - 水色と完全に区別可能)
-    '#e0e0e0'  // 9番: 薄グレー (中点「・」描画用)
+    '#ffffff'  // 9番: 白(ユーザー境界線描画モード)
 ];
 
 let currentSelectedColor = 0; 

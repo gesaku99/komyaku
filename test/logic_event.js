@@ -151,11 +151,11 @@ function createPalette() {
         
         // ★新仕様：9番目のグレーボタンを、境界線を引いている「鉛筆アイコン」へと強制トランスフォーム！
         if (i === 9) {
-            btn.innerText = '__✏️'; // 境界線を引いているペンのビジュアルアイコン
+            btn.innerText = '_✏️'; // 境界線を引いているペンのビジュアルアイコン
             btn.style.color = '#333333';
             btn.style.textAlign = 'center';
             btn.style.lineHeight = '40px'; 
-            btn.style.fontSize = '12px'; // アイコンのバランスを整えるフォントサイズ
+            btn.style.fontSize = '14px'; // アイコンのバランスを整えるフォントサイズ
             btn.style.fontWeight = 'bold';
         }
         paletteContainer.appendChild(btn);
