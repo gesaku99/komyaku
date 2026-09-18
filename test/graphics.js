@@ -218,6 +218,25 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
+
+            // 💡【ステップ7-2追記】：仮の鉱脈の上の「オレンジ丸 ＋ 長さの2乗」の描画（Tenor Sans）
+            const distSq = (assistCurrentV.c - assistStartV.c) ** 2 + (assistCurrentV.r - assistStartV.r) ** 2;
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            
+            ctx.fillStyle = '#ffffff'; 
+            ctx.strokeStyle = '#ff9500'; 
+            ctx.lineWidth = 2;
+            ctx.beginPath(); 
+            ctx.arc(mx, my, 12, 0, Math.PI * 2); 
+            ctx.fill(); 
+            ctx.stroke();
+            
+            ctx.fillStyle = '#ff9500';
+            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+            ctx.textAlign = 'center'; 
+            ctx.textBaseline = 'middle';
+            ctx.fillText(distSq.toString(), mx, my + 0.5);
         }
         
         ctx.setLineDash([]); // 点線設定を安全にクリア
