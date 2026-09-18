@@ -186,6 +186,157 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
+
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（Tenor Sans完全同期） ───
+    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
+        const p1 = assistStartV;
+        const p2 = assistCurrentV;
+
+        const x1 = OFFSET + p1.c * CELL_PIXEL;
+        const y1 = OFFSET + p1.r * CELL_PIXEL + titleBarHeight;
+        const x2 = OFFSET + p2.c * CELL_PIXEL;
+        const y2 = OFFSET + p2.r * CELL_PIXEL + titleBarHeight;
+
+        // 💡ご指定ルール：ドラッグ中は、アシスト機能継続を示すために始点のオレンジ点線の丸を絶対に常時残す！
+        ctx.strokeStyle = '#ff9500';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]); // 綺麗な点線
+        ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
+
+        // もし終点（指の現在地）が始点と違う格子点に吸着していれば、終点側にも点線丸を描く
+        if (p1.r !== p2.r || p1.c !== p2.c) {
+            ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
+
+            // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差、または接触しているか調べる
+            let isCollidingWithWall = false;
+
+            // 部屋の外壁および手動の壁をすべてチェック（ベクトルの外積判定を応用）
+            function isIntersectingAssist(s1, e1, s2, e2) {
+                const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+                const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+                const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+                const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
+                // 接触（値が0）も含めて1ミリでも触れたら衝突とみなす厳格判定（ジャスト通過も衝突！）
+                if (((d1 >= -0.0001 && d2 <= 0.0001) || (d1 <= 0.0001 && d2 >= -0.0001)) && 
+                    ((d3 >= -0.0001 && d4 <= 0.0001) || (d3 <= 0.0001 && d4 >= -0.0001))) {
+                    return true;
+                }
+                return false;
+            }
+
+            // A. パズルの外壁・内壁（システム境界線）との交差をチェック
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const wx = c; const wy = r;
+                    const topW = { p1: {x: wx, y: wy}, p2: {x: wx + 1, y: wy} };
+                    const bottomW = { p1: {x: wx, y: wy + 1}, p2: {x: wx + 1, y: wy + 1} };
+                    const leftW = { p1: {x: wx, y: wy}, p2: {x: wx, y: wy + 1} };
+                    const rightW = { p1: {x: wx + 1, y: wy}, p2: {x: wx + 1, y: wy + 1} };
+
+                    const currentIdx = userGrid[r][c];
+                    // 1ミリでも異なる部屋との境界線（または外壁）があれば壁として抽出
+                    [topW, bottomW, leftW, rightW].forEach((w, idx) => {
+                        let isWall = false;
+                        if (idx === 0) isWall = (r === 0 || currentIdx !== userGrid[r - 1][c]);
+                        if (idx === 1) isWall = (r === GRID_SIZE - 1 || currentIdx !== userGrid[r + 1][c]);
+                        if (idx === 2) isWall = (c === 0 || currentIdx !== userGrid[r][c - 1]);
+                        if (idx === 3) isWall = (c === GRID_SIZE - 1 || currentIdx !== userGrid[r][c + 1]);
+                        
+                        if (isWall && isIntersectingAssist(p1, p2, w.p1, w.p2)) {
+                            isCollidingWithWall = true;
+                        }
+                    });
+                }
+            }
+            // B. ユーザーが手動で引いた壁（userWalls）との交差もチェック
+            if (typeof userWalls !== 'undefined') {
+                userWalls.forEach(w => {
+                    if (isIntersectingAssist(p1, p2, {x: w.c1, y: w.r1}, {x: w.c2, y: w.r2})) {
+                        isCollidingWithWall = true;
+                    }
+                });
+            }
+
+            // 💡ご指定ルール：壁に衝突していない（対角線として成立している）ときのみ線と丸を美しく描画！
+            if (!isCollidingWithWall) {
+                ctx.setLineDash([]); // 実線に戻す
+                ctx.strokeStyle = '#ff9500';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+                // 長さの2乗(distSq)の計算
+                const distSq = (p2.c - p1.c) ** 2 + (p2.r - p1.r) ** 2;
+
+                // ① 仮の鉱脈の上の「オレンジ丸 ＋ 長さ」の描画（Tenor Sans適用）
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                
+                ctx.fillStyle = '#ff9500';
+                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; // ★すべての数字フォントを Tenor Sans へ統一
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(distSq.toString(), mx, my + 0.5);
+
+                // ② 連動：始点の格子点が触れている、その該当ブロックの「本物の正解の鉱脈」を探して黒丸を重ねる
+                const startCellCoords = getCellFromCoords((x1 + OFFSET + (p2.c > p1.c ? 5 : -5)) / 2, (y1 + OFFSET + titleBarHeight + (p2.r > p1.r ? 5 : -5)) / 2);
+                if (startCellCoords && typeof problemLines !== 'undefined') {
+                    const currentBlockColor = userGrid[startCellCoords.r][startCellCoords.c];
+                    if (currentBlockColor !== null && currentBlockColor !== undefined) {
+                        // 本物の問題の鉱脈リストの中から、両端のいずれかがこの部屋の色（ブロック）に接しているものを1つ探す
+                        problemLines.forEach(line => {
+                            // 簡易的に、始点の部屋の色と一致するか、あるいは幾何学的に近い本物の線を探し出す
+                            const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
+                            const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
+                            if (lc1 === currentBlockColor || lc2 === currentBlockColor) {
+                                // 本物の鉱脈の上に「白背景の黒丸 ＋ 鉱脈長」を美しくレンダリング
+                                const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                                const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                                const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+
+                                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+                                ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                                ctx.fillStyle = '#000000';
+                                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; // ★ここも完全に Tenor Sans 統一
+                                ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        ctx.setLineDash([]); // 点線設定を完全に解除
+    }
+
+    // ─── 8. 判定エラーの赤丸・黒丸の表示（既存のロジックをTenor Sansへ完全統一） ───
+    if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
+        ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
+        errorDisplayState.wrongLines.forEach(line => {
+            ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
+            ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
+        });
+        
+        // ★正誤判定時の文字フォント設定を完全に Tenor Sans へ上書き統一！
+        ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        
+        errorDisplayState.wrongLines.forEach(line => {
+            const rx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.7) * CELL_PIXEL;
+            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL + titleBarHeight;
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
+        });
+        errorDisplayState.blackAlertLines.forEach(line => {
+            const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
+            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
+        });
+        errorDisplayState.invalidVertices.forEach(v => {
+            ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
+        });
+    }
 }
 
 function downloadPuzzleImage(isSolution) {

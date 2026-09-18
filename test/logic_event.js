@@ -1,6 +1,10 @@
 let isErasingMode = false;     
 let lastIntersectedV = null; // ★追加：壁引きドラッグ中に直前に通過した格子点を記憶するフラグ
 
+// ★追加：オレンジのアシスト製図機能で使う、ドラッグ中の始点と終点の格子点座標を記憶するグローバル変数
+let assistStartV = null;
+let assistCurrentV = null;
+
 // ★追加：引こうとしている壁の両脇のマスを調べて、手動で操作可能か（少なくとも片方がnullか）チェックする関数
 function isWallEditable(w) {
     let m1, m2;
@@ -24,61 +28,71 @@ function cleanUserWalls() {
 
 function handleActionStart(x, y) {
     const cell = getCellFromCoords(x, y);
+    const nearestV = getNearestVertex(x, y); // タップ・クリック位置の最寄りの格子点を調べる
+
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】：最寄りの格子点（交差点）を検知する
-        lastIntersectedV = getNearestVertex(x, y);
+        // ✏️【壁引きモード】
+        lastIntersectedV = nearestV;
         startCell = cell;
         hasMovedInSession = false;
-    } else if (cell) {
+    } else {
         // 🎨【通常の色塗りモード】
+        // ★新仕様：通常の色塗りモードのとき、もし「格子点（マスの角）」からドラッグが開始されたら、アシスト始点として記憶
+        if (nearestV) {
+            assistStartV = nearestV;
+            assistCurrentV = nearestV;
+        }
         startCell = cell;
         hasMovedInSession = false;
-        isErasingMode = (userGrid[cell.r][cell.c] !== null);
+        if (cell) {
+            isErasingMode = (userGrid[cell.r][cell.c] !== null);
+        }
     }
 }
 
 function handleActionMove(x, y) {
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】のマグネット追従
+        // ✏️【壁引きモード】の処理（既存のまま完璧です）
         const currentV = getNearestVertex(x, y);
         if (currentV && lastIntersectedV) {
-            // 直前に触れた格子点と、今触れた格子点が「お隣さん（1マス離れた位置）」である場合
             const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
             if (dist === 1) {
                 const newWall = { r1: lastIntersectedV.r, c1: lastIntersectedV.c, r2: currentV.r, c2: currentV.c };
-                
-                // 💡ご指定ルール：その壁の両脇の少なくとも1マスがnull（未着色）のときだけ処理する
                 if (isWallEditable(newWall)) {
-                    // すでに同じ壁があるか探す（順不同チェック）
                     const existingIdx = userWalls.findIndex(w => 
                         (w.r1 === newWall.r1 && w.c1 === newWall.c1 && w.r2 === newWall.r2 && w.c2 === newWall.c2) ||
                         (w.r1 === newWall.r2 && w.c1 === newWall.c2 && w.r2 === newWall.r1 && w.c2 === newWall.c1)
                     );
-                    
-                    if (existingIdx !== -1) {
-                        // 💡ご指定ルール：すでに登録がある境界線を改めてなぞったら、トグル消去する
-                        userWalls.splice(existingIdx, 1);
-                    } else {
-                        // 新しい壁として登録
-                        userWalls.push(newWall);
-                    }
+                    if (existingIdx !== -1) { userWalls.splice(existingIdx, 1); } else { userWalls.push(newWall); }
                     hasMovedInSession = true;
                     drawPuzzle();
                 }
-                lastIntersectedV = currentV; // 次の線の起点にバトンタッチ
+                lastIntersectedV = currentV; 
             }
         }
     } else {
-        // 🎨【通常の色塗りモード】（既存の完璧なドラッグ処理）
+        // 🎨【通常の色塗りモード】
+        // ★追加：アシストモード作動中（格子点スタート）なら、リアルタイムで現在の終点格子点を追従・記憶
+        if (assistStartV) {
+            const currentV = getNearestVertex(x, y);
+            if (currentV) {
+                assistCurrentV = currentV;
+            } else {
+                // 指が格子点センサーから外れている間も、最後のアシスト状態を美しく維持するためにクリアはしません
+            }
+            drawPuzzle(); // アシスト線をリアルタイム描画するために毎フレームCanvasを更新
+        }
+
         const cell = getCellFromCoords(x, y);
-        if (cell && startCell) {
+        // ★修正：アシスト作動中（格子点からのドラッグ時）は、背景の色塗りが誤って暴発しないようにガードをかけます
+        if (cell && startCell && !assistStartV) {
             if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
             const oldColor = userGrid[cell.r][cell.c];
             const newColor = isErasingMode ? null : currentSelectedColor;
             if (oldColor !== newColor) {
                 userGrid[cell.r][cell.c] = newColor;
                 recordChange(cell.r, cell.c, oldColor, newColor);
-                cleanUserWalls(); // ★追加：色を塗った瞬間、両脇が埋まった手動壁を自動消去！
+                cleanUserWalls(); 
                 drawPuzzle();
             }
         }
@@ -88,15 +102,15 @@ function handleActionMove(x, y) {
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
-    } else if (startCell && !hasMovedInSession) {
-        // 🎨シングルタップ時の色トグル処理
+    } else if (startCell && !hasMovedInSession && !assistStartV) {
+        // 🎨シングルタップ時の色トグル処理（格子点ドラッグではない、純粋な1マスタップ時のみ発動）
         const oldColor = userGrid[startCell.r][startCell.c];
         let newColor = currentSelectedColor;
         if (oldColor !== null) newColor = null; 
         if (oldColor !== newColor) {
             userGrid[startCell.r][startCell.c] = newColor;
             recordChange(startCell.r, startCell.c, oldColor, newColor);
-            cleanUserWalls(); // ★追加：ここでも両脇が埋まった手動壁を自動消去！
+            cleanUserWalls(); 
             drawPuzzle();
         }
     }
@@ -104,7 +118,12 @@ function handleActionEnd() {
     startCell = null;
     hasMovedInSession = false;
     isErasingMode = false;
+    // ★追加：ドラッグを離したら、アシストの記憶を綺麗にリセット
+    assistStartV = null;
+    assistCurrentV = null;
+    drawPuzzle(); // 最後の1フレームを綺麗にリセット描画
 }
+
 
 // ★追加：指の現在地から、半径25px以内にある最も近い「格子点（マスの角）」を返す超強力なマグネットセンサー
 function getNearestVertex(x, y) {
