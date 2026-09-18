@@ -209,13 +209,15 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差しているか調べる
             let isCollidingWithWall = false;
 
-            // 外積の符号チェックを本来の100%厳密な交差判定（端点での接触＝格子点ジャスト通過も衝突とみなす）に完全固定
+            // 外積の符号チェックを本来の100%厳密な交差判定（c, rプロパティ名に完全同期）に修正
             function isIntersectingAssist(s1, e1, s2, e2) {
-                const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-                const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-                const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-                const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+                // ★完全修正：s1 や e1 は c と r のデータ構造なので、正しく c(列) と r(行) に書き換えます
+                const d1 = (e1.c - s1.c) * (s2.y - s1.r) - (e1.r - s1.r) * (s2.x - s1.c);
+                const d2 = (e1.c - s1.c) * (e2.y - s1.r) - (e1.r - s1.r) * (e2.x - s1.c);
+                const d3 = (e2.x - s2.x) * (s1.r - s2.y) - (e2.y - s2.y) * (s1.c - s2.x);
+                const d4 = (e2.x - s2.x) * (e1.r - s2.y) - (e2.y - s2.y) * (e1.c - s2.x);
                 
+                // お互いの線分が相手の線をまたぎ合っている（または端点で接触している値が0）とき、交差と判定
                 const cross1 = ((d1 >= 0 && d2 <= 0) || (d1 <= 0 && d2 >= 0));
                 const cross2 = ((d3 >= 0 && d4 <= 0) || (d3 <= 0 && d4 >= 0));
                 return (cross1 && cross2);
