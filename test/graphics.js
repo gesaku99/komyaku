@@ -188,7 +188,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
 
     // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（壁判定完全撤去・確定版） ───
-    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV) {
+    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
         // 次元の統一：関数内での計算用に、純粋な「マス目の整数座標（0, 1, 2...）」として定義します
         const p1 = { x: assistStartV.c, y: assistStartV.r };
         const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
@@ -202,7 +202,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // 💡仕様通り：ドラッグ中は、アシスト機能継続を示すために【始点のオレンジ点線の丸】を常に一番最初に描画する
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash(); // 美しい点線
+        ctx.setLineDash([4, 4]); // 美しい点線
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
         // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と丸の描画を開始
@@ -214,7 +214,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             // 1. 終点側のオレンジ点線丸を描画
             ctx.strokeStyle = '#ff9500';
             ctx.lineWidth = 2;
-            ctx.setLineDash();
+            ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
             // 2. 仮のオレンジ直線を実線で描画
