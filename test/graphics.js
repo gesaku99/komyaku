@@ -187,7 +187,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         });
     }
 
-    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（大復活・確定版） ───
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（完全FIX・確定版） ───
     if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
         const p1 = assistStartV;
         const p2 = assistCurrentV;
@@ -200,23 +200,22 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // 💡仕様通り：ドラッグ中は、アシスト機能継続を示すために【始点のオレンジ点線の丸】を常に一番最初に描画する
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash(); // 美しい点線
+        ctx.setLineDash([4, 4]); // 美しい点線
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
         // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と衝突のチェックを開始
         if (p1.r !== p2.r || p1.c !== p2.c) {
             
-            // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差、または接触しているか調べる
+            // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差しているか調べる
             let isCollidingWithWall = false;
 
-            // 外積の符号チェックを本来の100%厳密な交差判定（0を含む）にリセット
+            // 外積の符号チェックを本来の100%厳密な交差判定（端点での接触＝格子点ジャスト通過も衝突とみなす）に完全固定
             function isIntersectingAssist(s1, e1, s2, e2) {
                 const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
                 const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
                 const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
                 const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
                 
-                // お互いの線分が相手の線をまたぎ合っている（または端点で接触している値が0）とき、交差と判定
                 const cross1 = ((d1 >= 0 && d2 <= 0) || (d1 <= 0 && d2 >= 0));
                 const cross2 = ((d3 >= 0 && d4 <= 0) || (d3 <= 0 && d4 >= 0));
                 return (cross1 && cross2);
@@ -239,7 +238,10 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                         if (idx === 2) isWall = (c === 0 || currentIdx !== userGrid[r][c - 1]);
                         if (idx === 3) isWall = (c === GRID_SIZE - 1 || currentIdx !== userGrid[r][c + 1]);
                         
-                        if (isWall && isIntersectingAssist(p1, p2, w.p1, w.p2)) {
+                        // ★注意：自分自身のスタート地点の格子点(p1)と、その格子点から伸びる壁の端点との「接触そのもの」はまたぎ越しではないため除外
+                        const isStartVertexOfWall = (w.p1.x === p1.c && w.p1.y === p1.r) || (w.p2.x === p1.c && w.p2.y === p1.r);
+                        
+                        if (isWall && !isStartVertexOfWall && isIntersectingAssist(p1, p2, w.p1, w.p2)) {
                             isCollidingWithWall = true;
                         }
                     });
@@ -248,15 +250,19 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             // B. ユーザーが手動で引いた壁（userWalls）との交差もチェック
             if (typeof userWalls !== 'undefined' && userWalls) {
                 userWalls.forEach(w => {
-                    if (isIntersectingAssist(p1, p2, {x: w.c1, y: w.r1}, {x: w.c2, y: w.r2})) {
+                    const isStartVertexOfUserWall = (w.c1 === p1.c && w.r1 === p1.r) || (w.c2 === p1.c && w.r2 === p1.r);
+                    if (!isStartVertexOfUserWall && isIntersectingAssist(p1, p2, {x: w.c1, y: w.r1}, {x: w.c2, y: w.r2})) {
                         isCollidingWithWall = true;
                     }
                 });
             }
 
-            // 💡仕様通り①：壁に衝突していない（対角線として成立している）とき【のみ】、終点丸や仮線、丸のすべてを解禁して描画する！
+            // 💡仕様変更①：壁に衝突していない（対角線として成立している）とき【のみ】、終点丸や仮線、丸のすべてを解禁して描画する！
             if (!isCollidingWithWall) {
                 // 1. 終点側のオレンジ点線丸を描画
+                ctx.strokeStyle = '#ff9500';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
                 ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
                 // 2. 仮のオレンジ直線を実線で描画
@@ -279,16 +285,16 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-                // 4. ✨仕様変更②：オレンジ線が侵入している部屋の色を厳密に特定
+                // 4. ✨完全特定：オレンジ線が侵入しているマスの「中心点（+0.5）」の部屋の色を完璧に引き抜く（混線を100%シャットアウト）
                 const vectorX = p2.c - p1.c;
                 const vectorY = p2.r - p1.r;
                 const len = Math.sqrt(vectorX ** 2 + vectorY ** 2);
                 
-                const scanC = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.c + (vectorX / len) * 0.1)));
-                const scanR = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.r + (vectorY / len) * 0.1)));
+                const scanC = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.c + (vectorX / len) * 0.5)));
+                const scanR = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.r + (vectorY / len) * 0.5)));
                 const targetBlockColor = userGrid[scanR][scanC];
 
-                // ★完全修正：未着色（null）の部屋には、絶対に黒丸を表示しない！何かしらの色（0〜9）が塗られている時だけ発動
+                // 未着色（null）の部屋には、絶対に黒丸を表示しない！何かしらの色（0〜9）が塗られている時だけ発動
                 if (targetBlockColor !== null && targetBlockColor !== undefined && typeof problemLines !== 'undefined') {
                     // 5. ✨仕様変更③：該当ブロックに属する本物の正解の鉱脈が「2本以上」ある時は、すべてに漏れなく黒丸をループ描画する！
                     problemLines.forEach(line => {
@@ -318,7 +324,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
         errorDisplayState.wrongLines.forEach(line => {
             ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
-            lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
+            ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
         
         ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
