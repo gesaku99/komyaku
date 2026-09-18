@@ -198,7 +198,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // ① 始点のオレンジ点線丸（すでに復帰している完璧なコード）
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash(); // 点線設定
+        ctx.setLineDash([4, 4]); // 点線設定
         ctx.beginPath(); 
         ctx.arc(x1, y1, 15, 0, Math.PI * 2); 
         ctx.stroke();
