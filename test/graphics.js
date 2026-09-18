@@ -187,100 +187,142 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         });
     }
 
-    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（ステップ7-1：直線・終点丸追加版） ───
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（幾何学特定＆衝突ガード最終完全版） ───
     if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
-        // 💻 画面描画用（ピクセル座標）の計算
-        const x1 = OFFSET + assistStartV.c * CELL_PIXEL;
-        const y1 = OFFSET + assistStartV.r * CELL_PIXEL + titleBarHeight;
-        const x2 = OFFSET + assistCurrentV.c * CELL_PIXEL;
-        const y2 = OFFSET + assistCurrentV.r * CELL_PIXEL + titleBarHeight;
+        // 次元の統一：関数内での計算用に、純粋な「マス目の整数座標（0, 1, 2...）」として定義します
+        const p1 = { x: assistStartV.c, y: assistStartV.r };
+        const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
 
-        // ① 始点のオレンジ点線丸（すでに復帰している完璧なコード）
+        // 画面描画用（ピクセル座標）の計算
+        const x1 = OFFSET + p1.x * CELL_PIXEL;
+        const y1 = OFFSET + p1.y * CELL_PIXEL + titleBarHeight;
+        const x2 = OFFSET + p2.x * CELL_PIXEL;
+        const y2 = OFFSET + p2.y * CELL_PIXEL + titleBarHeight;
+
+        // 💡仕様通り：ドラッグ中は、アシスト機能継続を示すために【始点のオレンジ点線の丸】を常に一番最初に描画する
         ctx.strokeStyle = '#ff9500';
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); // 点線設定
-        ctx.beginPath(); 
-        ctx.arc(x1, y1, 15, 0, Math.PI * 2); 
-        ctx.stroke();
+        ctx.setLineDash([4, 4]); // 美しい点線
+        ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
-        // 💡追加：もし「始点」と「現在の指の吸着先（終点）」が異なる格子点にいるときだけ、線と終点丸を描く
-        if (assistStartV.c !== assistCurrentV.c || assistStartV.r !== assistCurrentV.r) {
-            // ② 終点側のオレンジ点線丸を描画
-            ctx.beginPath();
-            ctx.arc(x2, y2, 15, 0, Math.PI * 2);
-            ctx.stroke();
+        // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と衝突のチェックを開始
+        if (p1.x !== p2.x || p1.y !== p2.y) {
+            
+            // 💡幾何学判定：この仮のオレンジ線が、部屋のすべての外壁（境界線）と交差しているか調べる
+            let isCollidingWithWall = false;
 
-            // ③ 始点と終点をまっすぐ結ぶ「オレンジの仮の直線」を実線で描画
-            ctx.setLineDash([]); // 実線に戻す
-            ctx.strokeStyle = '#ff9500';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-
-            // 💡【ステップ7-2追記】：仮の鉱脈の上の「オレンジ丸 ＋ 長さの2乗」の描画（Tenor Sans）
-            const distSq = (assistCurrentV.c - assistStartV.c) ** 2 + (assistCurrentV.r - assistStartV.r) ** 2;
-            const mx = (x1 + x2) / 2;
-            const my = (y1 + y2) / 2;
-            
-            ctx.fillStyle = '#ffffff'; 
-            ctx.strokeStyle = '#ff9500'; 
-            ctx.lineWidth = 2;
-            ctx.beginPath(); 
-            ctx.arc(mx, my, 12, 0, Math.PI * 2); 
-            ctx.fill(); 
-            ctx.stroke();
-            
-            ctx.fillStyle = '#ff9500';
-            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
-            ctx.textAlign = 'center'; 
-            ctx.textBaseline = 'middle';
-            ctx.fillText(distSq.toString(), mx, my + 0.5);
-            // 💡【ステップ7-3追記】：該当ブロックの本物の正解鉱脈すべてに黒丸をループ描画（Tenor Sans）
-            // 始点格子点(p1)の周囲4マスのうち、何かしらの色（0〜8）が塗られているマスの部屋色（ブロック）を取得
-            let targetBlockColor = null;
-            const rStart = assistStartV.r, cStart = assistStartV.c;
-            const checkOffsets = [{r:-1, c:-1}, {r:-1, c:0}, {r:0, c:-1}, {r:0, c:0}];
-            
-            for (let offset of checkOffsets) {
-                const nr = rStart + offset.r, nc = cStart + offset.c;
-                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-                    if (userGrid[nr][nc] !== null && userGrid[nr][nc] !== undefined) {
-                        targetBlockColor = userGrid[nr][nc];
-                        break;
-                    }
-                }
+            // マス目の整数次元同士で計算するため、100%正確にまたぎ越しと接触を検知する外積数式
+            function isIntersectingAssist(s1, e1, s2, e2) {
+                const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+                const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+                const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+                const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+                
+                const cross1 = ((d1 >= 0 && d2 <= 0) || (d1 <= 0 && d2 >= 0));
+                const cross2 = ((d3 >= 0 && d4 <= 0) || (d3 <= 0 && d4 >= 0));
+                return (cross1 && cross2);
             }
 
-            // 何かしらの色が塗られているブロックに接している場合のみ、本物鉱脈の上に黒丸を表示
-            if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
-                problemLines.forEach(line => {
-                    const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
-                    const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
-                    
-                    if (lc1 === targetBlockColor || lc2 === targetBlockColor) {
-                        const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
-                        const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
-                        const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+            // A. パズルの外壁・内壁（システム境界線）との交差をチェック
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const wx = c; const wy = r;
+                    const topW = { p1: {x: wx, y: wy}, p2: {x: wx + 1, y: wy} };
+                    const bottomW = { p1: {x: wx, y: wy + 1}, p2: {x: wx + 1, y: wy + 1} };
+                    const leftW = { p1: {x: wx, y: wy}, p2: {x: wx, y: wy + 1} };
+                    const rightW = { p1: {x: wx + 1, y: wy}, p2: {x: wx + 1, y: wy + 1} };
 
-                        ctx.fillStyle = '#ffffff'; 
-                        ctx.strokeStyle = '#000000'; 
-                        ctx.lineWidth = 2;
-                        ctx.beginPath(); 
-                        ctx.arc(bx, by, 12, 0, Math.PI * 2); 
-                        ctx.fill(); 
-                        ctx.stroke();
+                    const currentIdx = userGrid[r][c];
+                    [topW, bottomW, leftW, rightW].forEach((w, idx) => {
+                        let isWall = false;
+                        if (idx === 0) isWall = (r === 0 || currentIdx !== userGrid[r - 1][c]);
+                        if (idx === 1) isWall = (r === GRID_SIZE - 1 || currentIdx !== userGrid[r + 1][c]);
+                        if (idx === 2) isWall = (c === 0 || currentIdx !== userGrid[r][c - 1]);
+                        if (idx === 3) isWall = (c === GRID_SIZE - 1 || currentIdx !== userGrid[r][c + 1]);
                         
-                        ctx.fillStyle = '#000000';
-                        ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
-                        ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                        // 始点(p1)と終点(p2)の根元に直接接している壁そのものは免除し、途中のまたぎ越し・格子点通過のみを検知
+                        const isVertexOfWall = (w.p1.x === p1.x && w.p1.y === p1.y) || (w.p2.x === p1.x && w.p2.y === p1.y) ||
+                                               (w.p1.x === p2.x && w.p1.y === p2.y) || (w.p2.x === p2.x && w.p2.y === p2.y);
+                        
+                        if (isWall && !isVertexOfWall && isIntersectingAssist(p1, p2, w.p1, w.p2)) {
+                            isCollidingWithWall = true;
+                        }
+                    });
+                }
+            }
+            // B. ユーザーが手動で引いた壁（userWalls）との交差もチェック
+            if (typeof userWalls !== 'undefined' && userWalls) {
+                userWalls.forEach(w => {
+                    const isVertexOfUserWall = (w.c1 === p1.x && w.r1 === p1.y) || (w.c2 === p1.x && w.r2 === p1.y) ||
+                                               (w.c1 === p2.x && w.r1 === p2.y) || (w.c2 === p2.x && w.r2 === p2.y);
+                    if (!isVertexOfUserWall && isIntersectingAssist(p1, p2, {x: w.c1, y: w.r1}, {x: w.c2, y: w.r2})) {
+                        isCollidingWithWall = true;
                     }
                 });
             }
+
+            // 💡仕様通り①：壁に衝突していない（対角線として成立している）とき【のみ】、以下の全要素を解禁して美しく描画する！
+            // 壁をまたいだ瞬間は、このif文が丸ごとスキップされ、一番上に書かれた【始点のオレンジ点線丸だけ】が残ります！
+            if (!isCollidingWithWall) {
+                // 1. 終点側のオレンジ点線丸を描画
+                ctx.strokeStyle = '#ff9500';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
+
+                // 2. 仮のオレンジ直線を実線で描画
+                ctx.setLineDash([]); 
+                ctx.strokeStyle = '#ff9500';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+                // 長さの2乗(distSq)の計算
+                const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+
+                // 3. 仮の鉱脈の上の「オレンジ丸 ＋ 長さ」の描画（Tenor Sans）
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                
+                ctx.fillStyle = '#ff9500';
+                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(distSq.toString(), mx, my + 0.5);
+
+                // 4. ✨作者様の完璧なアルゴリズム：オレンジ線が「最初に通過する（侵入する）マスの中心点（+0.5マス進んだ場所）」の部屋の色を厳密に特定
+                const vectorX = p2.x - p1.x;
+                const vectorY = p2.y - p1.y;
+                const len = Math.sqrt(vectorX ** 2 + vectorY ** 2);
+                
+                const scanC = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.x + (vectorX / len) * 0.5)));
+                const scanR = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(p1.y + (vectorY / len) * 0.5)));
+                const targetBlockColor = userGrid[scanR][scanC];
+
+                // 未着色（null）の部屋はスルー。何かしらの色（0〜9）が塗られている当事者のブロックだけを判定
+                if (targetBlockColor !== null && targetBlockColor !== undefined && typeof problemLines !== 'undefined') {
+                    // 5. 該当ブロックに属する本物の正解の鉱脈が「2本以上」ある時は、すべてに漏れなく黒丸をループ描画する！
+                    problemLines.forEach(line => {
+                        const lc1 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.start.x)))];
+                        const lc2 = userGrid[Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.y)))][Math.max(0, Math.min(GRID_SIZE-1, Math.floor(line.end.x)))];
+                        
+                        // 当事者ブロックの色と一致する鉱脈だけを正確に狙い撃ち（他のブロックへの黒丸暴発を完全シャットアウト！）
+                        if (lc1 === targetBlockColor || lc2 === targetBlockColor) {
+                            const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                            const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                            const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+
+                            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+                            ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                            ctx.fillStyle = '#000000';
+                            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                            ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                        }
+                    });
+                }
+            }
         }
-        
-        ctx.setLineDash([]); // 点線設定を安全にクリア
+        ctx.setLineDash([]); // 点線設定を完全にリセット
     }
 
     // ─── 8. 判定エラーの赤丸・黒丸の表示（Tenor Sans完全統一） ───
@@ -311,7 +353,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
-} // ⬅️ drawPuzzle 関数の完全な閉じ括弧
+}
 
 function downloadPuzzleImage(isSolution) {
     if (isSolution) {
