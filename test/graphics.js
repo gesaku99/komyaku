@@ -244,18 +244,19 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             const traversedCells = [];
 
             if (dx !== 0 || dy !== 0) {
-                let currentC = Math.floor(p1.x + (dx > 0 ? 0 : (dx < 0 ? -1 : 0)));
-                let currentR = Math.floor(p1.y + (dy > 0 ? 0 : (dy < 0 ? -1 : 0)));
-                const stepX = dx > 0 ? 1 : -1;
-                const stepY = dy > 0 ? 1 : -1;
+                // ★完全修復：スタート地点の格子点(整数)から、進む方向(dx, dyの正負)を数学的に厳密に判定して、本物の1マス目のインデックスを特定
+                let currentC = Math.floor(p1.x + (dx < 0 ? -1 : 0));
+                let currentR = Math.floor(p1.y + (dy < 0 ? -1 : 0));
+                const stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+                const stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
 
-                let tMaxX = dx !== 0 ? ((dx > 0 ? Math.floor(p1.x) + 1 : Math.ceil(p1.x) - 1) - p1.x) / dx : Infinity;
-                let tMaxY = dy !== 0 ? ((dy > 0 ? Math.floor(p1.y) + 1 : Math.ceil(p1.y) - 1) - p1.y) / dy : Infinity;
+                // ★完全修復：世界標準のグリッド横断公式に基づき、ベクトルの正負（進む方向）を完全に考慮した、
+                // 最初の縦の境界線・横の境界線に激突するまでの「本物の正しい進捗比率（tMax）」を完璧に割り出します！
                 const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
                 const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
 
-                if (tMaxX === 0) tMaxX += tDeltaX;
-                if (tMaxY === 0) tMaxY += tDeltaY;
+                let tMaxX = dx > 0 ? (Math.floor(p1.x) + 1 - p1.x) * tDeltaX : (dx < 0 ? (p1.x - Math.floor(p1.x)) * tDeltaX : Infinity);
+                let tMaxY = dy > 0 ? (Math.floor(p1.y) + 1 - p1.y) * tDeltaY : (dy < 0 ? (p1.y - Math.floor(p1.y)) * tDeltaY : Infinity);
 
                 while (true) {
                     if (currentC >= 0 && currentC < GRID_SIZE && currentR >= 0 && currentR < GRID_SIZE) {
