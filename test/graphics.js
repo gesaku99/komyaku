@@ -187,9 +187,9 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         });
     }
 
-    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（壁判定完全撤去・確定版） ───
+    // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（境界線衝突検知・確定版） ───
     if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
-        // 次元の統一：関数内での計算用に、純粋な「マス目の整数座標（0, 1, 2...）」として定義します
+        // マス目の整数座標（0, 1, 2...）として定義
         const p1 = { x: assistStartV.c, y: assistStartV.r };
         const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
 
@@ -204,7 +204,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
         // ─── ✨【完全同期】通過マスの所属ブロックと正解鉱脈の長さを厳密に先読み ───
         let targetBlockColor = null;
-        let maxProblemDistSq = 0; // 該当ブロックの正解鉱脈の最大長さを保持する変数
+        let maxProblemDistSq = 0; 
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         const traversedCells = [];
@@ -272,62 +272,136 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             });
         }
 
-        // ─── ✨【色の動的判定】正解鉱脈の長さ以上、かつ長さが1以上ならエラー赤色にトランスフォーム ───
-        const isOverLimit = (targetBlockColor !== null && maxProblemDistSq > 0 && distSq >= maxProblemDistSq && distSq >= 1);
-        const assistColor = isOverLimit ? '#ff3b30' : '#ff9500'; // 条件達成でCheck時の赤色に切り替え
+        // ─── 🆕【フラットな境界線衝突検知ロジック】 ───
+        let intersectedVertices = []; 
 
-        // 💡仕様通り：ドラッグ中は、始点の点線の丸を常に一番最初に描画する
-        ctx.strokeStyle = assistColor;
+        function getLineIntersection(s1, e1, s2, e2) {
+            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+
+            const isCross = (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
+            if (isCross) {
+                const ix = Math.round(s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
+                const iy = Math.round(s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
+                return { x: ix, y: iy };
+            }
+
+            function isPointOnSegment(p, s, e) {
+                const crossProduct = (p.y - s.y) * (e.x - s.x) - (p.x - s.x) * (e.y - s.y);
+                if (Math.abs(crossProduct) > 0.0001) return false;
+                const dotProduct = (p.x - s.x) * (e.x - s.x) + (p.y - s.y) * (e.y - s.y);
+                if (dotProduct < 0) return false;
+                const squaredLength = (e.x - s.x) ** 2 + (e.y - s.y) ** 2;
+                if (dotProduct > squaredLength) return false;
+                return true;
+            }
+
+            if (isPointOnSegment(s2, s1, e1)) return { x: s2.x, y: s2.y };
+            if (isPointOnSegment(e2, s1, e1)) return { x: e2.x, y: e2.y };
+
+            return null;
+        }
+
+        if (p1.x !== p2.x || p1.y !== p2.y) {
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const top = { p1: {x: c, y: r}, p2: {x: c + 1, y: r} };
+                    const bottom = { p1: {x: c, y: r + 1}, p2: {x: c + 1, y: r + 1} };
+                    const left = { p1: {x: c, y: r}, p2: {x: c, y: r + 1} };
+                    const right = { p1: {x: c + 1, y: r}, p2: {x: c + 1, y: r + 1} };
+
+                    [top, bottom, left, right].forEach(wall => {
+                        const pt = getLineIntersection(p1, p2, wall.p1, wall.p2);
+                        if (pt) {
+                            const isStart = (pt.x === p1.x && pt.y === p1.y);
+                            const isEnd = (pt.x === p2.x && pt.y === p2.y);
+                            if (!isStart && !isEnd) {
+                                if (!intersectedVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                                    intersectedVertices.push(pt);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        const hasConflict = intersectedVertices.length > 0;
+
+        // ─── ✨【色の動的判定】───
+        const isOverLimit = (targetBlockColor !== null && maxProblemDistSq > 0 && distSq >= maxProblemDistSq && distSq >= 1);
+        const assistColor = isOverLimit ? '#ff3b30' : '#ff9500'; 
+
+        // 💡ドラッグ中は、始点の丸を常に一番最初に描画する
+        ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor; 
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); // 美しい点線
+        ctx.setLineDash([4, 4]); 
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
         // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と丸の描画を開始
         if (p1.x !== p2.x || p1.y !== p2.y) {
             
-            // 1. 終点側の点線丸を描画
-            ctx.strokeStyle = assistColor;
+            // 1. 終点側の丸を描画
+            ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor;
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
-            // 2. 仮の直線を実線で描画
-            ctx.setLineDash([]); 
-            ctx.strokeStyle = assistColor;
+            // 2. 仮の直線を実線または点線で描画
+            if (hasConflict) {
+                ctx.setLineDash([4, 4]); // 衝突時は仕様通り点線（破線）にする
+                ctx.strokeStyle = '#ff3b30';
+            } else {
+                ctx.setLineDash([]); // 通常時は実線
+                ctx.strokeStyle = assistColor;
+            }
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            ctx.setLineDash([]); // 即座にリセット
 
-            // 3. 仮の鉱脈の上の「中央丸 ＋ 長さ」の描画（Tenor Sans）
-            const mx = (x1 + x2) / 2;
-            const my = (y1 + y2) / 2;
-            ctx.fillStyle = '#ffffff'; 
-            ctx.strokeStyle = assistColor; 
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            
-            ctx.fillStyle = assistColor;
-            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(distSq.toString(), mx, my + 0.5);
+            // 3. 仮の鉱脈の上の「中央丸 ＋ 長さ」の描画（衝突していない時だけ表示）
+            if (!hasConflict) {
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                ctx.fillStyle = '#ffffff'; 
+                ctx.strokeStyle = assistColor; 
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                
+                ctx.fillStyle = assistColor;
+                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-            // 4. オレンジ線（または赤線）が最初に通過した色付きマスのブロック鉱脈だけに、正確に黒丸を表示！
-            if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
-                problemLines.forEach(line => {
-                    const midX = Math.floor((line.start.x + line.end.x) / 2);
-                    const midY = Math.floor((line.start.y + line.end.y) / 2);
-                    const blockColorOfLine = userGrid[midY][midX];
-                    
-                    if (blockColorOfLine === targetBlockColor) {
-                        const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
-                        const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
-                        const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                // オレンジ線が最初に通過した色付きマスのブロック鉱脈だけに、正確に黒丸を表示
+                if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
+                    problemLines.forEach(line => {
+                        const midX = Math.floor((line.start.x + line.end.x) / 2);
+                        const midY = Math.floor((line.start.y + line.end.y) / 2);
+                        const blockColorOfLine = userGrid[midY][midX];
+                        
+                        if (blockColorOfLine === targetBlockColor) {
+                            const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                            const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                            const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
 
-                        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-                        ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                        ctx.fillStyle = '#000000';
-                        ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
-                        ctx.fillText(bDistSq.toString(), bx, by + 0.5);
-                    }
+                            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+                            ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                            ctx.fillStyle = '#000000';
+                            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                            ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+                        }
+                    });
+                }
+            } else {
+                // 4. 🆕【衝突時のみ】特定されたすべての交差点・接点に赤丸を表示
+                intersectedVertices.forEach(v => {
+                    ctx.fillStyle = '#ff3b30'; 
+                    ctx.beginPath(); 
+                    ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); 
+                    ctx.fill();
                 });
             }
         }
