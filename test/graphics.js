@@ -199,8 +199,85 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         const x2 = OFFSET + p2.x * CELL_PIXEL;
         const y2 = OFFSET + p2.y * CELL_PIXEL + titleBarHeight;
 
-        // 💡仕様通り：ドラッグ中は、アシスト機能継続を示すために【始点のオレンジ点線の丸】を常に一番最初に描画する
-        ctx.strokeStyle = '#ff9500';
+        // 長さの2乗(distSq)の計算
+        const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+
+        // ─── ✨【完全同期】通過マスの所属ブロックと正解鉱脈の長さを厳密に先読み ───
+        let targetBlockColor = null;
+        let maxProblemDistSq = 0; // 該当ブロックの正解鉱脈の最大長さを保持する変数
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const traversedCells = [];
+
+        if (dx !== 0 || dy !== 0) {
+            let currentC = Math.floor(p1.x + (dx < 0 ? -1 : 0));
+            let currentR = Math.floor(p1.y + (dy < 0 ? -1 : 0));
+            const stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+            const stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+
+            const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
+            const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+
+            let tMaxX = dx > 0 ? (Math.floor(p1.x) + 1 - p1.x) * tDeltaX : (dx < 0 ? (p1.x - Math.floor(p1.x)) * tDeltaX : Infinity);
+            let tMaxY = dy > 0 ? (Math.floor(p1.y) + 1 - p1.y) * tDeltaY : (dy < 0 ? (p1.y - Math.floor(p1.y)) * tDeltaY : Infinity);
+
+            while (true) {
+                if (currentC >= 0 && currentC < GRID_SIZE && currentR >= 0 && currentR < GRID_SIZE) {
+                    if (traversedCells.length === 0 || 
+                        traversedCells[traversedCells.length - 1].c !== currentC || 
+                        traversedCells[traversedCells.length - 1].r !== currentR) {
+                        traversedCells.push({ c: currentC, r: currentR });
+                    }
+                }
+
+                if (tMaxX < tMaxY) {
+                    tMaxX += tDeltaX;
+                    currentC += stepX;
+                } else if (tMaxX > tMaxY) {
+                    tMaxY += tDeltaY;
+                    currentR += stepY;
+                } else {
+                    tMaxX += tDeltaX;
+                    tMaxY += tDeltaY;
+                    currentC += stepX;
+                    currentR += stepY;
+                }
+
+                if (tMaxX >= 1 && tMaxY >= 1) {
+                    break;
+                }
+            }
+        }
+
+        // 求めた順番通りにマスの所属ブロックをチェックして最初の1色付きマスを掴む
+        for (let cell of traversedCells) {
+            const color = userGrid[cell.r][cell.c];
+            if (color === null || color === undefined) continue;
+            targetBlockColor = color;
+            break; 
+        }
+
+        // つかんだブロックの正解鉱脈の長さを事前に特定しておく
+        if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
+            problemLines.forEach(line => {
+                const midX = Math.floor((line.start.x + line.end.x) / 2);
+                const midY = Math.floor((line.start.y + line.end.y) / 2);
+                const blockColorOfLine = userGrid[midY][midX];
+                if (blockColorOfLine === targetBlockColor) {
+                    const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                    if (bDistSq > maxProblemDistSq) {
+                        maxProblemDistSq = bDistSq;
+                    }
+                }
+            });
+        }
+
+        // ─── ✨【色の動的判定】正解鉱脈の長さ以上、かつ長さが1以上ならエラー赤色にトランスフォーム ───
+        const isOverLimit = (targetBlockColor !== null && maxProblemDistSq > 0 && distSq >= maxProblemDistSq && distSq >= 1);
+        const assistColor = isOverLimit ? '#ff3b30' : '#ff9500'; // 条件達成でCheck時の赤色に切り替え
+
+        // 💡仕様通り：ドラッグ中は、始点の点線の丸を常に一番最初に描画する
+        ctx.strokeStyle = assistColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([4, 4]); // 美しい点線
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
@@ -208,95 +285,32 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と丸の描画を開始
         if (p1.x !== p2.x || p1.y !== p2.y) {
             
-            // 💡【今回の本質的な変更】：壁との衝突判定（isCollidingWithWall）を完全に100%撤去しました！
-            // そのため、どんな角度・どんな境界線をまたいでも、以下のオレンジ線と丸は100%確実に常時表示されます。
-
-            // 1. 終点側のオレンジ点線丸を描画
-            ctx.strokeStyle = '#ff9500';
+            // 1. 終点側の点線丸を描画
+            ctx.strokeStyle = assistColor;
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 4]);
             ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
-            // 2. 仮のオレンジ直線を実線で描画
+            // 2. 仮の直線を実線で描画
             ctx.setLineDash([]); 
-            ctx.strokeStyle = '#ff9500';
+            ctx.strokeStyle = assistColor;
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 
-            // 長さの2乗(distSq)の計算
-            const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
-
-            // 3. 仮の鉱脈の上の「オレンジ丸 ＋ 長さ」の描画（Tenor Sans）
+            // 3. 仮の鉱脈の上の「中央丸 ＋ 長さ」の描画（Tenor Sans）
             const mx = (x1 + x2) / 2;
             const my = (y1 + y2) / 2;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 2;
+            ctx.fillStyle = '#ffffff'; 
+            ctx.strokeStyle = assistColor; 
+            ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             
-            ctx.fillStyle = '#ff9500';
+            ctx.fillStyle = assistColor;
             ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-            // 4. ✨完璧な通過順列挙：オレンジ線の角度から、通過するマスの順番を厳密に計算して配列化
-            let targetBlockColor = null;
-            const dx = p2.x - p1.x 
-            const dy = p2.y - p1.y
-            const traversedCells = [];
-
-            if (dx !== 0 || dy !== 0) {
-                // ★完全修復：スタート地点の格子点(整数)から、進む方向(dx, dyの正負)を数学的に厳密に判定して、本物の1マス目のインデックスを特定
-                let currentC = Math.floor(p1.x + (dx < 0 ? -1 : 0));
-                let currentR = Math.floor(p1.y + (dy < 0 ? -1 : 0));
-                const stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
-                const stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
-
-                // ★完全修復：世界標準のグリッド横断公式に基づき、ベクトルの正負（進む方向）を完全に考慮した、
-                // 最初の縦の境界線・横の境界線に激突するまでの「本物の正しい進捗比率（tMax）」を完璧に割り出します！
-                const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
-                const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
-
-                let tMaxX = dx > 0 ? (Math.floor(p1.x) + 1 - p1.x) * tDeltaX : (dx < 0 ? (p1.x - Math.floor(p1.x)) * tDeltaX : Infinity);
-                let tMaxY = dy > 0 ? (Math.floor(p1.y) + 1 - p1.y) * tDeltaY : (dy < 0 ? (p1.y - Math.floor(p1.y)) * tDeltaY : Infinity);
-
-                while (true) {
-                    if (currentC >= 0 && currentC < GRID_SIZE && currentR >= 0 && currentR < GRID_SIZE) {
-                        if (traversedCells.length === 0 || 
-                            traversedCells[traversedCells.length - 1].c !== currentC || 
-                            traversedCells[traversedCells.length - 1].r !== currentR) {
-                            traversedCells.push({ c: currentC, r: currentR });
-                        }
-                    }
-
-                    if (tMaxX < tMaxY) {
-                        tMaxX += tDeltaX;
-                        currentC += stepX;
-                    } else if (tMaxX > tMaxY) {
-                        tMaxY += tDeltaY;
-                        currentR += stepY;
-                    } else {
-                        tMaxX += tDeltaX;
-                        tMaxY += tDeltaY;
-                        currentC += stepX;
-                        currentR += stepY;
-                    }
-
-                    if (tMaxX >= 1 && tMaxY >= 1) {
-                        break;
-                    }
-                }
-            }
-
-            // 求めた順番通りにマスの所属ブロックをチェックしていく
-            for (let cell of traversedCells) {
-                const color = userGrid[cell.r][cell.c];
-                if (color === null || color === undefined) {
-                    continue;
-                }
-                targetBlockColor = color;
-                break; // 最初の1色付きマスを掴んだら終了
-            }
-
-            // オレンジ線が最初に通過した色付きマスのブロック鉱脈だけに、正確に黒丸を表示！
+            // 4. オレンジ線（または赤線）が最初に通過した色付きマスのブロック鉱脈だけに、正確に黒丸を表示！
             if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
                 problemLines.forEach(line => {
                     const midX = Math.floor((line.start.x + line.end.x) / 2);
