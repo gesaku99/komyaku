@@ -273,17 +273,18 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         }
 
         // ─── 🆕【本物の境界線（画面上の壁）のみを抽出するロジック】 ───
+        // ─── 🆕【本物の境界線（画面上の壁）のみを抽出するロジック】 ───
         const walls = [];
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const currentIdx = userGrid[r][c];
-                // 1. 外壁（黒の太枠枠線）
+                // 1. 外壁
                 if (c === 0) walls.push({ p1: {x: 0, y: r}, p2: {x: 0, y: r + 1} });
                 if (r === 0) walls.push({ p1: {x: c, y: 0}, p2: {x: c + 1, y: 0} });
                 if (c === GRID_SIZE - 1) walls.push({ p1: {x: GRID_SIZE, y: r}, p2: {x: GRID_SIZE, y: r + 1} });
                 if (r === GRID_SIZE - 1) walls.push({ p1: {x: c, y: GRID_SIZE}, p2: {x: c + 1, y: GRID_SIZE} });
 
-                // 2. 自動内壁（色が塗られており、隣と色が異なる緑の境界線）
+                // 2. 自動内壁
                 if (c < GRID_SIZE - 1) {
                     const rightIdx = userGrid[r][c + 1];
                     if (currentIdx !== null && rightIdx !== null && currentIdx !== rightIdx) {
@@ -298,7 +299,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 }
             }
         }
-        // 3. 手動でプレイヤーが配置した壁（userWalls）
+        // 3. 手動壁
         if (typeof userWalls !== 'undefined' && userWalls) {
             userWalls.forEach(w => {
                 walls.push({ p1: {x: w.c1, y: w.r1}, p2: {x: w.c2, y: w.r2} });
@@ -307,17 +308,18 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
         let intersectedVertices = []; 
 
-        // 交差判定関数の完全修復（d1〜d4の参照を完全精査）
+        // 交差判定関数の実数座標対応版（Math.roundの完全撤去）
         function getLineIntersection(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x); // e2 を参照（修復）
-            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); // s1 を参照（正常）
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); // e1 を参照（正常）
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-            const isCross = (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
+            const isCross = (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
             if (isCross) {
-                const ix = Math.round(s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
-                const iy = Math.round(s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
+                // 精確な実数座標を計算（Math.roundを撤去）
+                const ix = s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
+                const iy = s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
                 return { x: ix, y: iy };
             }
 
@@ -341,10 +343,13 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             walls.forEach(wall => {
                 const pt = getLineIntersection(p1, p2, wall.p1, wall.p2);
                 if (pt) {
-                    const isStart = (pt.x === p1.x && pt.y === p1.y);
-                    const isEnd = (pt.x === p2.x && pt.y === p2.y);
+                    // 実数のため、0.001未満の誤差を考慮して始点・終点を除外
+                    const isStart = (Math.abs(pt.x - p1.x) < 0.001 && Math.abs(pt.y - p1.y) < 0.001);
+                    const isEnd = (Math.abs(pt.x - p2.x) < 0.001 && Math.abs(pt.y - p2.y) < 0.001);
                     if (!isStart && !isEnd) {
-                        if (!intersectedVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                        // 重複チェックも誤差考慮（距離が極めて近いものは同一とみなす）
+                        const isDuplicate = intersectedVertices.some(v => Math.abs(v.x - pt.x) < 0.001 && Math.abs(v.y - pt.y) < 0.001);
+                        if (!isDuplicate) {
                             intersectedVertices.push(pt);
                         }
                     }
