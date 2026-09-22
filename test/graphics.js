@@ -272,14 +272,47 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             });
         }
 
-        // ─── 🆕【フラットな境界線衝突検知ロジック】 ───
+        // ─── 🆕【本物の境界線（画面上の壁）のみを抽出するロジック】 ───
+        const walls = [];
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const currentIdx = userGrid[r][c];
+                // 1. 外壁（黒の太枠枠線）
+                if (c === 0) walls.push({ p1: {x: 0, y: r}, p2: {x: 0, y: r + 1} });
+                if (r === 0) walls.push({ p1: {x: c, y: 0}, p2: {x: c + 1, y: 0} });
+                if (c === GRID_SIZE - 1) walls.push({ p1: {x: GRID_SIZE, y: r}, p2: {x: GRID_SIZE, y: r + 1} });
+                if (r === GRID_SIZE - 1) walls.push({ p1: {x: c, y: GRID_SIZE}, p2: {x: c + 1, y: GRID_SIZE} });
+
+                // 2. 自動内壁（色が塗られており、隣と色が異なる緑の境界線）
+                if (c < GRID_SIZE - 1) {
+                    const rightIdx = userGrid[r][c + 1];
+                    if (currentIdx !== null && rightIdx !== null && currentIdx !== rightIdx) {
+                        walls.push({ p1: {x: c + 1, y: r}, p2: {x: c + 1, y: r + 1} });
+                    }
+                }
+                if (r < GRID_SIZE - 1) {
+                    const bottomIdx = userGrid[r + 1][c];
+                    if (currentIdx !== null && bottomIdx !== null && currentIdx !== bottomIdx) {
+                        walls.push({ p1: {x: c, y: r + 1}, p2: {x: c + 1, y: r + 1} });
+                    }
+                }
+            }
+        }
+        // 3. 手動でプレイヤーが配置した壁（userWalls）
+        if (typeof userWalls !== 'undefined' && userWalls) {
+            userWalls.forEach(w => {
+                walls.push({ p1: {x: w.c1, y: w.r1}, p2: {x: w.c2, y: w.r2} });
+            });
+        }
+
         let intersectedVertices = []; 
 
+        // 交差判定関数の完全修復（d1〜d4の参照を完全精査）
         function getLineIntersection(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x); // e2 を参照（修復）
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); // s1 を参照（正常）
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); // e1 を参照（正常）
 
             const isCross = (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
             if (isCross) {
@@ -305,27 +338,18 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         }
 
         if (p1.x !== p2.x || p1.y !== p2.y) {
-            for (let r = 0; r < GRID_SIZE; r++) {
-                for (let c = 0; c < GRID_SIZE; c++) {
-                    const top = { p1: {x: c, y: r}, p2: {x: c + 1, y: r} };
-                    const bottom = { p1: {x: c, y: r + 1}, p2: {x: c + 1, y: r + 1} };
-                    const left = { p1: {x: c, y: r}, p2: {x: c, y: r + 1} };
-                    const right = { p1: {x: c + 1, y: r}, p2: {x: c + 1, y: r + 1} };
-
-                    [top, bottom, left, right].forEach(wall => {
-                        const pt = getLineIntersection(p1, p2, wall.p1, wall.p2);
-                        if (pt) {
-                            const isStart = (pt.x === p1.x && pt.y === p1.y);
-                            const isEnd = (pt.x === p2.x && pt.y === p2.y);
-                            if (!isStart && !isEnd) {
-                                if (!intersectedVertices.some(v => v.x === pt.x && v.y === pt.y)) {
-                                    intersectedVertices.push(pt);
-                                }
-                            }
+            walls.forEach(wall => {
+                const pt = getLineIntersection(p1, p2, wall.p1, wall.p2);
+                if (pt) {
+                    const isStart = (pt.x === p1.x && pt.y === p1.y);
+                    const isEnd = (pt.x === p2.x && pt.y === p2.y);
+                    if (!isStart && !isEnd) {
+                        if (!intersectedVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                            intersectedVertices.push(pt);
                         }
-                    });
+                    }
                 }
-            }
+            });
         }
 
         const hasConflict = intersectedVertices.length > 0;
@@ -337,7 +361,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // 💡ドラッグ中は、始点の丸を常に一番最初に描画する
         ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor; 
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]); 
+        ctx.setLineDash([]); 
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
         // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と丸の描画を開始
@@ -346,7 +370,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             // 1. 終点側の丸を描画
             ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor;
             ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
+            ctx.setLineDash([]);
             ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
             // 2. 仮の直線を実線または点線で描画
