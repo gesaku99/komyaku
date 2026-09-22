@@ -1,13 +1,98 @@
 // ★正誤判定・採点ロジックのみを完全に隔離した安全な専用ファイル
 function checkAnswer() {
     clearErrorDisplay(); 
-    let hasWhite = false;
+
+    // ─── 🆕 境界線ベースの超軽量・厳密自動正解判定（色グループ依存の完全排除） ───
+
+    // 1. 正解（answerGrid）のすべての内壁境界線をリストアップ
+    const answerWalls = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (userGrid[r][c] === null) { hasWhite = true; break; }
+            if (c < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r][c + 1]) {
+                answerWalls.push(`${r},${c}-${r},${c+1}(V)`);
+            }
+            if (r < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r + 1][c]) {
+                answerWalls.push(`${r},${c}-${r+1},${c}(H)`);
+            }
         }
-        if (hasWhite) break;
     }
+
+    // 2. ユーザー画面（userGrid + userWalls）の現在の境界線をリストアップ
+    const userWallsList = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (c < GRID_SIZE - 1) {
+                const c1 = userGrid[r][c];
+                const c2 = userGrid[r][c + 1];
+                if ((c1 !== null || c2 !== null) && c1 !== c2) {
+                    userWallsList.push(`${r},${c}-${r},${c+1}(V)`);
+                }
+            }
+            if (r < GRID_SIZE - 1) {
+                const r1 = userGrid[r][c];
+                const r2 = userGrid[r + 1][c];
+                if ((r1 !== null || r2 !== null) && r1 !== r2) {
+                    userWallsList.push(`${r},${c}-${r+1},${c}(H)`);
+                }
+            }
+        }
+    }
+    // 手動の壁(userWalls)も合流
+    if (typeof userWalls !== 'undefined' && userWalls) {
+        userWalls.forEach(w => {
+            const minR = Math.min(w.r1, w.r2);
+            const minC = Math.min(w.c1, w.c2);
+            if (w.r1 === w.r2) { // 横線
+                if (minR > 0 && minR < GRID_SIZE) {
+                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
+                }
+            } else { // 縦線
+                if (minC > 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
+                }
+            }
+        });
+    }
+
+    // 3. 配置の完全一致をチェック
+    let isPerfect = true;
+    let hasWhite = false;
+    
+    // 未着色マス（白マス）が1つでもある、または壁の総数が違っていれば不完全
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (userGrid[r][c] === null) {
+                isPerfect = false;
+                hasWhite = true;
+            }
+        }
+    }
+
+    if (answerWalls.length !== userWallsList.length) {
+        isPerfect = false;
+    } else {
+        for (let aw of answerWalls) {
+            if (!userWallsList.includes(aw)) {
+                isPerfect = false;
+                break;
+            }
+        }
+    }
+
+    // 4. 自動判定結果の適用
+    if (isPerfect) {
+        errorDisplayState.show = false;
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
+        return; // 正解した場合はここで処理を完全に終了（ポップアップを出す）
+    }
+
+    // 💡【重要】もし未完成（白マスあり、または壁が不一致）の状態からリアルタイム自動呼び出しされた場合は、
+    // 画面に余計なエラーやアラートを出さないように、ここで静かに処理を打ち切る（元コードの後半フローをスキップ）
+    // ※今後、手動のCheckボタンを別途用意して「間違っている箇所の赤丸ヒント表示」を行いたい場合は、
+    // ここでreturnさせずに、下の従来のエラー検証フロー（白マスチェック等）へ進ませる形になります。
+    return; 
+
+    // ─── 💡以下、将来的な手動Check（エラー箇所可視化）のために元のロジックを完全無傷で保持 ───
     if (hasWhite) { alert("未完成：まだ塗られていない白マスが残っています！"); return; }
 
     const blocks = {};
@@ -19,10 +104,7 @@ function checkAnswer() {
         }
     }
 
-    // ★【完全同期版】270度凹角の救済と、厳密な壁との交差判定を100%完全に移植した確定コード
     function checkInside(p1, p2, cells) {
-        // 1. 直線の始点と終点が、部屋の内部（マスの中心付近）に存在するか厳密にチェック
-        // 凹角(270度)の格子点ジャストの接触をセーフにするため、0.001マスだけ内側に入った点（インナーポイント）で判定する
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
@@ -32,7 +114,6 @@ function checkAnswer() {
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
 
-        // 2. 部屋のすべての「本物の外壁（境界線）」を一本ずつリストアップする
         const walls = [];
         cells.forEach(cell => {
             const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
@@ -41,7 +122,6 @@ function checkAnswer() {
             const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
 
             [top, bottom, left, right].forEach(wall => {
-                // オブジェクト完全一致バグを解決：単純な文字列フラグ(dir)で上下左右を正確に判定
                 const isInternalEdge = cells.some(other => {
                     if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
                     if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
@@ -54,15 +134,12 @@ function checkAnswer() {
                 }
             });
         });
-
-        // 3. 鉱脈（p1-p2）と、部屋の壁が物理的に「またぎ越しているか」を100%正確に判定
         function isIntersecting(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
 
-            // 0の境界線（端点での接触）を除外し、完全に跨いだ時だけを検知する安全設計
             const cross1 = ((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001));
             const cross2 = ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001));
 

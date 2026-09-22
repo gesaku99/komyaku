@@ -52,7 +52,7 @@ function handleActionStart(x, y) {
 
 function handleActionMove(x, y) {
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】の処理（既存のまま完璧です）
+        // ✏️【壁引きモード】の処理
         const currentV = getNearestVertex(x, y);
         if (currentV && lastIntersectedV) {
             const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
@@ -77,8 +77,6 @@ function handleActionMove(x, y) {
             const currentV = getNearestVertex(x, y);
             if (currentV) {
                 assistCurrentV = currentV;
-            } else {
-                // 指が格子点センサーから外れている間も、最後のアシスト状態を美しく維持するためにクリアはしません
             }
             drawPuzzle(); // アシスト線をリアルタイム描画するために毎フレームCanvasを更新
         }
@@ -118,12 +116,55 @@ function handleActionEnd() {
     startCell = null;
     hasMovedInSession = false;
     isErasingMode = false;
+    
     // ★追加：ドラッグを離したら、アシストの記憶を綺麗にリセット
     assistStartV = null;
     assistCurrentV = null;
+
+    // ─── 🆕 操作完了時にバックグラウンドで新しい境界線ベースの正解判定をリアルタイム自動実行 ───
+    if (typeof checkAnswer === 'function') checkAnswer();
+
     drawPuzzle(); // 最後の1フレームを綺麗にリセット描画
 }
+// ★重要：既存の source: 8 側にあった undo / redo と重複して誤作動するのを防ぐため、
+// ここの操作連携ファイル側の関数が実行された際にも、完璧に同期して裏で自動チェックを走らせます。
+function undo() {
+    if (undoStack.length === 0) return;
+    clearErrorDisplay();
+    const change = undoStack.pop();
+    redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+    userGrid[change.r][change.c] = change.from;
+    while (undoStack.length > 0 && undoStack[undoStack.length - 1].to === 0 && change.to === 0) {
+        const nextChange = undoStack.pop();
+        redoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
+        userGrid[nextChange.r][nextChange.c] = nextChange.from;
+    }
 
+    // ─── 🆕 Undoした瞬間にも自動で先読み正解判定を走らせる ───
+    if (typeof checkAnswer === 'function') checkAnswer();
+
+    drawPuzzle();
+    updateHistoryButtons();
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    clearErrorDisplay();
+    const change = redoStack.pop();
+    undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+    userGrid[change.r][change.c] = change.from;
+    while (redoStack.length > 0 && redoStack[redoStack.length - 1].from === 0 && change.from === 0) {
+        const nextChange = redoStack.pop();
+        undoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
+        userGrid[nextChange.r][nextChange.c] = nextChange.from;
+    }
+
+    // ─── 🆕 Redoした瞬間にも自動で先読み正解判定を走らせる ───
+    if (typeof checkAnswer === 'function') checkAnswer();
+
+    drawPuzzle();
+    updateHistoryButtons();
+}
 
 // ★追加：指の現在地から、半径25px以内にある最も近い「格子点（マスの角）」を返す超強力なマグネットセンサー
 function getNearestVertex(x, y) {
@@ -149,12 +190,12 @@ window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; h
 
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); isDrawing = true; const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches[0]; // ★完全修復：謎の記述を削除し、1本目の指のデータを正しく取得
+    const touch = e.touches[0]; 
     handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
 });
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches[0]; // ★完全修復：移動中の指の座標を正確に追従
+    const touch = e.touches[0]; 
     handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
 }, { passive: false });
 canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
@@ -168,14 +209,20 @@ function createPalette() {
         btn.style.backgroundColor = COLOR_PALETTE[i]; 
         btn.onclick = () => { currentSelectedColor = i; createPalette(); };
         
-        // ★新仕様：9番目のグレーボタンを、境界線を引いている「鉛筆アイコン」へと強制トランスフォーム！
+        // ★新仕様：どの端末でも向きが変わらない高精度なSVG鉛筆アイコンへと強制トランスフォーム！
         if (i === 9) {
-            btn.innerText = '_✏️'; // 境界線を引いているペンのビジュアルアイコン
-            btn.style.color = '#333333';
-            btn.style.textAlign = 'center';
-            btn.style.lineHeight = '40px'; 
-            btn.style.fontSize = '14px'; // アイコンのバランスを整えるフォントサイズ
-            btn.style.fontWeight = 'bold';
+            btn.innerText = ''; // 文字は消去
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            
+            // 左下から右上へ向かう、環境依存しないクッキリした鉛筆SVG
+            btn.innerHTML = `
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+            `;
         }
         paletteContainer.appendChild(btn);
     }
@@ -183,7 +230,6 @@ function createPalette() {
 function selectColor(colorId) { currentSelectedColor = colorId; createPalette(); }
 
 // ★初回起動シーケンス：すべての合流を確認して一発起動
-// ★重要：インターネットからのWebフォント読み込みが100%完了したことを検知してから起動する
 document.fonts.ready.then(function() {
     loadPuzzleFromUrlOrId("E95A000007C1084");
     createPalette(); 
