@@ -308,16 +308,17 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
         let intersectedVertices = []; 
 
-        // 交差判定関数の実数座標対応版（Math.roundの完全撤去）
+        // 交差判定関数の完全版（縦壁のすり抜け・外積の計算順序を100%修正）
         function getLineIntersection(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
 
-            const isCross = (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
+            // 厳密に線分同士が交差しているか判定
+            const isCross = (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
             if (isCross) {
-                // 精確な実数座標を計算（Math.roundを撤去）
+                // 交点の正確な実数座標を計算
                 const ix = s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
                 const iy = s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
                 return { x: ix, y: iy };
