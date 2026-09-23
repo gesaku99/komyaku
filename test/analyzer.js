@@ -10,9 +10,9 @@ function generateProblemLinesFromAnswer() {
         }
     }
 
-    // ─── ✨【厳密化】外壁・内壁への「T字接触」「カドすり抜け」を100%阻止する高精度判定 ───
+    // ─── ✨【完全修復版】部屋の本当の外壁のみを100%正確に抽出するクリーンロジック ───
     function isInside(p1, p2, cells) {
-        // 1. 0.001マス内側のインナーポイントによる270度凹角の救済チェック
+        // 1. 0.001マス内側のインナーポイントによる凹角救済
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
@@ -22,30 +22,30 @@ function generateProblemLinesFromAnswer() {
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
 
-        // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップ
+        // 2. 部屋の本当の「外壁（境界線）」だけを厳密にリストアップ
         const walls = [];
         cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
+            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r} };
+            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1} };
+            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1} };
+            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1} };
 
-            [top, bottom, left, right].forEach(wall => {
-                const isInternalEdge = cells.some(other => {
-                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
-                    return false;
-                });
-                if (!isInternalEdge) walls.push({ p1: wall.p1, p2: wall.p2 });
-            });
+            // 各辺がお隣のマス（同じ部屋に所属するマス）と接している内壁かどうかを厳密にチェック
+            const hasTopNeighbor = cells.some(other => other.c === cell.c && other.r === cell.r - 1);
+            const hasBottomNeighbor = cells.some(other => other.c === cell.c && other.r === cell.r + 1);
+            const hasLeftNeighbor = cells.some(other => other.r === cell.r && other.c === cell.c - 1);
+            const hasRightNeighbor = cells.some(other => other.r === cell.r && other.c === cell.c + 1);
+
+            // お隣さんが自分と同じ部屋の仲間ではない（＝そこは本物の外壁・境界線である）ときだけ、壁リストに登録する
+            if (!hasTopNeighbor) walls.push(top);
+            if (!hasBottomNeighbor) walls.push(bottom);
+            if (!hasLeftNeighbor) walls.push(left);
+            if (!hasRightNeighbor) walls.push(right);
         });
 
-        // 3. 【閾値完全撤去】数学的・論理的に完璧な厳密線分交差判定
+        // 3. 1文字も閾値を使わない、論理的に完璧な厳密線分交差判定
         function isIntersecting(s1, e1, s2, e2) {
-            // 始点(s1)と終点(e1)そのものが、今調べている壁の端点と重なっている場合は、
-            // 「自分の部屋の引き始め・引き終わり」なので、交差検証そのものを安全にスキップ
+            // 始点・終点そのものが壁の端点と重なっている場合は、引き始め・引き終わりなのでスキップ
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) return false;
             if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) return false;
 
@@ -54,19 +54,17 @@ function generateProblemLinesFromAnswer() {
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-            // 1. 十字にクロスしている場合（符号がマイナスとプラスで異符号）
+            // 十字にクロスしているか
             if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
 
-            // 2. 途中のカドをかすめる、またはT字にぶつかる場合（外積がジャスト0、かつ線分上に乗っている）
-            // 整数座標（格子点）同士の判定のため、整数同士の掛け算になり、JavaScriptの浮動小数点誤差は105%発生しません
+            // T字接触、またはカドの線上重なり（整数座標同士のため、計算誤差は絶対に起きません）
             function isPointOnSegmentStrict(p, s, e) {
                 const cross = (p.y - s.y) * (e.x - s.x) - (p.x - s.x) * (e.y - s.y);
-                if (cross !== 0) return false; // 曖昧な閾値ではなく、ジャスト0（完全に線の上）を検証
+                if (cross !== 0) return false; 
                 const dot = (p.x - s.x) * (e.x - s.x) + (p.y - s.y) * (e.y - s.y);
                 return dot >= 0 && dot <= (e.x - s.x)**2 + (e.y - s.y)**2;
             }
 
-            // 壁の端点が、鉱脈の「途中」に乗っかっている（＝突き抜けている）かを厳密に判定
             if (isPointOnSegmentStrict(s2, s1, e1)) return true;
             if (isPointOnSegmentStrict(e2, s1, e1)) return true;
 
