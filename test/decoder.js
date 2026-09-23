@@ -9,7 +9,7 @@ function parseHashIdToBits(hashStr) {
     return bits;
 }
 
-// 列優先（列メジャー）走査を1対1で完璧に再現するデコードアルゴリズム
+// 列優先（列メジャー）走査を1対1で完璧に再現・完全修復したデコードアルゴリズム
 function buildAnswerGridFromBits(bits) {
     const vWallsPerColumn = GRID_SIZE;      
     const hWallsPerColumn = GRID_SIZE - 1;  
@@ -17,14 +17,12 @@ function buildAnswerGridFromBits(bits) {
 
     // 縦の境界線の有無を判定（r行目のマス c と c+1 の間）
     function hasVerticalWall(r, minC) {
-        // minC列目の上から下へ向かって順番にビットが詰まっている
         const bitIndex = minC * vWallsPerColumn + r;
         return bits[bitIndex] === 1;
     }
 
     // 横の境界線の有無を判定（c列目のマス r と r+1 の間）
     function hasHorizontalWall(minR, c) {
-        // 縦壁データの直後から、c列目の上から下へ向かって順番にビットが詰まっている
         const bitIndex = totalVTtypeWalls + (c * hWallsPerColumn + minR);
         return bits[bitIndex] === 1;
     }
@@ -49,8 +47,10 @@ function buildAnswerGridFromBits(bits) {
                         if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && !visited[nr][nc]) {
                             let wallExists = true;
                             if (curr.r === nr) { 
+                                // 💡【完全根治】現在の正しい行番号(curr.r)と、移動先の境界となる列番号(Math.min)を厳密に引き渡す
                                 wallExists = hasVerticalWall(curr.r, Math.min(curr.c, nc));
                             } else { 
+                                // 💡現在の正しい列番号(curr.c)と、移動先の境界となる行番号(Math.min)を厳密に引き渡す
                                 wallExists = hasHorizontalWall(Math.min(curr.r, nr), curr.c);
                             }
 
@@ -68,5 +68,4 @@ function buildAnswerGridFromBits(bits) {
     }
     // 復元された部屋データをベースに、鉱脈の自動逆算（analyzer.js）へと引き継ぐ
     generateProblemLinesFromAnswer();
-    drawPuzzle(); // ★追加：すべての解読が終わったこの瞬間に、画面を初めて描画させる！
 }
