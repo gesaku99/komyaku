@@ -10,65 +10,68 @@ function generateProblemLinesFromAnswer() {
         }
     }
 
+    // ─── ✨【厳密化】外壁・内壁への「T字接触」「カドすり抜け」を100%阻止する高精度判定 ───
     function isInside(p1, p2, cells) {
-    // 1. 直線の始点と終点のどちらかが、そもそも自分の部屋（cells）に含まれていなければ即アウト
-    // 凹角(270度)の格子点ジャストの接触をセーフにするため、0.01マスだけ内側に入った点（インナーポイント）で判定する
-    const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
-    const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
-    const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
-    const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
+        // 1. 0.001マス内側のインナーポイントによる270度凹角の救済チェック
+        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
+        const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
+        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
+        const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
 
-    const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
-    const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-    
-    // 始点と終点の「すぐ内側」がどちらも自分の部屋に包まれていれば、それは270度凹角を通る「絶対に安全な線」である
-    if (!p1Cell || !p2Cell) return false;
+        const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
+        const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
+        if (!p1Cell || !p2Cell) return false;
 
-    // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップする
-    const walls = [];
-    cells.forEach(cell => {
-        // マス目の4辺の座標
-        const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r} };
-        const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1} };
-        const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1} };
-        const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1} };
+        // 2. 部屋のすべての「壁（境界線）」を一本ずつリストアップ
+        const walls = [];
+        cells.forEach(cell => {
+            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
+            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
+            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
+            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
 
-        // その辺が「部屋の外壁（または別の部屋との境界線）」である場合、それは乗り越えてはいけない「壁」である
-        [top, bottom, left, right].forEach(wall => {
-            const isInternalEdge = cells.some(other => {
-                if (wall === top) return other.c === cell.c && other.r === cell.r - 1;
-                if (wall === bottom) return other.c === cell.c && other.r === cell.r + 1;
-                if (wall === left) return other.r === cell.r && other.c === cell.c - 1;
-                if (wall === right) return other.r === cell.r && other.c === cell.c + 1;
-                return false;
+            [top, bottom, left, right].forEach(wall => {
+                const isInternalEdge = cells.some(other => {
+                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
+                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
+                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
+                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
+                    return false;
+                });
+                if (!isInternalEdge) walls.push({ p1: wall.p1, p2: wall.p2 });
             });
-            if (!isInternalEdge) walls.push(wall);
         });
-    });
 
-    // 3. 【線分交差チェック】鉱脈（p1-p2）と、部屋の壁が物理的に「交差」しているか数式で判定
-    function isIntersecting(s1, e1, s2, e2) {
-        // ベクトルの外積による厳密な交差判定（端点での接触はすり抜けとみなさない安全設計）
-        const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-        const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
-        const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-        const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
+        // 3. 【線分交差・端点接触チェック】接触・すり抜けも厳密に検知
+        function isIntersecting(s1, e1, s2, e2) {
+            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-        // お互いの線分が相手をまたぎ合っている場合、交差（壁をまたいだ）と判定
-        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-            return true;
-        }
-        return false;
-    }
+            // 十字のクロスを検知
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
 
-    // いずれか一本の壁にでもぶつかったら、それは「部屋の外にはみ出した線」なので即座にフェイク（false）
-    for (let wall of walls) {
-        if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
+            // T字接触、またはカドの線上重なり（すり抜け）を検知する点分上判定
+            function isPointOnSeg(p, s, e) {
+                const cross = (p.y - s.y) * (e.x - s.x) - (p.x - s.x) * (e.y - s.y);
+                if (Math.abs(cross) > 0.0001) return false;
+                const dot = (p.x - s.x) * (e.x - s.x) + (p.y - s.y) * (e.y - s.y);
+                return dot >= 0 && dot <= (e.x - s.x)**2 + (e.y - s.y)**2;
+            }
+
+            // 鉱脈の端点そのものが壁を貫通、あるいは壁が鉱脈を遮っているかを精査
+            if (isPointOnSeg(s2, s1, e1) && (s2.x !== s1.x || s2.y !== s1.y) && (s2.x !== e1.x || s2.y !== e1.y)) return true;
+            if (isPointOnSeg(e2, s1, e1) && (e2.x !== s1.x || e2.y !== s1.y) && (e2.x !== e1.x || e2.y !== e1.y)) return true;
+
             return false;
         }
+
+        for (let wall of walls) {
+            if (isIntersecting(p1, p2, wall.p1, wall.p2)) return false;
+        }
+        return true;
     }
-    return true;
-}
 
     function isTouching(p1, p2, vList) {
         for (let v of vList) {
@@ -80,7 +83,6 @@ function generateProblemLinesFromAnswer() {
         return false;
     }
 
-    // ★【完全修復】前回の無限ループ原因（r++）を、正しい変数「y++」に100%修正完了
     function isEdge(p1, p2, cells) {
         if (p1.x !== p2.x && p1.y !== p2.y) return false;
         const minX = Math.min(p1.x, p2.x); const maxX = Math.max(p1.x, p2.x);
@@ -99,14 +101,11 @@ function generateProblemLinesFromAnswer() {
     }
 
     for (let colorId in blocks) {
-        const cells = blocks[colorId];
-        const rawV = new Set();
+        const cells = blocks[colorId]; const rawV = new Set();
         cells.forEach(c => { rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); });
-        
         const vertices = [];
         rawV.forEach(vStr => {
-            const [cx, cy] = vStr.split(',').map(Number);
-            let cnt = 0;
+            const [cx, cy] = vStr.split(',').map(Number); let cnt = 0;
             if (cells.some(c => c.r === cy && c.c === cx)) cnt++; if (cells.some(c => c.r === cy-1 && c.c === cx)) cnt++;
             if (cells.some(c => c.r === cy && c.c === cx-1)) cnt++; if (cells.some(c => c.r === cy-1 && c.c === cx-1)) cnt++;
             if (cnt === 1 || cnt === 3) vertices.push({ x: cx, y: cy });
@@ -115,8 +114,7 @@ function generateProblemLinesFromAnswer() {
         let maxSq = 0; let blockLines = [];
         for (let i = 0; i < vertices.length; i++) {
             for (let j = i + 1; j < vertices.length; j++) {
-                const p1 = vertices[i]; const p2 = vertices[j];
-                const sq = (p2.x - p1.x)**2 + (p2.y - p1.y)**2;
+                const p1 = vertices[i]; const p2 = vertices[j]; const sq = (p2.x - p1.x)**2 + (p2.y - p1.y)**2;
                 if (sq < 1) continue;
                 if (isInside(p1, p2, cells) && !isTouching(p1, p2, vertices) && !isEdge(p1, p2, cells)) {
                     if (sq > maxSq) { maxSq = sq; blockLines = [{ start: p1, end: p2, distSq: sq }]; }
@@ -125,6 +123,5 @@ function generateProblemLinesFromAnswer() {
             }
         }
         blockLines.forEach(line => problemLines.push(line));
-        drawPuzzle();
     }
 }
