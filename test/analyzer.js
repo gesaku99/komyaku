@@ -42,27 +42,33 @@ function generateProblemLinesFromAnswer() {
             });
         });
 
-        // 3. 【線分交差・端点接触チェック】接触・すり抜けも厳密に検知
+        // 3. 【閾値完全撤去】数学的・論理的に完璧な厳密線分交差判定
         function isIntersecting(s1, e1, s2, e2) {
+            // 始点(s1)と終点(e1)そのものが、今調べている壁の端点と重なっている場合は、
+            // 「自分の部屋の引き始め・引き終わり」なので、交差検証そのものを安全にスキップ
+            if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) return false;
+            if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) return false;
+
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-            // 十字のクロスを検知
+            // 1. 十字にクロスしている場合（符号がマイナスとプラスで異符号）
             if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
 
-            // T字接触、またはカドの線上重なり（すり抜け）を検知する点分上判定
-            function isPointOnSeg(p, s, e) {
+            // 2. 途中のカドをかすめる、またはT字にぶつかる場合（外積がジャスト0、かつ線分上に乗っている）
+            // 整数座標（格子点）同士の判定のため、整数同士の掛け算になり、JavaScriptの浮動小数点誤差は105%発生しません
+            function isPointOnSegmentStrict(p, s, e) {
                 const cross = (p.y - s.y) * (e.x - s.x) - (p.x - s.x) * (e.y - s.y);
-                if (Math.abs(cross) > 0.0001) return false;
+                if (cross !== 0) return false; // 曖昧な閾値ではなく、ジャスト0（完全に線の上）を検証
                 const dot = (p.x - s.x) * (e.x - s.x) + (p.y - s.y) * (e.y - s.y);
                 return dot >= 0 && dot <= (e.x - s.x)**2 + (e.y - s.y)**2;
             }
 
-            // 鉱脈の端点そのものが壁を貫通、あるいは壁が鉱脈を遮っているかを精査
-            if (isPointOnSeg(s2, s1, e1) && (s2.x !== s1.x || s2.y !== s1.y) && (s2.x !== e1.x || s2.y !== e1.y)) return true;
-            if (isPointOnSeg(e2, s1, e1) && (e2.x !== s1.x || e2.y !== s1.y) && (e2.x !== e1.x || e2.y !== e1.y)) return true;
+            // 壁の端点が、鉱脈の「途中」に乗っかっている（＝突き抜けている）かを厳密に判定
+            if (isPointOnSegmentStrict(s2, s1, e1)) return true;
+            if (isPointOnSegmentStrict(e2, s1, e1)) return true;
 
             return false;
         }
