@@ -229,16 +229,19 @@ function createPalette() {
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
             
-            // 鉛筆の先から出た線が、右→上→右へと2回90度に折れ曲がって進む、KOMYAKU専用設計のパス
-            // サイズを32pxにスケールアップし、枠いっぱいに描画
+            // 32pxの丸枠いっぱいに、直角にカチッと折れ曲がる境界線と巨大なペン先をスタイリッシュに配置
             btn.innerHTML = `
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- 2回直角に折れ曲がる境界線パス（丸の左下から中央を大胆に通るように配置） -->
-                    <path d="M 3 17 L 11 17 L 11 9 L 19 9" stroke-width="2.3"></path>
-                    <!-- 境界線の終端（19, 9）にぴったりペン先が当たるように位置を完全計算した美しい鉛筆 -->
-                    <path d="M17.5 7.5 l 3.5 -3.5 a 1.2 1.2 0 0 1 1.7 1.7 l -3.5 3.5 l -2.7 0.9 z" fill="#333333"></path>
+                    <!-- ①左上(5,4)から左下(5,18)へ線 ──> ②左下(5,18)から90度曲がってペンの先端(13,18)まで引かれた境界線パス -->
+                    <path d="M 5 4 L 5 18 L 13 18" stroke-width="2.3"></path>
+                    
+                    <!-- ③表示枠の右上後端(20,4)から、境界線の終点である左下先端(13,18)へ向かう、極太で存在感のあるペン本体 -->
+                    <path d="M11.8 16.8 l -1.3 2.7 l 2.7 -1.3 l 7.3 -7.3 a 1.5 1.5 0 0 0 -2.1 -2.1 z" fill="#333333"></path>
+                    <!-- ペンの持ち手部分のディテール線を1本加えて、一目でペンと認識できるように補強 -->
+                    <path d="M16 8 L 18.5 10.5" stroke="#ffffff" stroke-width="1"></path>
                 </svg>
-            `;        }
+            `;
+        }
         paletteContainer.appendChild(btn);
     }
 }

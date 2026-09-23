@@ -60,9 +60,10 @@ function clearGrid() {
     let hasChange = false;
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (userGrid[r][c] !== 0) {
-                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: 0 });
-                userGrid[r][c] = 0;
+            // ★重要：0(緑)ではなく、何も塗られていない真っ白な初期状態「null」に美しく戻す
+            if (userGrid[r][c] !== null) {
+                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: null });
+                userGrid[r][c] = null;
                 hasChange = true;
             }
         }
