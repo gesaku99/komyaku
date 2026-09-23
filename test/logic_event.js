@@ -130,7 +130,7 @@ function handleActionEnd() {
 
     // 2. 0ミリ秒遅らせる非同期タイマーを挟み、ブラウザが画面を100%更新し終えた直後に判定を起動する
     setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer();
+        if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
 }
 // ★重要：既存の source: 8 側にあった undo / redo と重複して誤作動するのを防ぐため、
@@ -153,7 +153,7 @@ function undo() {
 
     // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
     setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer();
+        if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
 }
 
@@ -175,7 +175,7 @@ function redo() {
 
     // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
     setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer();
+        if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
 }
 
@@ -230,12 +230,13 @@ function createPalette() {
             btn.style.justifyContent = 'center';
             
             // 鉛筆の先から出た線が、右→上→右へと2回90度に折れ曲がって進む、KOMYAKU専用設計のパス
+            // サイズを32pxにスケールアップし、枠いっぱいに描画
             btn.innerHTML = `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- 2回90度に折り曲がった境界線のパス (3,16) -> (9,16) -> (9,10) -> (15,10) -->
-                    <path d="M 3 16 L 9 16 L 9 10 L 15 10" stroke-width="2"></path>
-                    <!-- 線の終端にぴったり重なるように配置された傾かない鉛筆 -->
-                    <path d="M12.5 7.5 l 4 -4 a 1.5 1.5 0 0 1 2.12 2.12 l -4 4 l -3 1 z"></path>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 2回直角に折れ曲がる境界線パス（丸の左下から中央を大胆に通るように配置） -->
+                    <path d="M 3 17 L 11 17 L 11 9 L 19 9" stroke-width="2.3"></path>
+                    <!-- 境界線の終端（19, 9）にぴったりペン先が当たるように位置を完全計算した美しい鉛筆 -->
+                    <path d="M17.5 7.5 l 3.5 -3.5 a 1.2 1.2 0 0 1 1.7 1.7 l -3.5 3.5 l -2.7 0.9 z" fill="#333333"></path>
                 </svg>
             `;        }
         paletteContainer.appendChild(btn);

@@ -1,10 +1,9 @@
 // ★正誤判定・採点ロジックのみを完全に隔離した安全な専用ファイル
-function checkAnswer() {
+// 引数 isAutoCheck が true のときは自動判定モード（未完成時は沈黙）、false のときは手動Checkボタンモード
+function checkAnswer(isAutoCheck = false) {
     clearErrorDisplay(); 
 
-    // ─── 🆕 境界線ベースの超軽量・厳密自動正解判定（色グループ依存の完全排除） ───
-
-    // 1. 正解（answerGrid）のすべての内壁境界線をリストアップ
+    // ─── 1. 正解（answerGrid）のすべての内壁境界線をリストアップ ───
     const answerWalls = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -17,7 +16,7 @@ function checkAnswer() {
         }
     }
 
-    // 2. ユーザー画面（userGrid + userWalls）の現在の境界線をリストアップ
+    // ─── 2. ユーザー画面の現在の境界線（自動内壁 ＋ 手動壁）をリストアップ ───
     const userWallsList = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -37,63 +36,67 @@ function checkAnswer() {
             }
         }
     }
-    // 手動の壁(userWalls)も合流
+    
+    // 手動の壁(userWalls)の合流（座標のズレを完全に修正）
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2);
             if (w.r1 === w.r2) { // 横線
-                if (minR > 0 && minR < GRID_SIZE) {
-                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
+                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC}-${minR+1},${minC}(H)`);
                 }
             } else { // 縦線
-                if (minC > 0 && minC < GRID_SIZE) {
-                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
+                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC}-${minR},${minC+1}(V)`);
                 }
             }
         });
     }
 
-    // 3. 配置の完全一致をチェック
+    // ─── 3. 配置の完全一致チェック ───
     let isPerfect = true;
     let hasWhite = false;
     
-    // 未着色マス（白マス）が1つでもある、または壁の総数が違っていれば不完全
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (userGrid[r][c] === null) {
-                isPerfect = false;
                 hasWhite = true;
             }
         }
     }
 
-    if (answerWalls.length !== userWallsList.length) {
+    // 重複を排除してユニークな壁リストにする
+    const uniqueUserWalls = [...new Set(userWallsList)];
+
+    if (answerWalls.length !== uniqueUserWalls.length) {
         isPerfect = false;
     } else {
         for (let aw of answerWalls) {
-            if (!userWallsList.includes(aw)) {
+            if (!uniqueUserWalls.includes(aw)) {
                 isPerfect = false;
                 break;
             }
         }
     }
 
-    // 4. 自動判定結果の適用
+    // ─── 4. 自動判定と手動判定の条件分岐 ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
-        return; // 正解した場合はここで処理を完全に終了（ポップアップを出す）
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
+        return; 
     }
 
-    // 💡【重要】もし未完成（白マスあり、または壁が不一致）の状態からリアルタイム自動呼び出しされた場合は、
-    // 画面に余計なエラーやアラートを出さないように、ここで静かに処理を打ち切る（元コードの後半フローをスキップ）
-    // ※今後、手動のCheckボタンを別途用意して「間違っている箇所の赤丸ヒント表示」を行いたい場合は、
-    // ここでreturnさせずに、下の従来のエラー検証フロー（白マスチェック等）へ進ませる形になります。
-    return; 
+    // 💡自動判定モードのときは、未完成や間違いであってもここで静かに処理を終了する
+    if (isAutoCheck) {
+        return; 
+    }
 
-    // ─── 💡以下、将来的な手動Check（エラー箇所可視化）のために元のロジックを完全無傷で保持 ───
-    if (hasWhite) { alert("未完成：まだ塗られていない白マスが残っています！"); return; }
+    // ─── 5. 【手動Checkボタン専用】ここから下はCheckボタンを押した時だけ100%確実に実行される ───
+    if (hasWhite) { 
+        alert("未完成：まだ塗られていない白マスが残っています！"); 
+        return; 
+    }
 
     const blocks = {};
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -114,7 +117,7 @@ function checkAnswer() {
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
 
-        const walls = [];
+        const wallsList = [];
         cells.forEach(cell => {
             const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
             const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
@@ -130,7 +133,7 @@ function checkAnswer() {
                     return false;
                 });
                 if (!isInternalEdge) {
-                    walls.push({ p1: wall.p1, p2: wall.p2 });
+                    wallsList.push({ p1: wall.p1, p2: wall.p2 });
                 }
             });
         });
@@ -138,21 +141,16 @@ function checkAnswer() {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
             const cross1 = ((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001));
             const cross2 = ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001));
 
-            if (cross1 && cross2) {
-                return true; 
-            }
-            return false; 
+            return (cross1 && cross2);
         }
 
-        for (let wall of walls) {
-            if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
-                return false;
-            }
+        for (let wall of wallsList) {
+            if (isIntersecting(p1, p2, wall.p1, wall.p2)) return false;
         }
         return true;
     }
@@ -288,8 +286,9 @@ function checkAnswer() {
         });
     }
 
-    if (isCorrect) { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }
-    else {
+    if (isCorrect) { 
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); 
+    } else {
         const targetBlackLines = [];
         errorBlockIds.forEach(colorId => {
             const cells = blocks[colorId];
@@ -301,6 +300,7 @@ function checkAnswer() {
             });
         });
         errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; 
-        drawPuzzle(); alert("❌ 不正解です ❌\n鉱脈と同じ長さか、鉱脈よりも長い対角線のあるブロックが存在します。");
+        drawPuzzle(); 
+        alert("❌ 不正解です ❌\n鉱脈と同じ長さか、鉱脈よりも長い対角線のあるブロックが存在します。");
     }
 }
