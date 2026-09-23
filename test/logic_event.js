@@ -121,10 +121,13 @@ function handleActionEnd() {
     assistStartV = null;
     assistCurrentV = null;
 
-    // ─── 🆕 操作完了時にバックグラウンドで新しい境界線ベースの正解判定をリアルタイム自動実行 ───
-    if (typeof checkAnswer === 'function') checkAnswer();
+    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
+    drawPuzzle(); 
 
-    drawPuzzle(); // 最後の1フレームを綺麗にリセット描画
+    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
+    setTimeout(() => {
+        if (typeof checkAnswer === 'function') checkAnswer();
+    }, 0);
 }
 // ★重要：既存の source: 8 側にあった undo / redo と重複して誤作動するのを防ぐため、
 // ここの操作連携ファイル側の関数が実行された際にも、完璧に同期して裏で自動チェックを走らせます。
@@ -140,11 +143,14 @@ function undo() {
         userGrid[nextChange.r][nextChange.c] = nextChange.from;
     }
 
-    // ─── 🆕 Undoした瞬間にも自動で先読み正解判定を走らせる ───
-    if (typeof checkAnswer === 'function') checkAnswer();
-
-    drawPuzzle();
+    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
+    drawPuzzle(); 
     updateHistoryButtons();
+
+    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
+    setTimeout(() => {
+        if (typeof checkAnswer === 'function') checkAnswer();
+    }, 0);
 }
 
 function redo() {
@@ -159,11 +165,14 @@ function redo() {
         userGrid[nextChange.r][nextChange.c] = nextChange.from;
     }
 
-    // ─── 🆕 Redoした瞬間にも自動で先読み正解判定を走らせる ───
-    if (typeof checkAnswer === 'function') checkAnswer();
-
-    drawPuzzle();
+    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
+    drawPuzzle(); 
     updateHistoryButtons();
+
+    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
+    setTimeout(() => {
+        if (typeof checkAnswer === 'function') checkAnswer();
+    }, 0);
 }
 
 // ★追加：指の現在地から、半径25px以内にある最も近い「格子点（マスの角）」を返す超強力なマグネットセンサー
@@ -216,14 +225,15 @@ function createPalette() {
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
             
-            // 左下から右上へ向かう、環境依存しないクッキリした鉛筆SVG
+            // 鉛筆の先から出た線が、右→上→右へと2回90度に折れ曲がって進む、KOMYAKU専用設計のパス
             btn.innerHTML = `
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 2回90度に折り曲がった境界線のパス (3,16) -> (9,16) -> (9,10) -> (15,10) -->
+                    <path d="M 3 16 L 9 16 L 9 10 L 15 10" stroke-width="2"></path>
+                    <!-- 線の終端にぴったり重なるように配置された傾かない鉛筆 -->
+                    <path d="M12.5 7.5 l 4 -4 a 1.5 1.5 0 0 1 2.12 2.12 l -4 4 l -3 1 z"></path>
                 </svg>
-            `;
-        }
+            `;        }
         paletteContainer.appendChild(btn);
     }
 }
