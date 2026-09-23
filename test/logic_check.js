@@ -82,7 +82,7 @@ function checkAnswer(isAutoCheck = false) {
     // ─── 4. 自動判定結果の適用（完璧ならその場で即クリアを呼び出す） ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
         return; 
     }
 
