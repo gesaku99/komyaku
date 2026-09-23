@@ -37,18 +37,20 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     
-    // 手動の壁(userWalls)の合流（座標のズレを完全に修正）
+    // 手動の壁(userWalls)の合流（正解データの文字列表現と100%厳密に同期）
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2);
-            if (w.r1 === w.r2) { // 横線
-                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
-                    userWallsList.push(`${minR},${minC}-${minR+1},${minC}(H)`);
+            
+            if (w.r1 === w.r2) { // 画面上の横線 ＝ 上下のマス目を隔てる「横の壁(H)」
+                // 画面外の枠線でなければ、正解のマス目インデックス形式に変換
+                if (minR > 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
                 }
-            } else { // 縦線
-                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
-                    userWallsList.push(`${minR},${minC}-${minR},${minC+1}(V)`);
+            } else { // 画面上の縦線 ＝ 左右のマス目を隔てる「縦の壁(V)」
+                if (minC > 0 && minC < GRID_SIZE && minR >= 0 && minR < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
                 }
             }
         });
@@ -83,7 +85,7 @@ function checkAnswer(isAutoCheck = false) {
     // ─── 4. 自動判定と手動判定の条件分岐 ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
         return; 
     }
 
