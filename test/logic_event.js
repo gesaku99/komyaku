@@ -231,14 +231,17 @@ function createPalette() {
             
             // 32pxの丸枠いっぱいに、直角にカチッと折れ曲がる境界線と巨大なペン先をスタイリッシュに配置
             btn.innerHTML = `
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- ①左上(5,4)から左下(5,18)へ線 ──> ②左下(5,18)から90度曲がってペンの先端(13,18)まで引かれた境界線パス -->
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- ①左上から左下、右へ折れ曲がる境界線パス（太さはそのまま維持） -->
                     <path d="M 5 4 L 5 18 L 13 18" stroke-width="2.3"></path>
                     
-                    <!-- ③表示枠の右上後端(20,4)から、境界線の終点である左下先端(13,18)へ向かう、極太で存在感のあるペン本体 -->
-                    <path d="M11.8 16.8 l -1.3 2.7 l 2.7 -1.3 l 7.3 -7.3 a 1.5 1.5 0 0 0 -2.1 -2.1 z" fill="#333333"></path>
-                    <!-- ペンの持ち手部分のディテール線を1本加えて、一目でペンと認識できるように補強 -->
-                    <path d="M16 8 L 18.5 10.5" stroke="#ffffff" stroke-width="1"></path>
+                    <!-- ②右上から左下へ向かう、極細アウトラインの美しいペン本体（中を白抜きに透過） -->
+                    <path d="M11.8 16.8 l -1.3 2.7 l 2.7 -1.3 l 7.3 -7.3 a 1.5 1.5 0 0 0 -2.1 -2.1 z" fill="#ffffff"></path>
+                    
+                    <!-- ③【ディテール補強】高級感を演出するペンのサイドクリップ線 -->
+                    <path d="M17.5 5.5 L 20 8" stroke="#222222"></path>
+                    <!-- ④【ディテール補強】ペン先（チップ）を分けるシャープな境界線 -->
+                    <path d="M12.5 16.1 L 14.2 17.8" stroke="#222222"></path>
                 </svg>
             `;
         }

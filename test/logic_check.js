@@ -37,20 +37,18 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     
-    // 手動の壁(userWalls)の合流（正解データの文字列表現と100%厳密に同期）
+    // 手動の壁(userWalls)の合流（座標のズレを完全に修正）
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2);
-            
-            if (w.r1 === w.r2) { // 画面上の横線 ＝ 上下のマス目を隔てる「横の壁(H)」
-                // 画面外の枠線でなければ、正解のマス目インデックス形式に変換
-                if (minR > 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
-                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
+            if (w.r1 === w.r2) { // 横線
+                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC}-${minR+1},${minC}(H)`);
                 }
-            } else { // 画面上の縦線 ＝ 左右のマス目を隔てる「縦の壁(V)」
-                if (minC > 0 && minC < GRID_SIZE && minR >= 0 && minR < GRID_SIZE) {
-                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
+            } else { // 縦線
+                if (minR >= 0 && minR < GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC}-${minR},${minC+1}(V)`);
                 }
             }
         });
@@ -85,7 +83,7 @@ function checkAnswer(isAutoCheck = false) {
     // ─── 4. 自動判定と手動判定の条件分岐 ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
         return; 
     }
 
@@ -95,19 +93,16 @@ function checkAnswer(isAutoCheck = false) {
     }
 
     // ─── 5. 【手動Checkボタン専用】ここから下はCheckボタンを押した時だけ100%確実に実行される ───
-    // 💡修正仕様：境界線だけで解くプレイスタイルを考慮し、白マス警告を廃止して一律で不正解表示に統一
-    if (hasWhite || !isPerfect) { 
-        // 従来の複雑な対角線エラー検証フローをスキップし、シンプルに不正解として落とす
-        alert("❌ 正解ではありません ❌\n"); 
-        return; 
-    }
+    // 💡新仕様：境界線だけで解くスタイルを考慮し、白マスがあっても警告を出さず、そのまま対角線やブロックの厳密検証へ進む
 
     const blocks = {};
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             const colorId = userGrid[r][c];
-            if (!blocks[colorId]) blocks[colorId] = [];
-            blocks[colorId].push({ r, c });
+            // 白マス(null)は、検証用に一時的に「一意の独立した仮ブロック」として扱い、エラー判定を破綻させない
+            const blockKey = (colorId === null) ? `white_${r}_${c}` : colorId;
+            if (!blocks[blockKey]) blocks[blockKey] = [];
+            blocks[blockKey].push({ r, c });
         }
     }
 
@@ -136,9 +131,7 @@ function checkAnswer(isAutoCheck = false) {
                     if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
                     return false;
                 });
-                if (!isInternalEdge) {
-                    wallsList.push({ p1: wall.p1, p2: wall.p2 });
-                }
+                if (!isInternalEdge) wallsList.push({ p1: wall.p1, p2: wall.p2 });
             });
         });
         function isIntersecting(s1, e1, s2, e2) {
@@ -146,11 +139,7 @@ function checkAnswer(isAutoCheck = false) {
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-
-            const cross1 = ((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001));
-            const cross2 = ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001));
-
-            return (cross1 && cross2);
+            return (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
         }
 
         for (let wall of wallsList) {
@@ -193,8 +182,8 @@ function checkAnswer(isAutoCheck = false) {
     }
 
     const blockVerticesMap = {};
-    for (let colorId in blocks) {
-        const cells = blocks[colorId]; const rawV = new Set();
+    for (let blockKey in blocks) {
+        const cells = blocks[blockKey]; const rawV = new Set();
         cells.forEach(c => { rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); });
         const vList = [];
         rawV.forEach(vStr => {
@@ -203,14 +192,14 @@ function checkAnswer(isAutoCheck = false) {
             if (cells.some(c => c.r === cy && c.c === cx-1)) cnt++; if (cells.some(c => c.r === cy-1 && c.c === cx-1)) cnt++;
             if (cnt === 1 || cnt === 3) vList.push({ x: cx, y: cy });
         });
-        blockVerticesMap[colorId] = vList;
+        blockVerticesMap[blockKey] = vList;
     }
 
     const badVertices = [];
     problemLines.forEach(pLine => {
         let trueParentColorId = null;
-        for (let colorId in blocks) {
-            if (checkInside(pLine.start, pLine.end, blocks[colorId])) { trueParentColorId = colorId; break; }
+        for (let blockKey in blocks) {
+            if (checkInside(pLine.start, pLine.end, blocks[blockKey])) { trueParentColorId = blockKey; break; }
         }
         if (trueParentColorId) {
             [pLine.start, pLine.end].forEach(pt => {
@@ -224,26 +213,26 @@ function checkAnswer(isAutoCheck = false) {
 
     if (badVertices.length > 0) {
         errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle();
-        alert("❌ 不正解です ❌\n鉱脈の端点が頂点でない場所があります。"); return;
+        alert("❌ 正解ではありません ❌"); return;
     }
 
     const activeBlockIds = new Set();
-    for (let colorId in blocks) {
-        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[colorId])) activeBlockIds.add(colorId); });
+    for (let blockKey in blocks) {
+        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
     }
     if (Object.keys(blocks).length !== activeBlockIds.size) {
         const targetIsolatedCells = [];
-        for (let colorId in blocks) {
-            if (!activeBlockIds.has(colorId)) { blocks[colorId].forEach(cell => targetIsolatedCells.push(cell)); }
+        for (let blockKey in blocks) {
+            if (!activeBlockIds.has(blockKey)) { blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
         }
         errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle();
-        alert("❌ 不正解です ❌\nどの鉱脈も含まないブロックが存在します。"); return;
+        alert("❌ 正解ではありません ❌"); return;
     }
 
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
 
-    for (let colorId in blocks) {
-        const cells = blocks[colorId]; const vertices = blockVerticesMap[colorId];
+    for (let blockKey in blocks) {
+        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
         let maxDistSq = 0; let blockDiagonals = [];
 
         for (let i = 0; i < vertices.length; i++) {
@@ -265,7 +254,7 @@ function checkAnswer(isAutoCheck = false) {
                     const isAnyProblemLine = problemLines.some(p => (p.start.x === bDiag.start.x && p.start.y === bDiag.start.y && p.end.x === bDiag.end.x && p.end.y === bDiag.end.y) || (p.start.x === bDiag.end.x && p.start.y === bDiag.end.y && p.end.x === bDiag.start.x && p.end.y === bDiag.start.y));
                     if (isAnyProblemLine) return;
                     const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
-                    if (!isSameLine && bDiag.distSq >= pDistSq) { wrongReasonLines.push(bDiag); errorBlockIds.add(colorId); }
+                    if (!isSameLine && bDiag.distSq >= pDistSq) { wrongReasonLines.push(bDiag); errorBlockIds.add(blockKey); }
                 });
             }
         });
@@ -285,17 +274,15 @@ function checkAnswer(isAutoCheck = false) {
             const isProblem = problemLines.some(p => (p.start.x === dLine.start.x && p.start.y === dLine.start.y && p.end.x === dLine.end.x && p.end.y === dLine.end.y) || (p.start.x === dLine.end.x && p.start.y === dLine.end.y && p.end.x === dLine.start.x && p.end.y === dLine.start.y));
             if (!isProblem) {
                 wrongReasonLines.push(dLine);
-                for (let colorId in blocks) { if (checkInside(dLine.start, dLine.end, blocks[colorId])) errorBlockIds.add(colorId); }
+                for (let blockKey in blocks) { if (checkInside(dLine.start, dLine.end, blocks[blockKey])) errorBlockIds.add(blockKey); }
             }
         });
     }
 
-    if (isCorrect) { 
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); 
-    } else {
+    if (!isCorrect) {
         const targetBlackLines = [];
-        errorBlockIds.forEach(colorId => {
-            const cells = blocks[colorId];
+        errorBlockIds.forEach(blockKey => {
+            const cells = blocks[blockKey];
             problemLines.forEach(pLine => {
                 if (checkInside(pLine.start, pLine.end, cells)) {
                     const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
@@ -305,6 +292,7 @@ function checkAnswer(isAutoCheck = false) {
         });
         errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; 
         drawPuzzle(); 
-        alert("❌ 不正解です ❌\n鉱脈と同じ長さか、鉱脈よりも長い対角線のあるブロックが存在します。");
     }
+    
+    alert("❌ 正解ではありません ❌");
 }

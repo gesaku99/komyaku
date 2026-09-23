@@ -44,7 +44,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 
     // ─── 2. 盤面マスの色塗り ───
-// ─── ✨ 修正後（盤面用） ───
     if (!isSolutionImage && !isProblemImage) {
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
@@ -65,6 +64,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         }
 
         if (errorDisplayState.show && errorDisplayState.isolatedCells.length > 0) {
+            // 不正解時の「鉱脈なしブロック」を一律で同じ鮮やかな赤（#ff3b30）の半透明で塗りつぶす仕様
             ctx.fillStyle = 'rgba(255, 59, 48, 0.6)'; 
             errorDisplayState.isolatedCells.forEach(cell => {
                 ctx.fillRect(OFFSET + cell.c * CELL_PIXEL, OFFSET + cell.r * CELL_PIXEL + titleBarHeight, CELL_PIXEL, CELL_PIXEL);
@@ -75,7 +75,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     // ─── 3. グリッド（細い破線）を描画 ───
     ctx.strokeStyle = '#cccccc'; 
     ctx.lineWidth = 1;
-    ctx.setLineDash([]); // 内枠を綺麗な点線（破線）にする設定
+    ctx.setLineDash([]); 
     for (let i = 1; i < GRID_SIZE; i++) {
         const pos = OFFSET + i * CELL_PIXEL;
         ctx.beginPath(); ctx.moveTo(OFFSET, pos + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, pos + titleBarHeight); ctx.stroke();
@@ -83,7 +83,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
     ctx.setLineDash([]); 
 
-    // ─── 4. 座標記号・数字の描画（Biomeフォント適用） ───
+    // ─── 4. 座標記号・数字の描画（Tenor Sans完全統一） ───
     ctx.fillStyle = '#000000';
     ctx.font = '20px "Tenor Sans", sans-serif';
     ctx.textAlign = 'center'; 
@@ -116,7 +116,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
                 if (c < GRID_SIZE - 1) {
                     const rightIdx = targetGrid[r][c + 1];
-                    // ★重要：現在地もお隣さんも「白(null)」ではなく、かつ「違う色」のときだけ緑の境界線を描く
                     if (currentIdx !== null && rightIdx !== null && currentIdx !== rightIdx) {
                         ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; 
                         ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
@@ -124,7 +123,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 }
                 if (r < GRID_SIZE - 1) {
                     const bottomIdx = targetGrid[r + 1][c];
-                    // ★重要：現在地も下側もお隣さんも「白(null)」ではなく、かつ「違う色」のときだけ緑の境界線を描く
                     if (currentIdx !== null && bottomIdx !== null && currentIdx !== bottomIdx) {
                         ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5;
                         ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
@@ -140,7 +138,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.lineCap = 'round';
     userWalls.forEach(wall => {
         ctx.beginPath();
-        // 格子点座標（c1, r1）から（c2, r2）へ線を引く
         ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
         ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
         ctx.stroke();
@@ -160,49 +157,18 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         ctx.stroke();
     });
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-
-    if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
-        ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
-        errorDisplayState.wrongLines.forEach(line => {
-            ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
-            ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
-        });
-        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        errorDisplayState.wrongLines.forEach(line => {
-            const rx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.7) * CELL_PIXEL;
-            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL + titleBarHeight;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
-        });
-        errorDisplayState.blackAlertLines.forEach(line => {
-            const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
-            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
-        });
-        errorDisplayState.invalidVertices.forEach(v => {
-            ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
-        });
-    }
-
     // ─── 7. ★新設：通常モード用オレンジ製図アシスト表示（境界線衝突検知・確定版） ───
     if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
-        // マス目の整数座標（0, 1, 2...）として定義
         const p1 = { x: assistStartV.c, y: assistStartV.r };
         const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
 
-        // 画面描画用（ピクセル座標）の計算
         const x1 = OFFSET + p1.x * CELL_PIXEL;
         const y1 = OFFSET + p1.y * CELL_PIXEL + titleBarHeight;
         const x2 = OFFSET + p2.x * CELL_PIXEL;
         const y2 = OFFSET + p2.y * CELL_PIXEL + titleBarHeight;
 
-        // 長さの2乗(distSq)の計算
         const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
 
-        // ─── ✨【完全同期】通過マスの所属ブロックと正解鉱脈の長さを厳密に先読み ───
         let targetBlockColor = null;
         let maxProblemDistSq = 0; 
         const dx = p2.x - p1.x;
@@ -249,7 +215,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             }
         }
 
-        // 求めた順番通りにマスの所属ブロックをチェックして最初の1色付きマスを掴む
         for (let cell of traversedCells) {
             const color = userGrid[cell.r][cell.c];
             if (color === null || color === undefined) continue;
@@ -257,7 +222,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             break; 
         }
 
-        // つかんだブロックの正解鉱脈の長さを事前に特定しておく
         if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
             problemLines.forEach(line => {
                 const midX = Math.floor((line.start.x + line.end.x) / 2);
@@ -272,19 +236,15 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             });
         }
 
-        // ─── 🆕【本物の境界線（画面上の壁）のみを抽出するロジック】 ───
-        // ─── 🆕【本物の境界線（画面上の壁）のみを抽出するロジック】 ───
         const walls = [];
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const currentIdx = userGrid[r][c];
-                // 1. 外壁
                 if (c === 0) walls.push({ p1: {x: 0, y: r}, p2: {x: 0, y: r + 1} });
                 if (r === 0) walls.push({ p1: {x: c, y: 0}, p2: {x: c + 1, y: 0} });
                 if (c === GRID_SIZE - 1) walls.push({ p1: {x: GRID_SIZE, y: r}, p2: {x: GRID_SIZE, y: r + 1} });
                 if (r === GRID_SIZE - 1) walls.push({ p1: {x: c, y: GRID_SIZE}, p2: {x: c + 1, y: GRID_SIZE} });
 
-                // 2. 自動内壁
                 if (c < GRID_SIZE - 1) {
                     const rightIdx = userGrid[r][c + 1];
                     if (currentIdx !== null && rightIdx !== null && currentIdx !== rightIdx) {
@@ -299,7 +259,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 }
             }
         }
-        // 3. 手動壁
         if (typeof userWalls !== 'undefined' && userWalls) {
             userWalls.forEach(w => {
                 walls.push({ p1: {x: w.c1, y: w.r1}, p2: {x: w.c2, y: w.r2} });
@@ -308,19 +267,16 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
         let intersectedVertices = []; 
 
-        // 交差判定関数の完全版（縦壁のすり抜け・外積の計算順序を100%修正）
         function getLineIntersection(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x);
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
 
-            // 厳密に線分同士が交差しているか判定
             const isCross = (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
             if (isCross) {
-                // 交点の正確な実数座標を計算
-                const ix = s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
-                const iy = s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4)));
+                const ix = s2.x === e2.x ? s2.x : s1.x + (e1.x - s1.x) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
+                const iy = s2.y === e2.y ? s2.y : s1.y + (e1.y - s1.y) * (Math.abs(d3) / (Math.abs(d3) + Math.abs(d4))));
                 return { x: ix, y: iy };
             }
 
@@ -344,11 +300,9 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             walls.forEach(wall => {
                 const pt = getLineIntersection(p1, p2, wall.p1, wall.p2);
                 if (pt) {
-                    // 実数のため、0.001未満の誤差を考慮して始点・終点を除外
                     const isStart = (Math.abs(pt.x - p1.x) < 0.001 && Math.abs(pt.y - p1.y) < 0.001);
                     const isEnd = (Math.abs(pt.x - p2.x) < 0.001 && Math.abs(pt.y - p2.y) < 0.001);
                     if (!isStart && !isEnd) {
-                        // 重複チェックも誤差考慮（距離が極めて近いものは同一とみなす）
                         const isDuplicate = intersectedVertices.some(v => Math.abs(v.x - pt.x) < 0.001 && Math.abs(v.y - pt.y) < 0.001);
                         if (!isDuplicate) {
                             intersectedVertices.push(pt);
@@ -357,41 +311,32 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 }
             });
         }
-
         const hasConflict = intersectedVertices.length > 0;
-
-        // ─── ✨【色の動的判定】───
         const isOverLimit = (targetBlockColor !== null && maxProblemDistSq > 0 && distSq >= maxProblemDistSq && distSq >= 1);
         const assistColor = isOverLimit ? '#ff3b30' : '#ff9500'; 
 
-        // 💡ドラッグ中は、始点の丸を常に一番最初に描画する
         ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor; 
         ctx.lineWidth = 2;
         ctx.setLineDash([]); 
         ctx.beginPath(); ctx.arc(x1, y1, 15, 0, Math.PI * 2); ctx.stroke();
 
-        // もし終点（指の現在地）が始点と違う格子点に吸着していれば、線と丸の描画を開始
         if (p1.x !== p2.x || p1.y !== p2.y) {
-            
-            // 1. 終点側の丸を描画
             ctx.strokeStyle = hasConflict ? '#ff3b30' : assistColor;
             ctx.lineWidth = 2;
             ctx.setLineDash([]);
             ctx.beginPath(); ctx.arc(x2, y2, 15, 0, Math.PI * 2); ctx.stroke();
 
-            // 2. 仮の直線を実線または点線で描画
             if (hasConflict) {
-                ctx.setLineDash([4, 4]); // 衝突時は仕様通り点線（破線）にする
+                ctx.setLineDash([4, 4]); 
                 ctx.strokeStyle = '#ff3b30';
             } else {
-                ctx.setLineDash([]); // 通常時は実線
+                ctx.setLineDash([]); 
                 ctx.strokeStyle = assistColor;
             }
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-            ctx.setLineDash([]); // 即座にリセット
+            ctx.setLineDash([]); 
 
-            // 3. 仮の鉱脈の上の「中央丸 ＋ 長さ」の描画（衝突していない時だけ表示）
             if (!hasConflict) {
                 const mx = (x1 + x2) / 2;
                 const my = (y1 + y2) / 2;
@@ -405,7 +350,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(distSq.toString(), mx, my + 0.5);
 
-                // オレンジ線が最初に通過した色付きマスのブロック鉱脈だけに、正確に黒丸を表示
                 if (targetBlockColor !== null && typeof problemLines !== 'undefined') {
                     problemLines.forEach(line => {
                         const midX = Math.floor((line.start.x + line.end.x) / 2);
@@ -426,7 +370,6 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                     });
                 }
             } else {
-                // 4. 🆕【衝突時のみ】特定されたすべての交差点・接点に赤丸を表示
                 intersectedVertices.forEach(v => {
                     ctx.fillStyle = '#ff3b30'; 
                     ctx.beginPath(); 
@@ -435,10 +378,10 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 });
             }
         }
-        ctx.setLineDash([]); // 点線設定を完全にリセット
+        ctx.setLineDash([]); 
     }
 
-    // ─── 8. 判定エラーの赤丸・黒丸の表示（Tenor Sans完全統一） ───
+    // ─── 8. 判定エラーの赤線・中央赤丸の表示（一律同じエラー赤 #ff3b30 に統一版） ───
     if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
         ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
         errorDisplayState.wrongLines.forEach(line => {
@@ -448,13 +391,21 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         
         ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
+        // 💡 修正仕様：不正解の長い対角線の【ジャスト真ん中（中央）】に赤丸と赤数字をクッキリ配置する
         errorDisplayState.wrongLines.forEach(line => {
-            const rx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.7) * CELL_PIXEL;
-            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL + titleBarHeight;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
+            const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
+            const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
+            
+            ctx.fillStyle = '#ffffff'; 
+            ctx.strokeStyle = '#ff3b30'; 
+            ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
+            
+            ctx.fillStyle = '#ff3b30'; 
+            ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
         });
+
+        // 正解鉱脈（比較基準の黒枠丸）の描画も中央より少しずらした位置から「30%位置」へ綺麗に補正
         errorDisplayState.blackAlertLines.forEach(line => {
             const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
             const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
@@ -462,6 +413,8 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
+
+        // 鉱脈の端点エラーの赤マーク（一律同じエラー赤 #ff3b30 で直径12px描画）
         errorDisplayState.invalidVertices.forEach(v => {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
