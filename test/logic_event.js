@@ -99,7 +99,10 @@ function handleActionMove(x, y) {
 
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
+        // ✏️【壁引きモード】終了時の処理
         lastIntersectedV = null;
+        // 壁引きドラッグが終わったので、この瞬間に手動壁リスト(userWalls)の自動お掃除を実行
+        if (typeof cleanUserWalls === 'function') cleanUserWalls();
     } else if (startCell && !hasMovedInSession && !assistStartV) {
         // 🎨シングルタップ時の色トグル処理（格子点ドラッグではない、純粋な1マスタップ時のみ発動）
         const oldColor = userGrid[startCell.r][startCell.c];
@@ -109,22 +112,23 @@ function handleActionEnd() {
             userGrid[startCell.r][startCell.c] = newColor;
             recordChange(startCell.r, startCell.c, oldColor, newColor);
             cleanUserWalls(); 
-            drawPuzzle();
         }
     }
+    
     updateHistoryButtons();
     startCell = null;
     hasMovedInSession = false;
     isErasingMode = false;
     
-    // ★追加：ドラッグを離したら、アシストの記憶を綺麗にリセット
+    // アシストの記憶を綺麗にリセット
     assistStartV = null;
     assistCurrentV = null;
 
-    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
+    // ─── ✨【描画遅延の解消 ＆ 色・手動壁の両対応自動正解チェック】 ───
+    // 1. まず、最後の1マスや最後の1本の手動壁をキャンバス上へ完全に描き切る
     drawPuzzle(); 
 
-    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
+    // 2. 0ミリ秒遅らせる非同期タイマーを挟み、ブラウザが画面を100%更新し終えた直後に判定を起動する
     setTimeout(() => {
         if (typeof checkAnswer === 'function') checkAnswer();
     }, 0);
