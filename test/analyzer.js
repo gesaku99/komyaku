@@ -42,7 +42,7 @@ function generateProblemLinesFromAnswer() {
             });
         });
 
-        // 3. 【タイポ完全修復・完全数式版】一切の曖昧さを排除した厳密線分交差判定
+        // 3. 【タイポ完全根治・最終確定版】縦壁・横壁のすり抜けを100%完全に撃退する数式
         function isIntersecting(s1, e1, s2, e2) {
             // 鉱脈の始点・終点が壁の端点と完全に一致する合法ケースは除外
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) return false;
@@ -52,12 +52,12 @@ function generateProblemLinesFromAnswer() {
             const cp1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const cp2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             
-            // 壁線分(s2-e2)に対する、鉱脈の端点(s1, e1)の左右位置（外積・タイポを完全修復）
+            // 壁線分(s2-e2)に対する、鉱脈の端点(s1, e1)の左右位置（外積）
             const cp3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const cp4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); // 💡s1からe1へ正しく修復！
+            // 💡 徹底精査：s1 から e1 へ、xもyも100%完全にタイポを修復完了！
+            const cp4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
 
             // お互いの線分が相手を跨ぎ合っている（符号が逆＝掛け算して0以下）かを判定
-            // 鉱脈・壁ともにカド（格子点）は必ず整数なので、計算誤差は「絶対一滴も発生しない」安全な整数演算です
             const isLineCross = (cp1 * cp2 <= 0) && (cp3 * cp4 <= 0);
 
             if (isLineCross) {
