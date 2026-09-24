@@ -95,28 +95,56 @@ function handleActionMove(x, y) {
     }
 }
 
-// 💡【New仕様】handleActionEnd の末尾で、壁に変化があればUndoスタックへ記録をプッシュ
-const originalHandleActionEnd = handleActionEnd;
-handleActionEnd = function() {
-    if (currentSelectedColor === 9 && hasMovedInSession) {
-        clearErrorDisplay();
-        undoStack.push({
-            type: 'wall',
-            from: wallSnapshotBeforeDrag,
-            to: userWalls.map(w => ({ ...w }))
-        });
-        redoStack.length = 0;
+// 💡【完全復活 ＆ 履歴合流】消滅していた handleActionEnd を、手動壁のUndoスタック記録処理を内包して再定義
+function handleActionEnd() {
+    if (currentSelectedColor === 9) {
+        lastIntersectedV = null;
+        if (typeof cleanUserWalls === 'function') cleanUserWalls();
+        
+        // ✏️ 手動壁引き操作が実際に発生していた場合、ドラッグ前の状態との差分をUndoスタックに刻む
+        if (hasMovedInSession) {
+            clearErrorDisplay();
+            undoStack.push({
+                type: 'wall',
+                from: wallSnapshotBeforeDrag,
+                to: userWalls.map(w => ({ ...w }))
+            });
+            redoStack.length = 0;
+        }
+    } else if (startCell && !hasMovedInSession && !assistStartV) {
+        const oldColor = userGrid[startCell.r][startCell.c];
+        let newColor = currentSelectedColor;
+        if (oldColor !== null) newColor = null; 
+        if (oldColor !== newColor) {
+            userGrid[startCell.r][startCell.c] = newColor;
+            recordChange(startCell.r, startCell.c, oldColor, newColor);
+            cleanUserWalls(); 
+        }
     }
-    originalHandleActionEnd();
-};
+    
+    updateHistoryButtons();
+    startCell = null;
+    hasMovedInSession = false;
+    isErasingMode = false;
+    
+    assistStartV = null;
+    assistCurrentV = null;
 
+    drawPuzzle(); 
+
+    setTimeout(() => {
+        if (typeof checkAnswer === 'function') checkAnswer(true);
+    }, 0);
+}
+
+// 💡【完全復活 ＆ 壁対応化】手動境界線もサクスパ戻せるように拡張した Undo ロジック
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
     
     if (change.type === 'wall') {
-        // ✏️ 壁引きのUndo処理
+        // ✏️ 壁引きのUndo処理（Redoスタックへ未来をバトンタッチ）
         redoStack.push({ type: 'wall', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else {
