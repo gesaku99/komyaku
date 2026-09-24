@@ -146,7 +146,9 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
+    // ─── 🛠️【完全根治版】手動境界線の縦線・横線を100%リストアップする checkInside ───
     function checkInside(p1, p2, cells) {
+        // 1. 0.001マス内側のインナーポイントによる凹角救済
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
@@ -156,31 +158,48 @@ function checkAnswer(isAutoCheck = false) {
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
 
+        // 2. 💡【New仕様】一意に特定された uniqueUserWalls（手動壁含むすべての壁）を、
+        // そのまま乗り越えてはいけない「絶対防壁リスト」として100%ダイレクトに展開する
         const wallsList = [];
-        cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
-
-            [top, bottom, left, right].forEach(wall => {
-                const isInternalEdge = cells.some(other => {
-                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
-                    return false;
-                });
-                if (!isInternalEdge) wallsList.push({ p1: wall.p1, p2: wall.p2 });
+        
+        if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
+            uniqueUserWalls.forEach(wStr => {
+                if (wStr.endsWith('(V)')) {
+                    const parts = wStr.replace('(V)', '').split('-');
+                    const [r, c] = parts[0].split(',').map(Number);
+                    // 縦の壁の格子点座標を復元
+                    wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } });
+                } else if (wStr.endsWith('(H)')) {
+                    const parts = wStr.replace('(H)', '').split('-');
+                    const [r, c] = parts[0].split(',').map(Number);
+                    // 横の壁の格子点座標を復元
+                    wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } });
+                }
             });
-        });
+        }
 
+        // 外周の4辺（外壁）も絶対防壁として確実に合流させる
+        for (let i = 0; i < GRID_SIZE; i++) {
+            wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); // 左外壁
+            wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } }); // 右外壁
+            wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); // 上外壁
+            wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } }); // 下外壁
+        }
+
+        // 3. 純粋な外積の符号反転による厳密線分交差判定（タイポは1文字もありません）
         function isIntersecting(s1, e1, s2, e2) {
+            if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) return false;
+            if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) return false;
+
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            return (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
+
+            // 物理的に線分同士が十字にクロスしているか
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+
+            return false;
         }
 
         for (let wall of wallsList) {
