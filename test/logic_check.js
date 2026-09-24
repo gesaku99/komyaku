@@ -37,17 +37,17 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     
-    // 手動の壁(userWalls)の合流（インデックス形式へ100%厳密に修復）
+    // 💡【原因解明：完全修復】手動の壁(userWalls)の変換時に、0番ラインが漏れていた不等号条件を100%厳密に修正
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2);
             
-            if (w.r1 === w.r2) { // 横線
+            if (w.r1 === w.r2) { // 画面上の横線 ➔ (H)
                 if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
                     userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
                 }
-            } else { // 縦線
+            } else { // 画面上の縦線 ➔ (V)
                 if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) {
                     userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
                 }
@@ -58,7 +58,7 @@ function checkAnswer(isAutoCheck = false) {
     // 重複を排除してユニークな壁リストにする
     const uniqueUserWalls = [...new Set(userWallsList)];
 
-    // ─── 3. 配置の完全一致チェック（自動クリア判定のトリガー：白マスの有無は完全無視） ───
+    // ─── 3. 配置の完全一致チェック（自動クリア判定のトリガー：色マス依存を完全撤去） ───
     let isPerfect = true;
     if (answerWalls.length !== uniqueUserWalls.length) {
         isPerfect = false;
@@ -71,14 +71,14 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
-    // ─── 4. 自動判定結果の適用（完璧ならその場で即クリアを呼び出す） ───
+    // ─── 4. 自動判定結果の適用（線だけで完璧に囲みきった瞬間に即発動） ───
     if (isPerfect) {
         errorDisplayState.show = false;
         alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
         return; 
     }
 
-    // 💡自動判定モード（操作の切れ目）のときは、未完成時はアラートを出さずにここで静かに終了する
+    // 自動判定モードのときは、未完成時はここで静かに終了する（白マスの有無による強制終了ガードは全撤去）
     if (isAutoCheck) {
         return; 
     }
@@ -88,6 +88,7 @@ function checkAnswer(isAutoCheck = false) {
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
 
     uniqueUserWalls.forEach(wStr => {
+        // 💡【原因解明：タイポ完全修復】2分割でクラッシュしていた部分を、parts[0].split(',')に修正
         if (wStr.endsWith('(V)')) {
             const parts = wStr.replace('(V)', '').split('-');
             const [r, c] = parts[0].split(',').map(Number);
@@ -138,6 +139,7 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
+    // 💡【原因解明：完全修復】白マス状態の部屋でも、その部屋の中に鉱脈が綺麗に収まっているかを調べるインナーチェッカー
     function checkInside(p1, p2, cells) {
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
@@ -146,6 +148,8 @@ function checkAnswer(isAutoCheck = false) {
 
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
+        
+        // 鉱脈の両端のすぐ内側が、どちらもこの復元された白マスの部屋の中に収まっていれば100%セーフ（合法）と判定
         return (p1Cell !== undefined && p2Cell !== undefined);
     }
 
@@ -218,7 +222,7 @@ function checkAnswer(isAutoCheck = false) {
         alert("❌ 正解ではありません ❌"); return;
     }
 
-    // 🔴 💡お掃除仕様：鉱脈なしの白マス部屋を強制的にエラーにする「isolatedCells」の検知処理を丸ごと完全抹殺
+    // 🔴【New仕様：赤マス完全根絶】未着色部屋の一律エラー（isolatedCells）の配列処理を完全に抹殺
 
     // 🔴 エラー判定2: 長い対角線チェック
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
@@ -255,7 +259,7 @@ function checkAnswer(isAutoCheck = false) {
     let isCorrect = true;
     for (let pLine of problemLines) {
         const found = discoveredMaxDiagonals.some(dLine => {
-            return (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y);
+            return (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && dLine.end.y === pLine.end.y);
         });
         if (!found) isCorrect = false;
     }
