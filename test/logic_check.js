@@ -1,88 +1,160 @@
+// ★正誤判定・採点ロジックのみを完全に隔離した安全な専用ファイル
+// 引数 isAutoCheck が true のときは自動判定モード（未完成時は沈黙）、false のときは手動Checkボタンモード
 function checkAnswer(isAutoCheck = false) {
     clearErrorDisplay(); 
+
+    // ─── 1. 正解（answerGrid）のすべての内壁境界線をリストアップ ───
     const answerWalls = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (c < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r][c + 1]) answerWalls.push(`${r},${c}-${r},${c+1}(V)`);
-            if (r < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r + 1][c]) answerWalls.push(`${r},${c}-${r+1},${c}(H)`);
+            if (c < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r][c + 1]) {
+                answerWalls.push(`${r},${c}-${r},${c+1}(V)`);
+            }
+            if (r < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r + 1][c]) {
+                answerWalls.push(`${r},${c}-${r+1},${c}(H)`);
+            }
         }
     }
+
+    // ─── 2. ユーザー画面の現在の境界線（自動内壁 ＋ 手動壁）をリストアップ ───
     const userWallsList = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (c < GRID_SIZE - 1) {
-                const c1 = userGrid[r][c]; const c2 = userGrid[r][c + 1];
-                if ((c1 !== null || c2 !== null) && c1 !== c2) userWallsList.push(`${r},${c}-${r},${c+1}(V)`);
+                const c1 = userGrid[r][c];
+                const c2 = userGrid[r][c + 1];
+                if ((c1 !== null || c2 !== null) && c1 !== c2) {
+                    userWallsList.push(`${r},${c}-${r},${c+1}(V)`);
+                }
             }
             if (r < GRID_SIZE - 1) {
-                const r1 = userGrid[r][c]; const r2 = userGrid[r + 1][c];
-                if ((r1 !== null || r2 !== null) && r1 !== r2) userWallsList.push(`${r},${c}-${r+1},${c}(H)`);
+                const r1 = userGrid[r][c];
+                const r2 = userGrid[r + 1][c];
+                if ((r1 !== null || r2 !== null) && r1 !== r2) {
+                    userWallsList.push(`${r},${c}-${r+1},${c}(H)`);
+                }
             }
         }
     }
+    
+    // 💡【New仕様・完全展開】手動壁(userWalls)がまたぐ全てのマス目の境界を、100%漏れなくシステム共通形式へ分解・登録
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
-            const minR = Math.min(w.r1, w.r2); const minC = Math.min(w.c1, w.c2);
-            if (w.r1 === w.r2) {
-                if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
-            } else {
-                if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
+            const minR = Math.min(w.r1, w.r2);
+            const maxR = Math.max(w.r1, w.r2);
+            const minC = Math.min(w.c1, w.c2);
+            const maxC = Math.max(w.c1, w.c2);
+            
+            if (w.r1 === w.r2) { // 横線 ➔ マス目を隔てる (H) の壁
+                const r = minR;
+                if (r > 0 && r <= GRID_SIZE) {
+                    for (let c = minC; c < maxC; c++) {
+                        userWallsList.push(`${r-1},${c}-${r},${c}(H)`);
+                    }
+                }
+            } else { // 縦線 ➔ マス目を隔てる (V) の壁
+                const c = minC;
+                if (c > 0 && c <= GRID_SIZE) {
+                    for (let r = minR; r < maxR; r++) {
+                        userWallsList.push(`${r},${c-1}-${r},${c}(V)`);
+                    }
+                }
             }
         });
     }
+
+    // 重複を排除してユニークな壁リストにする
     const uniqueUserWalls = [...new Set(userWallsList)];
+
+    // ─── 3. 配置の完全一致チェック（手動＋自動の「和」が正解と完全一致するか：白マスは完全無視） ───
     let isPerfect = true;
-    if (answerWalls.length !== uniqueUserWalls.length) { isPerfect = false; } 
-    else {
-        for (let aw of answerWalls) { if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; } }
+    if (answerWalls.length !== uniqueUserWalls.length) {
+        isPerfect = false;
+    } else {
+        for (let aw of answerWalls) {
+            if (!uniqueUserWalls.includes(aw)) {
+                isPerfect = false;
+                break;
+            }
+        }
     }
+
+    // ─── 4. 自動判定結果の適用（線だけで完璧に囲みきった瞬間に即発動） ───
     if (isPerfect) {
         errorDisplayState.show = false;
         alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
         return; 
     }
-    if (isAutoCheck) return; 
 
+    if (isAutoCheck) return; 
+    // ─── 5. 【手動Checkボタン専用】手動境界線から「実際の部屋（白マス含む）」を100%正確にBFS復元 ───
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+
     uniqueUserWalls.forEach(wStr => {
-        if (wStr.endsWith('(V)')) {
-            const parts = wStr.replace('(V)', '').split('-');
-            const [r, c] = parts[1].split(',').map(Number); // 💡【大バグ完全根治】parts[1]を正確に指定
-            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) hasVWall[r][c] = true;
-        } else if (wStr.endsWith('(H)')) {
-            const parts = wStr.replace('(H)', '').split('-');
-            const [r, c] = parts[1].split(',').map(Number); // 💡【大バグ完全根治】parts[1]を正確に指定
-            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) hasHWall[r][c] = true;
+        // 💡【型エラー・クラッシュの完全治療】replace後の文字列に対して、安全にsplit処理を適用
+        const type = wStr.endsWith('(V)') ? 'V' : 'H';
+        const cleanStr = wStr.replace('(V)', '').replace('(H)', '');
+        const parts = cleanStr.split('-');
+        if (parts.length === 2) {
+            const [r, c] = parts[0].split(',').map(Number);
+            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                if (type === 'V') {
+                    hasVWall[r][c] = true;
+                } else {
+                    hasHWall[r][c] = true;
+                }
+            }
         }
     });
-    const blocks = {}; const visited = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+
+    const blocks = {};
+    const visited = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     let roomCounter = 0;
+
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (!visited[r][c]) {
-                const roomCells = []; const queue = [{ r, c }]; visited[r][c] = true;
+                const roomCells = [];
+                const queue = [{ r, c }];
+                visited[r][c] = true;
+
                 while (queue.length > 0) {
-                    const curr = queue.shift(); roomCells.push(curr);
+                    const curr = queue.shift();
+                    roomCells.push(curr);
+
                     const dirs = [
-                        { dr: -1, dc: 0, type: 'H', wR: curr.r - 1, wC: curr.c }, { dr: 1, dc: 0, type: 'H', wR: curr.r, wC: curr.c },     
-                        { dr: 0, dc: -1, type: 'V', wR: curr.r, wC: curr.c - 1 }, { dr: 0, dc: 1, type: 'V', wR: curr.r, wC: curr.c }      
+                        { dr: -1, dc: 0, type: 'H', wR: curr.r - 1, wC: curr.c }, 
+                        { dr: 1, dc: 0, type: 'H', wR: curr.r, wC: curr.c },     
+                        { dr: 0, dc: -1, type: 'V', wR: curr.r, wC: curr.c - 1 }, 
+                        { dr: 0, dc: 1, type: 'V', wR: curr.r, wC: curr.c }      
                     ];
+
                     for (let d of dirs) {
                         const nr = curr.r + d.dr; const nc = curr.c + d.dc;
                         if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && !visited[nr][nc]) {
                             const isBlocked = (d.type === 'V') ? hasVWall[d.wR][d.wC] : hasHWall[d.wR][d.wC];
-                            if (!isBlocked) { visited[nr][nc] = true; queue.push({ r: nr, c: nc }); }
+                            if (!isBlocked) {
+                                visited[nr][nc] = true;
+                                queue.push({ r: nr, c: nc });
+                            }
                         }
                     }
                 }
-                blocks[`room_block_${roomCounter}`] = roomCells; roomCounter++;
+                const blockKey = `room_block_${roomCounter}`;
+                blocks[blockKey] = roomCells;
+                roomCounter++;
             }
         }
     }
+
+    // 部屋の内側チェック用の軽量ヘルパー関数
     function checkInside(p1, p2, cells) {
-        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
-        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
+        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
+        const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
+        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001;
+        const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
+
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         return (p1Cell !== undefined && p2Cell !== undefined);
@@ -96,6 +168,7 @@ function checkAnswer(isAutoCheck = false) {
         }
         return false;
     }
+
     function checkEdge(p1, p2, cells) {
         if (p1.x !== p2.x && p1.y !== p2.y) return false;
         const minX = Math.min(p1.x, p2.x); const maxX = Math.max(p1.x, p2.x);
@@ -114,6 +187,7 @@ function checkAnswer(isAutoCheck = false) {
             return true;
         }
     }
+
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const rawV = new Set();
@@ -127,6 +201,8 @@ function checkAnswer(isAutoCheck = false) {
         });
         blockVerticesMap[blockKey] = vList;
     }
+
+    // 🔴 エラー判定1: 端点カドチェック
     const badVertices = [];
     problemLines.forEach(pLine => {
         let trueParentColorId = null;
@@ -139,6 +215,7 @@ function checkAnswer(isAutoCheck = false) {
     });
     if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
 
+    // 🔴 エラー判定2: 長い対角線チェック
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
