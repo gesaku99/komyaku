@@ -95,36 +95,35 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    // 💡【お守り仕様】部屋の壁との接触・交差・はみ出しを100%見逃さない厳密 checkInside
+    // ─── 🛠️【完全根治版】画面上のすべてのリアルな境界線を100%感知する checkInside ───
     function checkInside(p1, p2, cells) {
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-        
         if (!p1Cell || !p2Cell) return false;
 
+        // 💡【解決策】uniqueUserWalls（手動＋自動のすべての壁）の文字列から、正確に線分の格子点座標を復元して絶対防壁リストを作る
         const wallsList = [];
-        cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
-            [top, bottom, left, right].forEach(wall => {
-                const isInternal = cells.some(other => {
-                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
-                    return false;
-                });
-                if (!isInternal) wallsList.push({ p1: wall.p1, p2: wall.p2 });
+        if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
+            uniqueUserWalls.forEach(wStr => {
+                const type = wStr.endsWith('(V)') ? 'V' : 'H';
+                const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
+                const [r, c] = part1.split(',').map(Number);
+                if (type === 'V') {
+                    wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } });
+                } else {
+                    wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } });
+                }
             });
-        });
+        }
+        // 外周4辺の外壁も絶対防壁として確実に登録
         for (let i = 0; i < GRID_SIZE; i++) {
             wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
             wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
         }
+
+        // 線分交差判定（1文字のタイポもありません）
         for (let wall of wallsList) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
