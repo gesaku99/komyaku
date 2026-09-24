@@ -21,47 +21,68 @@ function checkAnswer(isAutoCheck = false) {
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (c < GRID_SIZE - 1) {
-                const c1 = userGrid[r][c]; const c2 = userGrid[r][c + 1];
-                if ((c1 !== null || c2 !== null) && c1 !== c2) { userWallsList.push(`${r},${c}-${r},${c+1}(V)`); }
+                const c1 = userGrid[r][c];
+                const c2 = userGrid[r][c + 1];
+                if ((c1 !== null || c2 !== null) && c1 !== c2) {
+                    userWallsList.push(`${r},${c}-${r},${c+1}(V)`);
+                }
             }
             if (r < GRID_SIZE - 1) {
-                const r1 = userGrid[r][c]; const r2 = userGrid[r + 1][c];
-                if ((r1 !== null || r2 !== null) && r1 !== r2) { userWallsList.push(`${r},${c}-${r+1},${c}(H)`); }
+                const r1 = userGrid[r][c];
+                const r2 = userGrid[r + 1][c];
+                if ((r1 !== null || r2 !== null) && r1 !== r2) {
+                    userWallsList.push(`${r},${c}-${r+1},${c}(H)`);
+                }
             }
         }
     }
     
-    // 手動の壁(userWalls)の合流インデックスの厳密同期
+    // 手動の壁(userWalls)の合流（インデックス形式へ100%厳密に修復）
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
-            const minR = Math.min(w.r1, w.r2); const minC = Math.min(w.c1, w.c2);
-            if (w.r1 === w.r2) {
-                if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) { userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`); }
-            } else {
-                if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) { userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`); }
+            const minR = Math.min(w.r1, w.r2);
+            const minC = Math.min(w.c1, w.c2);
+            
+            if (w.r1 === w.r2) { // 横線
+                if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
+                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
+                }
+            } else { // 縦線
+                if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) {
+                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
+                }
             }
         });
     }
 
+    // 重複を排除してユニークな壁リストにする
     const uniqueUserWalls = [...new Set(userWallsList)];
 
-    // ─── 3. 配置の完全一致チェック（💡お守り：白マスの有無による未完成判定を完全撤去！） ───
+    // ─── 3. 配置の完全一致チェック（自動クリア判定のトリガー：白マスの有無は完全無視） ───
     let isPerfect = true;
     if (answerWalls.length !== uniqueUserWalls.length) {
         isPerfect = false;
     } else {
         for (let aw of answerWalls) {
-            if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; }
+            if (!uniqueUserWalls.includes(aw)) {
+                isPerfect = false;
+                break;
+            }
         }
     }
 
+    // ─── 4. 自動判定結果の適用（完璧ならその場で即クリアを呼び出す） ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り切り分けられました！");
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
         return; 
     }
 
-    if (isAutoCheck) return; // 自動判定モード時はここで静かに終了
+    // 💡自動判定モード（操作の切れ目）のときは、未完成時はアラートを出さずにここで静かに終了する
+    if (isAutoCheck) {
+        return; 
+    }
+
     // ─── 5. 【手動Checkボタン専用】境界線から「実際の部屋の塊」を自動復元する高度なBFS ───
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
@@ -117,9 +138,6 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-
-    // 💡【New仕様】複雑な線分交差判定を100%全撤去！
-    // 鉱脈のインナーポイント(端から0.001マス内側)の2点ともが、「同じ部屋(cells)」に包まれているかだけを見る超軽量ロジック
     function checkInside(p1, p2, cells) {
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
@@ -128,10 +146,9 @@ function checkAnswer(isAutoCheck = false) {
 
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-        
-        // 鉱脈の両端のすぐ内側が、どちらもこの部屋のマスの中に収まっていれば100%合法（境界線を跨いでいれば片方が外へはみ出るためfalseになる）
         return (p1Cell !== undefined && p2Cell !== undefined);
     }
+
     function checkTouching(p1, p2, vList) {
         for (let v of vList) {
             if ((v.x === p1.x && v.y === p1.y) || (v.x === p2.x && v.y === p2.y)) continue;
@@ -201,21 +218,9 @@ function checkAnswer(isAutoCheck = false) {
         alert("❌ 正解ではありません ❌"); return;
     }
 
-    // 🔴 エラー判定2: 鉱脈なしの空っぽ部屋チェック
-    const activeBlockIds = new Set();
-    for (let blockKey in blocks) {
-        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
-    }
-    if (Object.keys(blocks).length !== activeBlockIds.size) {
-        const targetIsolatedCells = [];
-        for (let blockKey in blocks) {
-            if (!activeBlockIds.has(blockKey)) { blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
-        }
-        errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle();
-        alert("❌ 正解ではありません ❌"); return;
-    }
+    // 🔴 💡お掃除仕様：鉱脈なしの白マス部屋を強制的にエラーにする「isolatedCells」の検知処理を丸ごと完全抹殺
 
-    // 🔴 エラー判定3: 長い対角線チェック
+    // 🔴 エラー判定2: 長い対角線チェック
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
 
     for (let blockKey in blocks) {
