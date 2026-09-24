@@ -115,17 +115,30 @@ function handleActionMove(x, y) {
     }
 }
 
+// ─── 🛠️【シングルクリック完全修復版】タイポを根絶し、タップ着色・消去が最速で連動する handleActionEnd ───
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
+        
+        // 壁引きモードでドラッグ中に実際に壁が動いた場合、履歴スタックに記録
+        if (hasMovedInSession) {
+            clearErrorDisplay();
+            undoStack.push({
+                type: 'wall_step',
+                from: wallSnapshotBeforeDrag,
+                to: userWalls.map(w => ({ ...w }))
+            });
+            redoStack.length = 0;
+        }
     } else if (startCell && !hasMovedInSession && !assistStartV) {
+        // 💡【ここを完全修復！】定義されていない cell ではなく、正しく startCell を指定して処理を完結
         const oldColor = userGrid[startCell.r][startCell.c];
         let newColor = currentSelectedColor;
         if (oldColor !== null) newColor = null; 
         if (oldColor !== newColor) {
             userGrid[startCell.r][startCell.c] = newColor;
-            recordChange(cell.r, cell.c, oldColor, newColor);
+            recordChange(startCell.r, startCell.c, oldColor, newColor);
             cleanUserWalls(); 
         }
     }
@@ -134,11 +147,15 @@ function handleActionEnd() {
     startCell = null;
     hasMovedInSession = false;
     isErasingMode = false;
+    
     assistStartV = null;
     assistCurrentV = null;
-    drawPuzzle(); 
 
-    setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
+    drawPuzzle(); // ➔ エラーを回避してここに100%確実に処理が到達するため、画面が即座に更新されます！
+
+    setTimeout(() => {
+        if (typeof checkAnswer === 'function') checkAnswer(true);
+    }, 0);
 }
 
 function undo() {
