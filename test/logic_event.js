@@ -26,12 +26,16 @@ function cleanUserWalls() {
     userWalls = userWalls.filter(w => isWallEditable(w));
 }
 
+// ★追加：ドラッグ開始時の手動壁の状態を一時保存する変数
+let wallSnapshotBeforeDrag = [];
+
 function handleActionStart(x, y) {
     const cell = getCellFromCoords(x, y);
-    const nearestV = getNearestVertex(x, y); // タップ・クリック位置の最寄りの格子点を調べる
+    const nearestV = getNearestVertex(x, y);
 
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】
+        // ✏️【壁引きモード】ドラッグ開始前の壁の配列を深くコピーして記憶
+        wallSnapshotBeforeDrag = userWalls.map(w => ({ ...w }));
         lastIntersectedV = nearestV;
         startCell = cell;
         hasMovedInSession = false;
@@ -51,7 +55,7 @@ function handleActionStart(x, y) {
 
 function handleActionMove(x, y) {
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】の処理
+        // ✏️【壁引きモード】
         const currentV = getNearestVertex(x, y);
         if (currentV && lastIntersectedV) {
             const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
@@ -73,12 +77,9 @@ function handleActionMove(x, y) {
         // 🎨【通常の色塗りモード】
         if (assistStartV) {
             const currentV = getNearestVertex(x, y);
-            if (currentV) {
-                assistCurrentV = currentV;
-            }
+            if (currentV) assistCurrentV = currentV;
             drawPuzzle(); 
         }
-
         const cell = getCellFromCoords(x, y);
         if (cell && startCell && !assistStartV) {
             if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
@@ -93,70 +94,68 @@ function handleActionMove(x, y) {
         }
     }
 }
-function handleActionEnd() {
-    if (currentSelectedColor === 9) {
-        lastIntersectedV = null;
-        if (typeof cleanUserWalls === 'function') cleanUserWalls();
-    } else if (startCell && !hasMovedInSession && !assistStartV) {
-        const oldColor = userGrid[startCell.r][startCell.c];
-        let newColor = currentSelectedColor;
-        if (oldColor !== null) newColor = null; 
-        if (oldColor !== newColor) {
-            userGrid[startCell.r][startCell.c] = newColor;
-            recordChange(startCell.r, startCell.c, oldColor, newColor);
-            cleanUserWalls(); 
-        }
+
+// 💡【New仕様】handleActionEnd の末尾で、壁に変化があればUndoスタックへ記録をプッシュ
+const originalHandleActionEnd = handleActionEnd;
+handleActionEnd = function() {
+    if (currentSelectedColor === 9 && hasMovedInSession) {
+        clearErrorDisplay();
+        undoStack.push({
+            type: 'wall',
+            from: wallSnapshotBeforeDrag,
+            to: userWalls.map(w => ({ ...w }))
+        });
+        redoStack.length = 0;
     }
-    
-    updateHistoryButtons();
-    startCell = null;
-    hasMovedInSession = false;
-    isErasingMode = false;
-    
-    assistStartV = null;
-    assistCurrentV = null;
-
-    drawPuzzle(); 
-
-    setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer(true);
-    }, 0);
-}
+    originalHandleActionEnd();
+};
 
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
-    redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-    userGrid[change.r][change.c] = change.from;
-    while (undoStack.length > 0 && undoStack[undoStack.length - 1].to === 0 && change.to === 0) {
-        const nextChange = undoStack.pop();
-        redoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
-        userGrid[nextChange.r][nextChange.c] = nextChange.from;
+    
+    if (change.type === 'wall') {
+        // ✏️ 壁引きのUndo処理
+        redoStack.push({ type: 'wall', from: change.to, to: change.from });
+        userWalls = change.from.map(w => ({ ...w }));
+    } else {
+        // 🎨 色塗りのUndo処理
+        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
+        while (undoStack.length > 0 && undoStack[undoStack.length - 1].to === 0 && change.to === 0) {
+            const nextChange = undoStack.pop();
+            redoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
+            userGrid[nextChange.r][nextChange.c] = nextChange.from;
+        }
     }
     drawPuzzle(); 
     updateHistoryButtons();
-    setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer(true);
-    }, 0);
+    setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
 function redo() {
     if (redoStack.length === 0) return;
     clearErrorDisplay();
     const change = redoStack.pop();
-    undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-    userGrid[change.r][change.c] = change.from;
-    while (redoStack.length > 0 && redoStack[redoStack.length - 1].from === 0 && change.from === 0) {
-        const nextChange = redoStack.pop();
-        undoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
-        userGrid[nextChange.r][nextChange.c] = nextChange.from;
+    
+    if (change.type === 'wall') {
+        // ✏️ 壁引きのRedo処理
+        undoStack.push({ type: 'wall', from: change.to, to: change.from });
+        userWalls = change.from.map(w => ({ ...w }));
+    } else {
+        // 🎨 色塗りのRedo処理
+        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
+        while (undoStack.length > 0 && undoStack[undoStack.length - 1].from === 0 && change.from === 0) {
+            const nextChange = redoStack.pop();
+            undoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
+            userGrid[nextChange.r][nextChange.c] = nextChange.from;
+        }
     }
     drawPuzzle(); 
     updateHistoryButtons();
-    setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer(true);
-    }, 0);
+    setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
 function getNearestVertex(x, y) {
