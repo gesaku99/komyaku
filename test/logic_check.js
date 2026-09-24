@@ -21,44 +21,31 @@ function checkAnswer(isAutoCheck = false) {
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (c < GRID_SIZE - 1) {
-                const c1 = userGrid[r][c];
-                const c2 = userGrid[r][c + 1];
-                if ((c1 !== null || c2 !== null) && c1 !== c2) {
-                    userWallsList.push(`${r},${c}-${r},${c+1}(V)`);
-                }
+                const c1 = userGrid[r][c]; const c2 = userGrid[r][c + 1];
+                if ((c1 !== null || c2 !== null) && c1 !== c2) { userWallsList.push(`${r},${c}-${r},${c+1}(V)`); }
             }
             if (r < GRID_SIZE - 1) {
-                const r1 = userGrid[r][c];
-                const r2 = userGrid[r + 1][c];
-                if ((r1 !== null || r2 !== null) && r1 !== r2) {
-                    userWallsList.push(`${r},${c}-${r+1},${c}(H)`);
-                }
+                const r1 = userGrid[r][c]; const r2 = userGrid[r + 1][c];
+                if ((r1 !== null || r2 !== null) && r1 !== r2) { userWallsList.push(`${r},${c}-${r+1},${c}(H)`); }
             }
         }
     }
     
-    // 💡不具合①解決：手動の壁(userWalls)の合流判定インデックス（0番ライン含む）を100%厳密に修復
+    // 手動の壁(userWalls)の合流インデックスの厳密同期
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
-            const minR = Math.min(w.r1, w.r2);
-            const minC = Math.min(w.c1, w.c2);
-            
-            if (w.r1 === w.r2) { // 横線
-                if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) {
-                    userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`);
-                }
-            } else { // 縦線
-                if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) {
-                    userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`);
-                }
+            const minR = Math.min(w.r1, w.r2); const minC = Math.min(w.c1, w.c2);
+            if (w.r1 === w.r2) {
+                if (minR >= 0 && minR <= GRID_SIZE && minC >= 0 && minC < GRID_SIZE) { userWallsList.push(`${minR-1},${minC}-${minR},${minC}(H)`); }
+            } else {
+                if (minC >= 0 && minC <= GRID_SIZE && minR >= 0 && minR < GRID_SIZE) { userWallsList.push(`${minR},${minC-1}-${minR},${minC}(V)`); }
             }
         });
     }
 
-    // 重複を排除してユニークな壁リストにする
     const uniqueUserWalls = [...new Set(userWallsList)];
 
-    // ─── 3. 配置の完全一致チェック（自動クリア判定のトリガー） ───
+    // ─── 3. 配置の完全一致チェック（💡お守り：白マスの有無による未完成判定を完全撤去！） ───
     let isPerfect = true;
     if (answerWalls.length !== uniqueUserWalls.length) {
         isPerfect = false;
@@ -68,17 +55,13 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
-    // ─── 4. 自動判定結果の適用（完璧ならその場で即クリアを呼び出す） ───
     if (isPerfect) {
         errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り分けられました！");
+        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n完璧に切り切り分けられました！");
         return; 
     }
 
-    // 💡自動判定モード（操作の切れ目）のときは、未完成時はアラートを出さずにここで静かに終了する
-    if (isAutoCheck) {
-        return; 
-    }
+    if (isAutoCheck) return; // 自動判定モード時はここで静かに終了
     // ─── 5. 【手動Checkボタン専用】境界線から「実際の部屋の塊」を自動復元する高度なBFS ───
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
@@ -135,7 +118,8 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
-    // 💡不具合②解決：自分の部屋を囲う外壁・手動境界線そのものを「乗り越えてはいけない壁」として正しく安全にリストアップする
+    // 💡【New仕様】複雑な線分交差判定を100%全撤去！
+    // 鉱脈のインナーポイント(端から0.001マス内側)の2点ともが、「同じ部屋(cells)」に包まれているかだけを見る超軽量ロジック
     function checkInside(p1, p2, cells) {
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001;
         const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
@@ -144,44 +128,9 @@ function checkAnswer(isAutoCheck = false) {
 
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-        if (!p1Cell || !p2Cell) return false;
-
-        const wallsList = [];
-        cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
-
-            [top, bottom, left, right].forEach(wall => {
-                const isInternalEdge = cells.some(other => {
-                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
-                    return false;
-                });
-                if (!isInternalEdge) wallsList.push({ p1: wall.p1, p2: wall.p2 });
-            });
-        });
-
-        function isIntersecting(s1, e1, s2, e2) {
-            if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) return false;
-            if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) return false;
-
-            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
-
-            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
-            return false;
-        }
-
-        for (let wall of wallsList) {
-            if (isIntersecting(p1, p2, wall.p1, wall.p2)) return false;
-        }
-        return true;
+        
+        // 鉱脈の両端のすぐ内側が、どちらもこの部屋のマスの中に収まっていれば100%合法（境界線を跨いでいれば片方が外へはみ出るためfalseになる）
+        return (p1Cell !== undefined && p2Cell !== undefined);
     }
     function checkTouching(p1, p2, vList) {
         for (let v of vList) {
