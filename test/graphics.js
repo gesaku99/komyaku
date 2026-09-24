@@ -29,7 +29,11 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.font = '26px "Tenor Sans", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    let titleText = `Day${dayValue}`;
+    if (dayValue === "XXX"){
+        let titleText = `Example`;
+    }else{
+        let titleText = `Day${dayValue}`;
+    }
     if (isSolutionImage) titleText += " Solution";
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 

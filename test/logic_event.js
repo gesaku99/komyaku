@@ -37,7 +37,6 @@ function handleActionStart(x, y) {
         hasMovedInSession = false;
     } else {
         // 🎨【通常の色塗りモード】
-        // ★新仕様：通常の色塗りモードのとき、もし「格子点（マスの角）」からドラッグが開始されたら、アシスト始点として記憶
         if (nearestV) {
             assistStartV = nearestV;
             assistCurrentV = nearestV;
@@ -72,17 +71,15 @@ function handleActionMove(x, y) {
         }
     } else {
         // 🎨【通常の色塗りモード】
-        // ★追加：アシストモード作動中（格子点スタート）なら、リアルタイムで現在の終点格子点を追従・記憶
         if (assistStartV) {
             const currentV = getNearestVertex(x, y);
             if (currentV) {
                 assistCurrentV = currentV;
             }
-            drawPuzzle(); // アシスト線をリアルタイム描画するために毎フレームCanvasを更新
+            drawPuzzle(); 
         }
 
         const cell = getCellFromCoords(x, y);
-        // ★修正：アシスト作動中（格子点からのドラッグ時）は、背景の色塗りが誤って暴発しないようにガードをかけます
         if (cell && startCell && !assistStartV) {
             if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
             const oldColor = userGrid[cell.r][cell.c];
@@ -96,15 +93,11 @@ function handleActionMove(x, y) {
         }
     }
 }
-
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
-        // ✏️【壁引きモード】終了時の処理
         lastIntersectedV = null;
-        // 壁引きドラッグが終わったので、この瞬間に手動壁リスト(userWalls)の自動お掃除を実行
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
     } else if (startCell && !hasMovedInSession && !assistStartV) {
-        // 🎨シングルタップ時の色トグル処理（格子点ドラッグではない、純粋な1マスタップ時のみ発動）
         const oldColor = userGrid[startCell.r][startCell.c];
         let newColor = currentSelectedColor;
         if (oldColor !== null) newColor = null; 
@@ -120,21 +113,16 @@ function handleActionEnd() {
     hasMovedInSession = false;
     isErasingMode = false;
     
-    // アシストの記憶を綺麗にリセット
     assistStartV = null;
     assistCurrentV = null;
 
-    // ─── ✨【描画遅延の解消 ＆ 色・手動壁の両対応自動正解チェック】 ───
-    // 1. まず、最後の1マスや最後の1本の手動壁をキャンバス上へ完全に描き切る
     drawPuzzle(); 
 
-    // 2. 0ミリ秒遅らせる非同期タイマーを挟み、ブラウザが画面を100%更新し終えた直後に判定を起動する
     setTimeout(() => {
         if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
 }
-// ★重要：既存の source: 8 側にあった undo / redo と重複して誤作動するのを防ぐため、
-// ここの操作連携ファイル側の関数が実行された際にも、完璧に同期して裏で自動チェックを走らせます。
+
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
@@ -146,12 +134,8 @@ function undo() {
         redoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
         userGrid[nextChange.r][nextChange.c] = nextChange.from;
     }
-
-    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
     drawPuzzle(); 
     updateHistoryButtons();
-
-    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
     setTimeout(() => {
         if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
@@ -168,25 +152,20 @@ function redo() {
         undoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
         userGrid[nextChange.r][nextChange.c] = nextChange.from;
     }
-
-    // 先に最後の1マスの着色をキャンバス上へ完全に描き切る
     drawPuzzle(); 
     updateHistoryButtons();
-
-    // 0ミリ秒遅らせる非同期処理（これによりブラウザが先に100%画面を更新する）
     setTimeout(() => {
         if (typeof checkAnswer === 'function') checkAnswer(true);
     }, 0);
 }
 
-// ★追加：指の現在地から、半径25px以内にある最も近い「格子点（マスの角）」を返す超強力なマグネットセンサー
 function getNearestVertex(x, y) {
     let nearestV = null;
-    let minDistance = 25; // 吸着範囲（25ピクセル以内なら吸い付く）
+    let minDistance = 25; 
     for (let r = 0; r <= GRID_SIZE; r++) {
         for (let c = 0; c <= GRID_SIZE; c++) {
             const vx = OFFSET + c * CELL_PIXEL;
-            const vy = OFFSET + r * CELL_PIXEL + 30; // titleBarHeight = 30
+            const vy = OFFSET + r * CELL_PIXEL + 30; 
             const distance = Math.sqrt((x - vx) ** 2 + (y - vy) ** 2);
             if (distance < minDistance) {
                 minDistance = distance;
@@ -197,21 +176,27 @@ function getNearestVertex(x, y) {
     return nearestV;
 }
 
+// ─── 📱 iPhoneお守り：マウス＆タッチイベントの完全な非アクティブ化とブラウザ既定動作の相殺 ───
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; isDrawing = true; const rect = canvas.getBoundingClientRect(); handleActionStart(e.clientX - rect.left, e.clientY - rect.top); });
 canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); handleActionMove(e.clientX - rect.left, e.clientY - rect.top); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
+// 💡 修正仕様：{ passive: false } を明示して、iPhone Safariによるタッチキャンセルを完全に先回りして破壊・防止する
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); isDrawing = true; const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches[0]; 
     handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
-});
+}, { passive: false });
+
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches[0]; 
     handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
 }, { passive: false });
-canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
+
+canvas.addEventListener('touchend', function(e) { 
+    e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } 
+}, { passive: false });
 
 function createPalette() {
     paletteContainer.innerHTML = ''; 
@@ -222,27 +207,17 @@ function createPalette() {
         btn.style.backgroundColor = COLOR_PALETTE[i]; 
         btn.onclick = () => { currentSelectedColor = i; createPalette(); };
         
-        // ★新仕様：どの端末でも向きが変わらない高精度なSVG鉛筆アイコンへと強制トランスフォーム！
         if (i === 9) {
-            btn.innerText = ''; // 文字は消去
+            btn.innerText = ''; 
             btn.style.display = 'flex';
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
-            
-            // 32pxの丸枠いっぱいに、直角にカチッと折れ曲がる境界線と巨大なペン先をスタイリッシュに配置
             btn.innerHTML = `
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- ①左上(5.00, 4.00)から下部余白(5.00, 21.00)へ下ろし、右へ(11.50, 21.00)まで引いた太さ2.30の境界線 -->
                     <path d="M 5.00 4.00 L 5.00 21.00 L 11.50 21.00" stroke-width="2.30"></path>
-                    
-                    <!-- ②【立体ノックボタン】1番目と4番目の短辺中点が、胴体後端中点(18.50, 9.10)と100%完全同軸ドッキングするパーツ -->
-                    <path d="M 17.65 8.60 L 19.15 6.05 L 20.85 7.05 L 19.35 9.60 Z" fill="#333333" stroke="#222222"></path>
-
-                    <!-- ③【ペン胴体部分（完全な長方形）】右肩下がりの短辺を維持し、直角90度（内積=0）を完璧に証明した白抜きボディ -->
-                    <path d="M 11.80 16.60 L 16.80 8.10 L 20.20 10.10 L 15.20 18.60 Z" fill="#ffffff"></path>
-                    
-                    <!-- ④【ペン先の三角錐（完全な二等辺三角形）】最先端(11.50, 21.00)が境界線の端点へのり、胴体底辺と100%完璧に融合するチップ -->
-                    <path d="M 11.80 16.60 L 11.50 21.00 L 15.20 18.60 Z" fill="#ffffff"></path>
+                    <path d="M 16.50 5.15 L 17.75 2.98 L 18.50 3.41 L 17.25 5.58 Z" fill="#333333" stroke="#222222"></path>
+                    <path d="M 9.77 15.54 L 15.77 5.15 L 19.23 7.15 L 13.23 17.54 Z" fill="#ffffff"></path>
+                    <path d="M 9.77 15.54 L 11.50 21.00 L 13.23 17.54 Z" fill="#ffffff"></path>
                 </svg>
             `;
         }
@@ -251,9 +226,8 @@ function createPalette() {
 }
 function selectColor(colorId) { currentSelectedColor = colorId; createPalette(); }
 
-// ★初回起動シーケンス：すべての合流を確認して一発起動
 document.fonts.ready.then(function() {
-    loadPuzzleFromUrlOrId("E95A000007C1084");
+    loadPuzzleFromUrlOrId("E2A8313C20");
     createPalette(); 
     updateHistoryButtons(); 
 });
