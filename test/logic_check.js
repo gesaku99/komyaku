@@ -188,43 +188,21 @@ function checkAnswer(isAutoCheck = false) {
             // 💡【解決策】この格子点(cx, cy)から、"この部屋の輪郭（外壁・手動境界線）"が何本出ているかを調べる
             let boundaryEdgeCount = 0;
             
-            // 上下左右の4辺が、画面上のリアルな境界線（uniqueUserWalls）に含まれているかチェック
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy-1},${cx}(V)`) || (cx === 0 && cy > 0 && cy <= GRID_SIZE) || (cx === GRID_SIZE && cy > 0 && cy <= GRID_SIZE)) {
-                // その辺が「今調べている部屋の境界」である場合のみカウント
-                const hasLeftCell = cells.some(c => c.r === cy - 1 && c.c === cx - 1);
-                const hasRightCell = cells.some(c => c.r === cy - 1 && c.c === cx);
-                if (hasLeftCell !== hasRightCell) boundaryEdgeCount++;
-            }
-            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(V)`)) {
-                const hasLeftCell = cells.some(c => c.r === cy && c.c === cx - 1);
-                const hasRightCell = cells.some(c => c.r === cy && c.c === cx);
-                if (hasLeftCell !== hasRightCell) boundaryEdgeCount++;
-            }
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cy === 0 && cx > 0 && cx <= GRID_SIZE) || (cy === GRID_SIZE && cx > 0 && cx <= GRID_SIZE)) {
-                const hasTopCell = cells.some(c => c.r === cy - 1 && c.c === cx - 1);
-                const hasBottomCell = cells.some(c => c.r === cy && c.c === cx - 1);
-                if (hasTopCell !== hasBottomCell) boundaryEdgeCount++;
-            }
-            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`)) {
-                const hasTopCell = cells.some(c => c.r === cy - 1 && c.c === cx);
-                const hasBottomCell = cells.some(c => c.r === cy && c.c === cx);
-                if (hasTopCell !== hasBottomCell) boundaryEdgeCount++;
-            }
-            
-            // 💡【論理完全修復】1本（行き止まり）は除外。2本や3本（T字）のときも、
-            // 今調べている部屋（cells）にとって「本当に直角のカド」をなしている場合のみ頂点（カド）として認定！
-            if (boundaryEdgeCount === 2 || boundaryEdgeCount === 3) {
-                // 格子点(cx, cy)を中心に、今調べている部屋のマスがいくつ接しているか調べる
-                let roomCellCount = 0;
-                if (cells.some(c => c.r === cy - 1 && c.c === cx - 1)) roomCellCount++;
-                if (cells.some(c => c.r === cy - 1 && c.c === cx)) roomCellCount++;
-                if (cells.some(c => c.r === cy && c.c === cx - 1)) roomCellCount++;
-                if (cells.some(c => c.r === cy && c.c === cx)) roomCellCount++;
-                
-                // 接しているマスの数が1つ（凸のカド）、または3つ（凹のカド）のときだけを、その部屋の本当の頂点（カド）とする！
-                if (roomCellCount === 1 || roomCellCount === 3) {
-                    vList.push({ x: cx, y: cy });
-                }
+            // 💡【確定解決版】マスの所属チェックを完全撤去！純粋に画面上の境界線の本数と方向（直角）だけでカドを決定する
+            let hasV = false;
+            let hasH = false;
+            let edgeCount = 0;
+
+            // 格子点(cx, cy)から四方に生えているリアルな境界線の文字列表現と100%完全同期して数え上げる
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`)) { edgeCount++; hasV = true; } // 上へ伸びる縦線
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`)) { edgeCount++; hasV = true; } // 下へ伸びる縦線
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`)) { edgeCount++; hasH = true; } // 左へ伸びる横線
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`)) { edgeCount++; hasH = true; } // 右へ伸びる横線
+
+            // 💡境界線がただまっすぐ突き抜けている「直線」や、行き止まりの「端点(1本)」を除外。
+            // 縦線と横線が美しく交わって直角（L字・T字・十字）をなしている格子点だけを、100%確実に「正しい頂点（カド）」として認定！
+            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
+                vList.push({ x: cx, y: cy });
             }
         });
         blockVerticesMap[blockKey] = vList;
