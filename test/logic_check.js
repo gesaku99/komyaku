@@ -211,9 +211,20 @@ function checkAnswer(isAutoCheck = false) {
                 if (hasTopCell !== hasBottomCell) boundaryEdgeCount++;
             }
             
-            // 境界線がL字に曲がっているカド（接続数2）、またはT字や行き止まり（接続数1や3）の場所を「本物のカド（頂点）」として正確に認定！
-            if (boundaryEdgeCount === 1 || boundaryEdgeCount === 2 || boundaryEdgeCount === 3) {
-                vList.push({ x: cx, y: cy });
+            // 💡【論理完全修復】1本（行き止まり）は除外。2本や3本（T字）のときも、
+            // 今調べている部屋（cells）にとって「本当に直角のカド」をなしている場合のみ頂点（カド）として認定！
+            if (boundaryEdgeCount === 2 || boundaryEdgeCount === 3) {
+                // 格子点(cx, cy)を中心に、今調べている部屋のマスがいくつ接しているか調べる
+                let roomCellCount = 0;
+                if (cells.some(c => c.r === cy - 1 && c.c === cx - 1)) roomCellCount++;
+                if (cells.some(c => c.r === cy - 1 && c.c === cx)) roomCellCount++;
+                if (cells.some(c => c.r === cy && c.c === cx - 1)) roomCellCount++;
+                if (cells.some(c => c.r === cy && c.c === cx)) roomCellCount++;
+                
+                // 接しているマスの数が1つ（凸のカド）、または3つ（凹のカド）のときだけを、その部屋の本当の頂点（カド）とする！
+                if (roomCellCount === 1 || roomCellCount === 3) {
+                    vList.push({ x: cx, y: cy });
+                }
             }
         });
         blockVerticesMap[blockKey] = vList;
