@@ -296,10 +296,30 @@ function checkAnswer(isAutoCheck = false) {
             }
         });
     }
+    // ─── 🛠️【完全根治版】カドから外れてしまっている本物の鉱脈（h1-g7など）を正確にエラー赤線へ格納 ───
     let isCorrect = true;
     for (let pLine of problemLines) {
-        if (!discoveredMaxDiagonals.some(dLine => (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y))) isCorrect = false;
+        // 本物の鉱脈が、全探索で見つかったその部屋の最長対角線（discoveredMaxDiagonals）と一致していない場合、エラーとしてマーク
+        const isMineralValid = discoveredMaxDiagonals.some(dLine => 
+            (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || 
+            (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y)
+        );
+        
+        if (!isMineralValid) {
+            isCorrect = false;
+            // 💡【解決策】カドから外れて未完成状態にある本物の鉱脈（h1-g7）を、不正解の明確な証拠（wrongLines）として登録！
+            wrongReasonLines.push({
+                start: pLine.start,
+                end: pLine.end,
+                distSq: (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2
+            });
+            // その鉱脈が属している部屋のIDを特定してエラーブロックに登録
+            for (let blockKey in blocks) {
+                if (checkInside(pLine.start, pLine.end, blocks[blockKey])) errorBlockIds.add(blockKey);
+            }
+        }
     }
+
     if (discoveredMaxDiagonals.length !== problemLines.length) {
         isCorrect = false;
         discoveredMaxDiagonals.forEach(dLine => {
