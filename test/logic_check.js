@@ -219,6 +219,32 @@ function checkAnswer(isAutoCheck = false) {
         return; 
     }
 
+    // 🔴 エラー判定2: 孤立ブロックチェック（鉱脈が1本も含まれていない部屋を検出し、赤色で塗りつぶす）
+    const activeBlockIds = new Set();
+    for (let blockKey in blocks) {
+        problemLines.forEach(pLine => {
+            if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
+                activeBlockIds.add(blockKey);
+            }
+        });
+    }
+
+    // 鉱脈が1本も入っていない空っぽの部屋が存在する場合
+    if (Object.keys(blocks).length !== activeBlockIds.size) {
+        const targetIsolatedCells = [];
+        for (let blockKey in blocks) {
+            if (!activeBlockIds.has(blockKey)) {
+                // その部屋を構成するすべてのマス目の座標をエラー配列に格納
+                blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell));
+            }
+        }
+        errorDisplayState.show = true;
+        errorDisplayState.isolatedCells = targetIsolatedCells; // graphics.js側の赤塗りつぶしに直結
+        drawPuzzle();
+        alert("❌ 正解ではありません ❌");
+        return;
+    }
+
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
