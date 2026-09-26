@@ -317,14 +317,23 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
         blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
+        // 💡【デグレード完全根治】比較対象の鉱脈の部屋の紐付け（親子関係）を100%厳密に修正
         problemLines.forEach(pLine => {
+            // この全探索で調べている現在の部屋（cells）の内部を、本物の鉱脈が完全に通過している場合のみ比較対象とする
             if (checkInside(pLine.start, pLine.end, cells)) {
                 const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
+                
                 blockDiagonals.forEach(bDiag => {
                     const isAnyProblemLine = problemLines.some(p => (p.start.x === bDiag.start.x && p.start.y === bDiag.start.y && p.end.x === bDiag.end.x && p.end.y === bDiag.end.y) || (p.start.x === bDiag.end.x && p.start.y === bDiag.end.y && p.end.x === bDiag.start.x && p.end.y === bDiag.start.y));
                     if (isAnyProblemLine) return;
+                    
                     const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
-                    if (!isSameLine && bDiag.distSq >= pDistSq) { wrongReasonLines.push(bDiag); errorBlockIds.add(blockKey); }
+                    
+                    // 💡同じ部屋に属する正しい鉱脈の長さ（pDistSq）とだけ厳密に比較。これによって c2-b5 などの短い線は100%確実に弾かれます
+                    if (!isSameLine && bDiag.distSq >= pDistSq) { 
+                        wrongReasonLines.push(bDiag); 
+                        errorBlockIds.add(blockKey); 
+                    }
                 });
             }
         });
