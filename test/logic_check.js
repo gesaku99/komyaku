@@ -103,7 +103,6 @@ function checkAnswer(isAutoCheck = false) {
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
 
-        // 💡【解決策】uniqueUserWalls（手動＋自動のすべての壁）の文字列から、正確に線分の格子点座標を復元して絶対防壁リストを作る
         const wallsList = [];
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
@@ -117,21 +116,18 @@ function checkAnswer(isAutoCheck = false) {
                 }
             });
         }
-        // 外周4辺の外壁も絶対防壁として確実に登録
         for (let i = 0; i < GRID_SIZE; i++) {
             wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
             wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
         }
 
-        // ─── 🛠️【タイポ完全修復】すべての壁との十字クロスを厳密に検知する交差判定 ───
         for (let wall of wallsList) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
             if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
             
-            // 外積計算のe2, e1の対応関係を100%精密に修正
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
             
@@ -175,7 +171,6 @@ function checkAnswer(isAutoCheck = false) {
         const cells = blocks[blockKey]; 
         const rawV = new Set();
         
-        // 部屋の全マスの4隅の格子点を一度すべてリストアップ
         cells.forEach(c => { 
             rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); 
             rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); 
@@ -185,22 +180,18 @@ function checkAnswer(isAutoCheck = false) {
         rawV.forEach(vStr => {
             const [cx, cy] = vStr.split(',').map(Number);
             
-            // 💡【解決策】この格子点(cx, cy)から、"この部屋の輪郭（外壁・手動境界線）"が何本出ているかを調べる
-            let boundaryEdgeCount = 0;
-            
-            // 💡【確定解決版】マスの所属チェックを完全撤去！純粋に画面上の境界線の本数と方向（直角）だけでカドを決定する
             let hasV = false;
             let hasH = false;
             let edgeCount = 0;
 
-            // 格子点(cx, cy)から四方に生えているリアルな境界線の文字列表現と100%完全同期して数え上げる
+            // 💡 117〜124行目であなたが直してくださった完璧な4方向インデックス判定
             if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`)) { edgeCount++; hasV = true; } // 上へ伸びる縦線
             if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`)) { edgeCount++; hasV = true; } // 下へ伸びる縦線
             if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`)) { edgeCount++; hasH = true; } // 左へ伸びる横線
             if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`)) { edgeCount++; hasH = true; } // 右へ伸びる横線
 
-            // 💡境界線がただまっすぐ突き抜けている「直線」や、行き止まりの「端点(1本)」を除外。
-            // 縦線と横線が美しく交わって直角（L字・T字・十字）をなしている格子点だけを、100%確実に「正しい頂点（カド）」として認定！
+            // 💡【完全確定解決】前任者の cells.some や古い変数名を完全撤去！
+            // 縦線と横線が直角に交わっているカド（g7, b2, b5）を、edgeCount（2本、3本、または4本）にシンクロさせて100%確実に認定！
             if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
                 vList.push({ x: cx, y: cy });
             }
@@ -210,19 +201,13 @@ function checkAnswer(isAutoCheck = false) {
 
     // 🔴 エラー判定1: 【New仕様・完全絞り込み】境界線の孤立端点チェック（行き止まり検出専用）
     const badVertices = [];
-    
-    // 💡 0〜GRID_SIZEの内部格子点のみを1マスずつ厳密に走査（外周ライン上にある a1 などのカドは100%物理的に完全除外！）
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let connectedEdgeCount = 0;
-            
-            // この格子点(r, c)に直接接続している画面上のすべてのリアルな壁（手動・自動）の数を正確にカウント
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
-            
-            // 💡 境界線が「ジャスト1本」しか出ていない＝不法な行き止まり端点であると100%正確に判定
             if (connectedEdgeCount === 1) {
                 badVertices.push({ x: c, y: r });
             }
@@ -237,7 +222,6 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
-            
             if (connectedEdgeCount === 1) {
                 if (!badVertices.some(v => v.x === c && v.y === r)) {
                     badVertices.push({ x: c, y: r });
@@ -253,8 +237,7 @@ function checkAnswer(isAutoCheck = false) {
         alert("❌ 正解ではありません ❌"); 
         return; 
     }
-
-    // 🔴 エラー判定2: 孤立ブロックチェック（鉱脈が1本も含まれていない部屋を検出し、赤色で塗りつぶす）
+    // 🔴 エラー判定2: 孤立ブロックチェック
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => {
@@ -264,17 +247,15 @@ function checkAnswer(isAutoCheck = false) {
         });
     }
 
-    // 鉱脈が1本も入っていない空っぽの部屋が存在する場合
     if (Object.keys(blocks).length !== activeBlockIds.size) {
         const targetIsolatedCells = [];
         for (let blockKey in blocks) {
             if (!activeBlockIds.has(blockKey)) {
-                // その部屋を構成するすべてのマス目の座標をエラー配列に格納
                 blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell));
             }
         }
         errorDisplayState.show = true;
-        errorDisplayState.isolatedCells = targetIsolatedCells; // graphics.js側の赤塗りつぶしに直結
+        errorDisplayState.isolatedCells = targetIsolatedCells; 
         drawPuzzle();
         alert("❌ 正解ではありません ❌");
         return;
@@ -295,9 +276,9 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
         blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
+        
         // 💡【デグレード完全根治】比較対象の鉱脈の部屋の紐付け（親子関係）を100%厳密に修正
         problemLines.forEach(pLine => {
-            // この全探索で調べている現在の部屋（cells）の内部を、本物の鉱脈が完全に通過している場合のみ比較対象とする
             if (checkInside(pLine.start, pLine.end, cells)) {
                 const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
                 
@@ -307,7 +288,6 @@ function checkAnswer(isAutoCheck = false) {
                     
                     const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
                     
-                    // 💡同じ部屋に属する正しい鉱脈の長さ（pDistSq）とだけ厳密に比較。これによって c2-b5 などの短い線は100%確実に弾かれます
                     if (!isSameLine && bDiag.distSq >= pDistSq) { 
                         wrongReasonLines.push(bDiag); 
                         errorBlockIds.add(blockKey); 
