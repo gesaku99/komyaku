@@ -1,8 +1,5 @@
-// ★正誤判定・採点ロジックのみを完全に隔離した安全な専用ファイル
 function checkAnswer(isAutoCheck = false) {
     clearErrorDisplay(); 
-
-    // 1. 正解のすべての内壁境界線を1マスずつリストアップ
     const answerWalls = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -10,8 +7,6 @@ function checkAnswer(isAutoCheck = false) {
             if (r < GRID_SIZE - 1 && answerGrid[r][c] !== answerGrid[r + 1][c]) answerWalls.push(`${r},${c}-${r+1},${c}(H)`);
         }
     }
-
-    // 2. ユーザー画面の現在のすべての境界線（自動内壁 ＋ 手動壁）の「和（合計）」を合成
     const userWallsList = [];
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -25,52 +20,31 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2); const maxR = Math.max(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2); const maxC = Math.max(w.c1, w.c2);
             if (w.r1 === w.r2) {
-                const r = minR;
-                if (r > 0 && r < GRID_SIZE) { for (let c = minC; c < maxC; c++) userWallsList.push(`${r-1},${c}-${r},${c}(H)`); }
+                const r = minR; if (r > 0 && r < GRID_SIZE) { for (let c = minC; c < maxC; c++) userWallsList.push(`${r-1},${c}-${r},${c}(H)`); }
             } else {
-                const c = minC;
-                if (c > 0 && c < GRID_SIZE) { for (let r = minR; r < maxR; r++) userWallsList.push(`${r},${c-1}-${r},${c}(V)`); }
+                const c = minC; if (c > 0 && c < GRID_SIZE) { for (let r = minR; r < maxR; r++) userWallsList.push(`${r},${c-1}-${r},${c}(V)`); }
             }
         });
     }
-
     const uniqueUserWalls = [...new Set(userWallsList)];
-
-    // 3. 配置の完全一致チェック
     let isPerfect = true;
     if (answerWalls.length !== uniqueUserWalls.length) { isPerfect = false; } 
-    else {
-        for (let aw of answerWalls) { if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; } }
-    }
-
-    // 4. 一致していれば、即座に大正解ポップアップを呼び出す
-    if (isPerfect) {
-        errorDisplayState.show = false;
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
-        return; 
-    }
-
+    else { for (let aw of answerWalls) { if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; } } }
+    if (isPerfect) { errorDisplayState.show = false; alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); return; }
     if (isAutoCheck) return; 
-
-    // 5. 【手動Checkボタン専用】境界線から「実際の部屋の塊（白マス含む）」を正確にBFS復元
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
-
     uniqueUserWalls.forEach(wStr => {
         const type = wStr.endsWith('(V)') ? 'V' : 'H';
         const [p1, p2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
         const [r, c] = p1.split(',').map(Number);
-        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-            if (type === 'V') hasVWall[r][c] = true; else hasHWall[r][c] = true;
-        }
+        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) { if (type === 'V') hasVWall[r][c] = true; else hasHWall[r][c] = true; }
     });
-
     const blocks = {}; const visited = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     let roomCounter = 0;
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -95,7 +69,6 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    // ─── 🛠️【完全根治版】画面上のすべてのリアルな境界線を100%感知する checkInside ───
     function checkInside(p1, p2, cells) {
         const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
         const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
@@ -109,28 +82,22 @@ function checkAnswer(isAutoCheck = false) {
                 const type = wStr.endsWith('(V)') ? 'V' : 'H';
                 const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
                 const [r, c] = part1.split(',').map(Number);
-                if (type === 'V') {
-                    wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } });
-                } else {
-                    wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } });
-                }
+                if (type === 'V') { wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } }); } 
+                else { wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } }); }
             });
         }
         for (let i = 0; i < GRID_SIZE; i++) {
             wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
             wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
         }
-
         for (let wall of wallsList) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
             if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
-            
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); 
-            
             if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return false;
         }
         return true;
@@ -165,12 +132,9 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
-    // ─── 🛠️【完全修復版】今引かれている境界線をベースに、部屋の本当のカド（頂点）を100%正確に抽出 ───
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
-        const cells = blocks[blockKey]; 
-        const rawV = new Set();
-        
+        const cells = blocks[blockKey]; const rawV = new Set();
         cells.forEach(c => { 
             rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); 
             rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); 
@@ -179,27 +143,18 @@ function checkAnswer(isAutoCheck = false) {
         const vList = [];
         rawV.forEach(vStr => {
             const [cx, cy] = vStr.split(',').map(Number);
-            
-            let hasV = false;
-            let hasH = false;
-            let edgeCount = 0;
+            let hasV = false; let hasH = false; let edgeCount = 0;
 
-            // 💡 117〜124行目であなたが直してくださった完璧な4方向インデックス判定
-            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`)) { edgeCount++; hasV = true; } // 上へ伸びる縦線
-            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`)) { edgeCount++; hasV = true; } // 下へ伸びる縦線
-            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`)) { edgeCount++; hasH = true; } // 左へ伸びる横線
-            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`)) { edgeCount++; hasH = true; } // 右へ伸びる横線
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            // 💡【確定解決版】cells.someの排他罠を完全撤去！
-            // あなたが100%完璧に直してくださった edgeCount、hasV、hasH の情報（直角）だけでカドを決定！
-            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
-                vList.push({ x: cx, y: cy });
-            }
+            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) { vList.push({ x: cx, y: cy }); }
         });
         blockVerticesMap[blockKey] = vList;
     }
 
-    // 🔴 エラー判定1: 【New仕様・完全絞り込み】境界線の孤立端点チェック（行き止まり検出専用）
     const badVertices = [];
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
@@ -208,60 +163,20 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
-            if (connectedEdgeCount === 1) {
-                badVertices.push({ x: c, y: r });
-            }
+            if (connectedEdgeCount === 1) badVertices.push({ x: c, y: r });
         }
     }
-
-    // ② 境界線の孤立端点チェック（外周を除く内部の格子点から1本しか線が出ていない行き止まりをマーク）
-    for (let r = 1; r < GRID_SIZE; r++) {
-        for (let c = 1; c < GRID_SIZE; c++) {
-            let connectedEdgeCount = 0;
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) connectedEdgeCount++;
-            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
-            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
-            if (connectedEdgeCount === 1) {
-                if (!badVertices.some(v => v.x === c && v.y === r)) {
-                    badVertices.push({ x: c, y: r });
-                }
-            }
-        }
-    }
-
-    if (badVertices.length > 0) {
-        errorDisplayState.show = true; 
-        errorDisplayState.invalidVertices = badVertices; 
-        drawPuzzle(); 
-        alert("❌ 正解ではありません ❌"); 
-        return; 
-    }
-    // 🔴 エラー判定2: 孤立ブロックチェック（鉱脈が1本も含まれていない部屋を検出）
+    if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
-        problemLines.forEach(pLine => {
-            if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
-                activeBlockIds.add(blockKey);
-            }
-        });
+        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
     }
-
     if (Object.keys(blocks).length !== activeBlockIds.size) {
         const targetIsolatedCells = [];
-        for (let blockKey in blocks) {
-            if (!activeBlockIds.has(blockKey)) {
-                blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell));
-            }
-        }
-        errorDisplayState.show = true;
-        errorDisplayState.isolatedCells = targetIsolatedCells; 
-        drawPuzzle();
-        alert("❌ 正解ではありません ❌");
-        return;
+        for (let blockKey in blocks) { if (!activeBlockIds.has(blockKey)) blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
+        errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle(); alert("❌ 正解ではありません ❌"); return;
     }
 
-    // ─── ⭕【前任者完全無傷復元】各部屋の最長対角線の全探索および厳密な不等号採点システム ───
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
