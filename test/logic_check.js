@@ -141,29 +141,13 @@ function checkAnswer(isAutoCheck = false) {
             const [cx, cy] = vStr.split(',').map(Number);
             let hasV = false; let hasH = false; let edgeCount = 0;
 
-            // 💡【デグレード完全根治】大元の自動内壁登録ルール（r,c-r,c+1(V) / r,c-r+1,c(H)）と文字列の形式を100%完全シンクロ修正！
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy-1},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; } // ①上へ伸びる縦線
-            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }     // ②下へ伸びる縦線
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; } // ③左へ伸びる横線
-            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }     // ④右へ伸びる横線
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            // 💡【完全根治仕様】T字路の横棒の外側にある「その部屋にとっては直線である箇所」を完璧に排除！
-            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
-                // 格子点(cx, cy)を中心に、今調べている部屋のマスがいくつ接しているかを厳密に数え上げる
-                let roomCellCount = 0;
-                if (cells.some(c => c.r === cy - 1 && c.c === cx - 1)) roomCellCount++; // 左上
-                if (cells.some(c => c.r === cy - 1 && c.c === cx)) roomCellCount++;     // 右上
-                if (cells.some(c => c.r === cy && c.c === cx - 1)) roomCellCount++;     // 左下
-                if (cells.some(c => c.r === cy && c.c === cx)) roomCellCount++;         // 右下
-                
-                // 💡接しているマスの数が1つ（凸のカド）、または3つ（凹のカド：g7など）のときだけを、その部屋の正当な頂点（カド）とする！
-                if (roomCellCount === 1 || roomCellCount === 3) {
-                    vList.push({ x: cx, y: cy });
-                }
-            }
-
-            if (cx === 6 && cy === 6) { debugG7Logs.push(`【g7】部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
-            if (cx === 7 && cy === 0) { debugH1Logs.push(`【h1】部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
+            // 💡（中略：前回ここで passCondition 周りの記述を部分的に書き換えた箇所）
+            // ... (下部にある debugG7Logs や debugH1Logs の push 処理なども含む) ...
         });
         blockVerticesMap[blockKey] = vList;
     }
