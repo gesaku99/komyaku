@@ -203,6 +203,17 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         
         ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
+        // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に描画（下層レイヤー化）
+        errorDisplayState.blackAlertLines.forEach(line => {
+            // 💡修正(2)：0.3のずらし倍率を完全に撤去し、鉱脈のジャスト真ん中（中点）に配置
+            const bx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
+            const by = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
+        });
+
+        // 💡修正(1)：不正解理由の赤丸表示（wrongLines）を後に描画（前面レイヤー化）
         errorDisplayState.wrongLines.forEach(line => {
             const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
@@ -211,19 +222,10 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
         });
 
-        errorDisplayState.blackAlertLines.forEach(line => {
-            const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
-            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
-        });
-
         errorDisplayState.invalidVertices.forEach(v => {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
-}
 
 function downloadPuzzleImage(isSolution) {
     if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
