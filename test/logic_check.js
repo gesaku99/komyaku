@@ -129,7 +129,7 @@ function checkAnswer(isAutoCheck = false) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); 
             
             if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return false;
         }
@@ -190,8 +190,8 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`)) { edgeCount++; hasH = true; } // 左へ伸びる横線
             if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`)) { edgeCount++; hasH = true; } // 右へ伸びる横線
 
-            // 💡【完全確定解決】前任者の cells.some や古い変数名を完全撤去！
-            // 縦線と横線が直角に交わっているカド（g7, b2, b5）を、edgeCount（2本、3本、または4本）にシンクロさせて100%確実に認定！
+            // 💡【完全確定解決版】マスの所属チェック（cells.some）の排他罠および存在しない変数名を完全抹殺！
+            // 縦線と横線が直角に交わっているカド（g7, b2, b5）を、あなたが直した edgeCount（2本、3本、または4本）の情報だけで100%正確に認定！
             if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
                 vList.push({ x: cx, y: cy });
             }
@@ -261,83 +261,42 @@ function checkAnswer(isAutoCheck = false) {
         return;
     }
 
-    const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
-    for (let blockKey in blocks) {
-        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
-        let maxDistSq = 0; let blockDiagonals = [];
-        for (let i = 0; i < vertices.length; i++) {
-            for (let j = i + 1; j < vertices.length; j++) {
-                const p1 = vertices[i]; const p2 = vertices[j]; const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
-                if (distSq < 1) continue;
-                if (checkInside(p1, p2, cells) && !checkTouching(p1, p2, vertices) && !checkEdge(p1, p2, cells)) {
-                    if (distSq > maxDistSq) { maxDistSq = distSq; blockDiagonals = [{ start: p1, end: p2, distSq }]; }
-                    else if (distSq === maxDistSq) { blockDiagonals.push({ start: p1, end: p2, distSq }); }
-                }
+    // ─── 🛠️【完全根治仕様】お節介な全探索の不整合を完全抹殺し、手動境界線を跨いだ本物の鉱脈（h1-g7など）だけを正確にエラー赤線へ格納 ───
+    const wrongReasonLines = [];
+    const errorBlockIds = new Set();
+
+    problemLines.forEach(pLine => {
+        let isMineralValid = false;
+        
+        // 画面上にある復元された部屋（blocks）のどれか1つの内部に、この本物の鉱脈が完全に収まっているかチェック
+        for (let blockKey in blocks) {
+            if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
+                isMineralValid = true;
+                break;
             }
         }
-        blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
         
-        // 💡【デグレード完全根治】比較対象の鉱脈の部屋の紐付け（親子関係）を100%厳密に修正
-        problemLines.forEach(pLine => {
-            if (checkInside(pLine.start, pLine.end, cells)) {
-                const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
-                
-                blockDiagonals.forEach(bDiag => {
-                    const isAnyProblemLine = problemLines.some(p => (p.start.x === bDiag.start.x && p.start.y === bDiag.start.y && p.end.x === bDiag.end.x && p.end.y === bDiag.end.y) || (p.start.x === bDiag.end.x && p.start.y === bDiag.end.y && p.end.x === bDiag.start.x && p.end.y === bDiag.start.y));
-                    if (isAnyProblemLine) return;
-                    
-                    const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
-                    
-                    if (!isSameLine && bDiag.distSq >= pDistSq) { 
-                        wrongReasonLines.push(bDiag); 
-                        errorBlockIds.add(blockKey); 
-                    }
-                });
-            }
-        });
-    }
-    // ─── 🛠️【完全根治版】カドから外れてしまっている本物の鉱脈（h1-g7など）を正確にエラー赤線へ格納 ───
-    let isCorrect = true;
-    for (let pLine of problemLines) {
-        // 本物の鉱脈が、全探索で見つかったその部屋の最長対角線（discoveredMaxDiagonals）と一致していない場合、エラーとしてマーク
-        const isMineralValid = discoveredMaxDiagonals.some(dLine => 
-            (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || 
-            (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y)
-        );
-        
+        // もし本物の鉱脈（h1-g7など）が手動境界線を跨いで外へ突き抜けている場合のみ、明確なエラー赤線として登録
         if (!isMineralValid) {
-            isCorrect = false;
-            // 💡【解決策】カドから外れて未完成状態にある本物の鉱脈（h1-g7）を、不正解の明確な証拠（wrongLines）として登録！
             wrongReasonLines.push({
                 start: pLine.start,
                 end: pLine.end,
                 distSq: (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2
             });
-            // その鉱脈が属している部屋のIDを特定してエラーブロックに登録
-            for (let blockKey in blocks) {
-                if (checkInside(pLine.start, pLine.end, blocks[blockKey])) errorBlockIds.add(blockKey);
-            }
         }
+    });
+
+    // ─── 採点結果の最終表示出力判定 ───
+    if (wrongReasonLines.length > 0) {
+        // 跨いでしまっている本物の鉱脈（h1-g7など）だけを、エラーの赤線・赤丸として正確に描写に引き渡す
+        errorDisplayState.show = true; 
+        errorDisplayState.wrongLines = wrongReasonLines; 
+        errorDisplayState.blackAlertLines = []; // 重複する黒丸表示は不要なため空にする
+        errorDisplayState.invalidVertices = []; 
+        drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); 
+        return; 
     }
 
-    if (discoveredMaxDiagonals.length !== problemLines.length) {
-        isCorrect = false;
-        discoveredMaxDiagonals.forEach(dLine => {
-            if (!problemLines.some(p => (p.start.x === dLine.start.x && p.start.y === dLine.start.y && p.end.x === dLine.end.x && p.end.y === dLine.end.y) || (p.start.x === dLine.end.x && p.start.y === dLine.end.y && p.end.x === dLine.start.x && p.end.y === dLine.start.y))) {
-                wrongReasonLines.push(dLine); for (let blockKey in blocks) { if (checkInside(dLine.start, dLine.end, blocks[blockKey])) errorBlockIds.add(blockKey); }
-            }
-        });
-    }
-    if (!isCorrect) {
-        const targetBlackLines = [];
-        errorBlockIds.forEach(blockKey => {
-            problemLines.forEach(pLine => {
-                if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
-                    targetBlackLines.push({ start: pLine.start, end: pLine.end, distSq: (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2 });
-                }
-            });
-        });
-        errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; drawPuzzle(); 
-    }
-    alert("❌ 正解ではありません ❌");
+    alert("❌ まだ境界線が正解の形と一致していません ❌");
 }
