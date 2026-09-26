@@ -227,5 +227,7 @@ function checkAnswer(isAutoCheck = false) {
         });
         errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; drawPuzzle(); 
     }
+    // ─── 🛠️【原因特定用デバッグコード】ここに貼り付けてください ───
+    alert("【デバッグ情報】\n・見つかった不正解線の本数: " + wrongReasonLines.length + "\n・エラーブロックの数: " + errorBlockIds.size + "\n・問題の全最長対角線の本数: " + discoveredMaxDiagonals.length);
     alert("❌ 正解ではありません ❌");
 }
