@@ -169,16 +169,52 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
+    // ─── 🛠️【完全修復版】今引かれている境界線をベースに、部屋の本当のカド（頂点）を100%正確に抽出 ───
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
-        const cells = blocks[blockKey]; const rawV = new Set();
-        cells.forEach(c => { rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); });
+        const cells = blocks[blockKey]; 
+        const rawV = new Set();
+        
+        // 部屋の全マスの4隅の格子点を一度すべてリストアップ
+        cells.forEach(c => { 
+            rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); 
+            rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); 
+        });
+        
         const vList = [];
         rawV.forEach(vStr => {
-            const [cx, cy] = vStr.split(',').map(Number); let cnt = 0;
-            if (cells.some(c => c.r === cy && c.c === cx)) cnt++; if (cells.some(c => c.r === cy-1 && c.c === cx)) cnt++;
-            if (cells.some(c => c.r === cy && c.c === cx-1)) cnt++; if (cells.some(c => c.r === cy-1 && c.c === cx-1)) cnt++;
-            if (cnt === 1 || cnt === 3) vList.push({ x: cx, y: cy });
+            const [cx, cy] = vStr.split(',').map(Number);
+            
+            // 💡【解決策】この格子点(cx, cy)から、"この部屋の輪郭（外壁・手動境界線）"が何本出ているかを調べる
+            let boundaryEdgeCount = 0;
+            
+            // 上下左右の4辺が、画面上のリアルな境界線（uniqueUserWalls）に含まれているかチェック
+            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy-1},${cx}(V)`) || (cx === 0 && cy > 0 && cy <= GRID_SIZE) || (cx === GRID_SIZE && cy > 0 && cy <= GRID_SIZE)) {
+                // その辺が「今調べている部屋の境界」である場合のみカウント
+                const hasLeftCell = cells.some(c => c.r === cy - 1 && c.c === cx - 1);
+                const hasRightCell = cells.some(c => c.r === cy - 1 && c.c === cx);
+                if (hasLeftCell !== hasRightCell) boundaryEdgeCount++;
+            }
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(V)`)) {
+                const hasLeftCell = cells.some(c => c.r === cy && c.c === cx - 1);
+                const hasRightCell = cells.some(c => c.r === cy && c.c === cx);
+                if (hasLeftCell !== hasRightCell) boundaryEdgeCount++;
+            }
+            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cy === 0 && cx > 0 && cx <= GRID_SIZE) || (cy === GRID_SIZE && cx > 0 && cx <= GRID_SIZE)) {
+                const hasTopCell = cells.some(c => c.r === cy - 1 && c.c === cx - 1);
+                const hasBottomCell = cells.some(c => c.r === cy && c.c === cx - 1);
+                if (hasTopCell !== hasBottomCell) boundaryEdgeCount++;
+            }
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`)) {
+                const hasTopCell = cells.some(c => c.r === cy - 1 && c.c === cx);
+                const hasBottomCell = cells.some(c => c.r === cy && c.c === cx);
+                if (hasTopCell !== hasBottomCell) boundaryEdgeCount++;
+            }
+            
+            // 境界線がL字に曲がっているカド（接続数2）、またはT字や行き止まり（接続数1や3）の場所を「本物のカド（頂点）」として正確に認定！
+            if (boundaryEdgeCount === 1 || boundaryEdgeCount === 2 || boundaryEdgeCount === 3) {
+                vList.push({ x: cx, y: cy });
+            }
         });
         blockVerticesMap[blockKey] = vList;
     }
