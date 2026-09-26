@@ -203,9 +203,8 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         
         ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
-        // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に描画（下層レイヤー化）
+        // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に中点に描画（下層レイヤー）
         errorDisplayState.blackAlertLines.forEach(line => {
-            // 💡修正(2)：0.3のずらし倍率を完全に撤去し、鉱脈のジャスト真ん中（中点）に配置
             const bx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const by = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
@@ -213,7 +212,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
 
-        // 💡修正(1)：不正解理由の赤丸表示（wrongLines）を後に描画（前面レイヤー化）
+        // 💡修正(1)：不正解理由の赤丸表示（wrongLines）を後に中点に描画（最前面レイヤー）
         errorDisplayState.wrongLines.forEach(line => {
             const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
@@ -226,21 +225,21 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
+}
 
-    function downloadPuzzleImage(isSolution) {
-        if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
-        const urlParams = new URLSearchParams(window.location.search);
-        const dayValue = urlParams.get('day') || "XXX";
-        const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
-        const link = document.createElement('a');
-        link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-        drawPuzzle();
-    }
+function downloadPuzzleImage(isSolution) {
+    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+    const urlParams = new URLSearchParams(window.location.search);
+    const dayValue = urlParams.get('day') || "XXX";
+    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+    const link = document.createElement('a');
+    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
+    drawPuzzle();
+}
 
-    function getCellFromCoords(x, y) {
-        const titleBarHeight = 30;
-        const c = Math.floor((x - OFFSET) / CELL_PIXEL); 
-        const r = Math.floor((y - OFFSET - titleBarHeight) / CELL_PIXEL); 
-        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) return { r, c }; return null;
-    }
+function getCellFromCoords(x, y) {
+    const titleBarHeight = 30;
+    const c = Math.floor((x - OFFSET) / CELL_PIXEL); 
+    const r = Math.floor((y - OFFSET - titleBarHeight) / CELL_PIXEL); 
+    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) return { r, c }; return null;
 }
