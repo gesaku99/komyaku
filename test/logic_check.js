@@ -183,30 +183,43 @@ function checkAnswer(isAutoCheck = false) {
         blockVerticesMap[blockKey] = vList;
     }
 
-    // 🔴 エラー判定1: 【New仕様】境界線の孤立端点チェック（外周を除く内部の格子点から1本しか線が出ていない状態を検出）
+    // 🔴 エラー判定1: 【完全復活＆ハイブリッド仕様】鉱脈端点カドチェック ＆ 境界線孤立端点チェック
     const badVertices = [];
     
-    // 0〜GRID_SIZEのすべての格子点を走査（ただし外周ライン上の格子点は除外）
+    // ①【完全大復活】鉱脈の端点（黒斜線の両端）が、所属する部屋の頂点（カド）になっているか厳密チェック
+    problemLines.forEach(pLine => {
+        let trueParentColorId = null;
+        for (let blockKey in blocks) { 
+            if (checkInside(pLine.start, pLine.end, blocks[blockKey])) { 
+                trueParentColorId = blockKey; 
+                break; 
+            } 
+        }
+        if (trueParentColorId) {
+            [pLine.start, pLine.end].forEach(pt => {
+                const isVertex = blockVerticesMap[trueParentColorId].some(v => v.x === pt.x && v.y === pt.y);
+                if (!isVertex && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                    badVertices.push(pt);
+                }
+            });
+        } else { 
+            badVertices.push(pLine.start); 
+        }
+    });
+
+    // ② 境界線の孤立端点チェック（外周を除く内部の格子点から1本しか線が出ていない行き止まりをマーク）
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let connectedEdgeCount = 0;
-            
-            // この格子点(r, c)に接続する可能性のある4方向の境界線がuniqueUserWallsに含まれているか数え上げる
-            // ① 上へ伸びる縦線: マス(r-1, c-1)とマス(r-1, c)の間の境界線 ➔ (V)
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) connectedEdgeCount++;
-            
-            // ② 下へ伸びる縦線: マス(r, c-1)とマス(r, c)の間の境界線 ➔ (V)
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
-            
-            // ③ 左へ伸びる横線: マス(r-1, c-1)とマス(r, c-1)の間の境界線 ➔ (H)
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
-            
-            // ④ 右へ伸びる横線: マス(r-1, c)とマス(r, c)の間の境界線 ➔ (H)
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
             
-            // 内部の格子点から境界線が「ジャスト1本」しか出ていない場合は不法な端点（行き止まり）としてマーク
             if (connectedEdgeCount === 1) {
-                badVertices.push({ x: c, y: r });
+                if (!badVertices.some(v => v.x === c && v.y === r)) {
+                    badVertices.push({ x: c, y: r });
+                }
             }
         }
     }
