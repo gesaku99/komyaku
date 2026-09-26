@@ -261,7 +261,7 @@ function checkAnswer(isAutoCheck = false) {
         return;
     }
 
-    // ─── 採点採算システム：各部屋の最長対角線の全探索および正解鉱脈との厳密な突き合わせ ───
+    // ─── ⭕【前任者完全無傷復元】各部屋の最長対角線の全探索および厳密な不等号採点システム ───
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
@@ -277,28 +277,18 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
         blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
-        
-        // 💡【完全根治】その調べたい部屋（cells）に属している本物の鉱脈の長さ（pDistSq）とだけ、1対1で100%厳密に長さを比較！
-        // これにより、右下の部屋の正解鉱脈の長さ10が、他ブロックのゴミデータに引っ張られて狂うことは200%永久にありません。
         problemLines.forEach(pLine => {
             if (checkInside(pLine.start, pLine.end, cells)) {
                 const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
-                
                 blockDiagonals.forEach(bDiag => {
                     const isAnyProblemLine = problemLines.some(p => (p.start.x === bDiag.start.x && p.start.y === bDiag.start.y && p.end.x === bDiag.end.x && p.end.y === bDiag.end.y) || (p.start.x === bDiag.end.x && p.start.y === bDiag.end.y && p.end.x === bDiag.start.x && p.end.y === bDiag.start.y));
                     if (isAnyProblemLine) return;
-                    
                     const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
-                    
-                    if (!isSameLine && bDiag.distSq >= pDistSq) { 
-                        wrongReasonLines.push(bDiag); 
-                        errorBlockIds.add(blockKey); 
-                    }
+                    if (!isSameLine && bDiag.distSq >= pDistSq) { wrongReasonLines.push(bDiag); errorBlockIds.add(blockKey); }
                 });
             }
         });
     }
-
     let isCorrect = true;
     for (let pLine of problemLines) {
         if (!discoveredMaxDiagonals.some(dLine => (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y))) isCorrect = false;
@@ -311,7 +301,6 @@ function checkAnswer(isAutoCheck = false) {
             }
         });
     }
-
     if (!isCorrect) {
         const targetBlackLines = [];
         errorBlockIds.forEach(blockKey => {
