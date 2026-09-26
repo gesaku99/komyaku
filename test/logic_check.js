@@ -37,6 +37,7 @@ function checkAnswer(isAutoCheck = false) {
     else { for (let aw of answerWalls) { if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; } } }
     if (isPerfect) { errorDisplayState.show = false; alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); return; }
     if (isAutoCheck) return; 
+
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     uniqueUserWalls.forEach(wStr => {
@@ -75,12 +76,10 @@ function checkAnswer(isAutoCheck = false) {
         const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
         const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
         if (!p1Cell || !p2Cell) return false;
-
         const wallsList = [];
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
-                const type = wStr.endsWith('(V)') ? 'V' : 'H';
-                const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
+                const type = wStr.endsWith('(V)') ? 'V' : 'H'; const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
                 const [r, c] = part1.split(',').map(Number);
                 if (type === 'V') { wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } }); } 
                 else { wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } }); }
@@ -131,27 +130,26 @@ function checkAnswer(isAutoCheck = false) {
             return true;
         }
     }
-
+    let debugG7Logs = []; let debugH1Logs = [];
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const rawV = new Set();
-        cells.forEach(c => { 
-            rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); 
-            rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); 
-        });
-        
+        cells.forEach(c => { rawV.add(`${c.c},${c.r}`); rawV.add(`${c.c+1},${c.r}`); rawV.add(`${c.c},${c.r+1}`); rawV.add(`${c.c+1},${c.r+1}`); });
         const vList = [];
         rawV.forEach(vStr => {
             const [cx, cy] = vStr.split(',').map(Number);
             let hasV = false; let hasH = false; let edgeCount = 0;
 
-            // 💡【完全根治】あなたが直してくださった正しい向きへ、消えていた「外壁救済条件」を完璧に復元ドッキング！
-            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; } // ①上
-            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; } // ②下
-            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; } // ③左
-            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; } // ④右
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) { vList.push({ x: cx, y: cy }); }
+            const passCondition = (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4));
+            if (passCondition) vList.push({ x: cx, y: cy });
+
+            if (cx === 6 && cy === 6) { debugG7Logs.push(`【g7】部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
+            if (cx === 7 && cy === 0) { debugH1Logs.push(`【h1】部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
         });
         blockVerticesMap[blockKey] = vList;
     }
@@ -167,6 +165,11 @@ function checkAnswer(isAutoCheck = false) {
             if (connectedEdgeCount === 1) badVertices.push({ x: c, y: r });
         }
     }
+
+    const g7Report = debugG7Logs.length > 0 ? debugG7Logs.join("\n") : "➔ 走査対象(rawV)にすら入っていません";
+    const h1Report = debugH1Logs.length > 0 ? debugH1Logs.join("\n") : "➔ 走査対象(rawV)にすら入っていません";
+    alert("📢 【超精密デバッグレポート】\n\n▼ g7 の状態:\n" + g7Report + "\n\n▼ h1 の状態:\n" + h1Report + "\n\n・uniqueUserWallsの総数: " + uniqueUserWalls.length);
+
     if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
@@ -180,8 +183,7 @@ function checkAnswer(isAutoCheck = false) {
 
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
-        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
-        let maxDistSq = 0; let blockDiagonals = [];
+        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey]; let maxDistSq = 0; let blockDiagonals = [];
         for (let i = 0; i < vertices.length; i++) {
             for (let j = i + 1; j < vertices.length; j++) {
                 const p1 = vertices[i]; const p2 = vertices[j]; const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
@@ -212,7 +214,7 @@ function checkAnswer(isAutoCheck = false) {
     if (discoveredMaxDiagonals.length !== problemLines.length) {
         isCorrect = false;
         discoveredMaxDiagonals.forEach(dLine => {
-            if (!problemLines.some(p => (p.start.x === dLine.start.x && p.start.y === dLine.start.y && p.end.x === dLine.end.x && p.end.y === dLine.end.y) || (p.start.x === dLine.end.x && p.start.y === dLine.end.y && p.end.x === dLine.start.x && p.end.y === dLine.start.y))) {
+            if (!problemLines.some(p => (p.start.x === dLine.start.x && p.start.y === dLine.start.y && p.end.x === dLine.end.x && p.end.y === dLine.end.y) || (p.start.x === dLine.end.x && p.start.y === dLine.end.y && p.end.x === dLine.start.x && p.end.y === bDiag.start.y))) {
                 wrongReasonLines.push(dLine); for (let blockKey in blocks) { if (checkInside(dLine.start, dLine.end, blocks[blockKey])) errorBlockIds.add(blockKey); }
             }
         });
@@ -228,7 +230,5 @@ function checkAnswer(isAutoCheck = false) {
         });
         errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; drawPuzzle(); 
     }
-    // ─── 🛠️【原因特定用デバッグコード】ここに貼り付けてください ───
-    alert("【デバッグ情報】\n・見つかった不正解線の本数: " + wrongReasonLines.length + "\n・エラーブロックの数: " + errorBlockIds.size + "\n・問題の全最長対角線の本数: " + discoveredMaxDiagonals.length);
     alert("❌ 正解ではありません ❌");
 }
