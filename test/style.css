@@ -12,8 +12,14 @@ body {
     background-color: #f0f0f0;
     margin: 0;
     padding: 10px;
+    
+    /* 📱 iPhoneお守り：画面全体の勝手な引っ張りスクロールやバウンスを100%禁止 */
     touch-action: none; 
+    -webkit-overflow-scrolling: auto;
+    
+    /* 📱 iPhoneお守り：素早い連打時に文字選択の青いハイライトが暴発するのを禁止 */
     user-select: none;   
+    -webkit-user-select: none;
 }
 h1 {
     font-size: 24px;
@@ -24,9 +30,19 @@ canvas {
     background-color: #ffffff;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     cursor: pointer;
+    
+    /* 💡【完全根治仕様】これまで積み上げたJSロジックを傷つけず、画面幅に合わせて100%自動リサイズ */
+    max-width: 100%;  /* ➔ 画面の横幅を絶対に突き破らない */
+    height: auto;     /* ➔ 縦横の比率を完全に保ったまま綺麗に縮小 */
+    
+    /* 📱 iPhoneお守り：タップした瞬間にiPhone特有のグレーの四角い影が出るのを完全消去 */
     -webkit-tap-highlight-color: transparent; 
     -webkit-touch-callout: none;              
     user-select: none;                        
+    -webkit-user-select: none;
+    
+    /* 📱 iPhoneお守り：キャンバス上での指のジェスチャー（ピンチズームなど）を完全に固定化 */
+    touch-action: none;
 }
 .controls-wrapper {
     display: flex;
@@ -54,6 +70,9 @@ canvas {
     cursor: pointer;
     transition: transform 0.1s, border-color 0.1s;
     box-sizing: border-box;
+    
+    /* 📱 iPhoneお守り：カラーパレット連打時のハイライトと遅延を排除 */
+    -webkit-tap-highlight-color: transparent;
 }
 .color-btn.active {
     border-color: #ffffff;
@@ -80,6 +99,10 @@ canvas {
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     transition: background-color 0.1s, opacity 0.1s;
+    
+    /* 📱 iPhoneお守り：ボタンタップ時の反応速度を100%最速化 */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 .btn-common:active {
     background-color: #555555;
@@ -136,6 +159,7 @@ canvas {
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     transition: transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
 }
 .btn-studio:active { transform: scale(0.95); }
 .btn-p { background-color: #1a1a1a; } 
