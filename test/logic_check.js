@@ -194,10 +194,11 @@ function checkAnswer(isAutoCheck = false) {
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let realWallCount = 0;
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++;
-            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c-1}(H)`)) realWallCount++;
-            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;
+            // 💡【デグレード完全根治】あなたが第2部で直してくださった100%正しい格子点・線分形式と一文字の狂いもなく完全同期！
+            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(V)`) || (r > 0 && r <= GRID_SIZE && (c === 0 || c === GRID_SIZE))) realWallCount++; // ①上へ伸びる縦線
+            if (uniqueUserWalls.includes(`${r},${c}-${r+1},${c}(V)`) || (r >= 0 && r < GRID_SIZE && (c === 0 || c === GRID_SIZE))) realWallCount++; // ②下へ伸びる縦線
+            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(H)`) || (c > 0 && c <= GRID_SIZE && (r === 0 || r === GRID_SIZE))) realWallCount++; // ③左へ伸びる横線
+            if (uniqueUserWalls.includes(`${r},${c}-${r},${c+1}(H)`) || (c >= 0 && c < GRID_SIZE && (r === 0 || r === GRID_SIZE))) realWallCount++; // ④右へ伸びる横線
             
             if (realWallCount === 1) {
                 badVertices.push({ x: c, y: r });
