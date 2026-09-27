@@ -140,6 +140,7 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     let debugG7Logs = []; let debugH1Logs = [];
+    // ─── 🛠️【完全正常化・新デバッグ内包】マスの所属に左右されず、リアルな壁の本数だけでカドと端点を完全分離 ───
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const rawV = new Set();
@@ -149,43 +150,40 @@ function checkAnswer(isAutoCheck = false) {
             const [cx, cy] = vStr.split(',').map(Number);
             let hasV = false; let hasH = false; let edgeCount = 0;
 
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy-1},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
-            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
-            if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
-            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
+            // 格子点(cx, cy)から四方に生えているリアルな境界線（外壁＋内壁）の本数を正確に組み立てる
+            if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(V)`) || (cy > 0 && cy <= GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy+1},${cx}(V)`) || (cy >= 0 && cy < GRID_SIZE && (cx === 0 || cx === GRID_SIZE))) { edgeCount++; hasV = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
+            if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            // 💡【頂点抽出ベース】hasV && hasH で直角交差をフラットに判定
-            const passCondition = (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4));
-            if (passCondition) vList.push({ x: cx, y: cy });
-
-            // 💡【トリガー①】g7(6,6) または h1(7,0) が門前払いされた際の生データを配列に完全記憶
-            if (cx === 6 && cy === 6) { debugG7Logs.push(`部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
-            if (cx === 7 && cy === 0) { debugH1Logs.push(`部屋:${blockKey} | edgeCount:${edgeCount} | hasV:${hasV} | hasH:${hasH} | 合格:${passCondition}`); }
+            // 💡 縦線と横線が美しく交わって直角をなしている格子点（L字・T字・十字路）を100%確実に「正しい頂点（カド）」として認定！
+            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
+                vList.push({ x: cx, y: cy });
+            }
         });
         blockVerticesMap[blockKey] = vList;
     }
 
+    // 🔴 エラー判定1: 境界線の孤立端点チェック（名前のねじれを完全修復し、本当の行き止まりだけをマーク）
     const badVertices = [];
     for (let r = 1; r < GRID_SIZE; r++) {
-        for (let c = 1; r < GRID_SIZE; r++) { 
-            for (let c = 1; c < GRID_SIZE; c++) {
-                let realWallCount = 0;
-                if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++;
-                if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;
-                if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c-1}(H)`)) realWallCount++;
-                if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;
-                if (realWallCount === 1) { badVertices.push({ x: c, y: r }); }
+        for (let c = 1; c < GRID_SIZE; c++) {
+            let realWallCount = 0;
+            
+            // 部屋の所属（cells）は一切無視！画面上の手動壁・自動内壁の純粋な合計本数をダイレクトにカウント！
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++;
+            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c-1}(H)`)) realWallCount++;
+            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;
+            
+            // 💡 画面上のリアルな壁が「ジャスト1本」しか出ていない本当の行き止まり端点（c3, d3など）だけを正確に抽出
+            if (realWallCount === 1) {
+                badVertices.push({ x: c, y: r });
             }
-            break;
         }
     }
 
-    const g7Report = debugG7Logs.length > 0 ? debugG7Logs.join("\n") : "➔ 走査対象にすら入っていません";
-    const h1Report = debugH1Logs.length > 0 ? debugH1Logs.join("\n") : "➔ 走査対象にすら入っていません";
-    alert("📢 【トリガー①：カド抽出デバッグレポート】\n\n▼ g7(6,6) の状態:\n" + g7Report + "\n\n▼ h1(7,0) の状態:\n" + h1Report + "\n\n・uniqueUserWallsの総数: " + uniqueUserWalls.length);
-
-    // ─── 💡【完全根治・復元版】T字路のゴースト誤検知を完全排除し、本物のエラーだけを画面にクッキリ点灯 ───
-    if (badVertices.length > 0) { 
+    if (badVertices.length > 0) {
         errorDisplayState.show = true; 
         errorDisplayState.invalidVertices = badVertices; 
         drawPuzzle(); 
