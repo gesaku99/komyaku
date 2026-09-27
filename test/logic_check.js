@@ -95,59 +95,57 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    // ─── 🛠️【検証ポイント専用】d1-a6 の交差・接触回数をリアルタイムに数え上げる checkInside ───
+    // ─── 🛠️【完全復元・新デバッグ版】前任者のオリジナルcheckInsideを完全復元（d1-a6追跡デバッグ内蔵） ───
     function checkInside(p1, p2, cells) {
-        const wallsList = [];
-        // ─── 🛠️【完全根治版】正規表現を使い、文字列内のすべての (V) や (H) を1文字の漏れもなく100%完全に全消去！ ───
-        // ─── 💡【完全根治版】あなたが組み立てた完璧な格子点文字列形式から、縦横の向きを100%正確に物理線分へ復元！ ───
-        if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
-            uniqueUserWalls.forEach(wStr => {
-                const cleanedStr = wStr.replace(/\(V\)/g, '').replace(/\(H\)/g, '');
-                const type = wStr.includes('(V)') ? 'V' : 'H';
-                
-                const [part1, part2] = cleanedStr.split('-');
-                const [r1, c1] = part1.split(',').map(Number);
-                const [r2, c2] = part2.split(',').map(Number);
-                
-                // 💡【解決策】ハイフンの前後の数字を、縦壁(V)なら垂直な線分、横壁(H)なら水平な線分として100%正確にマッピング！
-                if (type === 'V') {
-                    // 縦壁(V)の文字列は cy-1,cx-1 - cy-1,cx 形式のため、リアルな垂直線分(xは同じ、yが変化)へと変換
-                    wallsList.push({ p1: { x: c2, y: r1 }, p2: { x: c2, y: r1 + 1 } });
-                } else {
-                    // 横壁(H)の文字列は cy-1,cx-1 - cy,cx-1 形式のため、リアルな水平線分(yは同じ、xが変化)へと変換
-                    wallsList.push({ p1: { x: c1, y: r2 }, p2: { x: c1 + 1, y: r2 } });
-                }
-            });
-        }
-        for (let i = 0; i < GRID_SIZE; i++) {
-            wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
-            wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
-        }
+        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
+        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
 
-        let crossCount = 0;
-        for (let wall of wallsList) {
-            const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
-            if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
-            if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
-            
+        const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
+        const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
+        if (!p1Cell || !p2Cell) return false;
+
+        const wallsList = [];
+        cells.forEach(cell => {
+            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
+            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
+            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
+            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
+
+            [top, bottom, left, right].forEach(wall => {
+                const isInternalEdge = cells.some(other => {
+                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
+                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
+                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
+                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
+                    return false;
+                });
+                if (!isInternalEdge) wallsList.push({ p1: wall.p1, p2: wall.p2 });
+            });
+        });
+
+        // 💡 過去の正常ファイル（source: 1）に書かれていた、完璧に動く交差判定関数
+        function isIntersecting(s1, e1, s2, e2) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); 
-            
-            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-                crossCount++;
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            return (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
+        }
+
+        let intersectCount = 0;
+        for (let wall of wallsList) {
+            if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
+                intersectCount++;
             }
         }
 
-        // 💡【軌道修正デバッグ仕様】d1-a6 ((3,0)-(0,5)) の時だけ、この関数が求めた実際の交差回数をプロパティに持たせて外へ引き渡す
+        // 💡【今回の検証ポイント専用・新デバッグ処理】d1-a6 ((3,0)-(0,5)) の時だけ、リアルタイムの交差回数をプロパティに保存
         const isD1A6 = ((p1.x === 3 && p1.y === 0 && p2.x === 0 && p2.y === 5) || (p1.x === 0 && p1.y === 5 && p2.x === 3 && p2.y === 0));
         if (isD1A6) {
-            checkInside.lastD1A6CrossCount = crossCount;
-            if (crossCount > 0) return false; // 本来は交差があるため即座に不合格(false)とする
+            checkInside.lastD1A6CrossCount = intersectCount;
         }
 
-        return crossCount === 0;
+        return intersectCount === 0;
     }
     checkInside.lastD1A6CrossCount = 0;
 
