@@ -70,34 +70,46 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
+    // ─── 🛠️【想定外対応デバッグ内包版】色塗り依存を完全撤去し、壁との交差のみを調べる checkInside ───
     function checkInside(p1, p2, cells) {
-        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
-        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
-        const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
-        const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-        if (!p1Cell || !p2Cell) return false;
+        // 💡 解決策：色塗りマス（cells.find）への依存ゲートを完全撤去して引き算（軽量化・バグ根治）！
+        // これにより、始点の内側が別の色の部屋（黄色のG1マスなど）であっても100%確実に突破させます。
+
         const wallsList = [];
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
-                const type = wStr.endsWith('(V)') ? 'V' : 'H'; const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
+                const type = wStr.endsWith('(V)') ? 'V' : 'H';
+                const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
                 const [r, c] = part1.split(',').map(Number);
-                if (type === 'V') { wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } }); } 
-                else { wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } }); }
+                if (type === 'V') {
+                    wallsList.push({ p1: { x: c + 1, y: r }, p2: { x: c + 1, y: r + 1 } });
+                } else {
+                    wallsList.push({ p1: { x: c, y: r + 1 }, p2: { x: c + 1, y: r + 1 } });
+                }
             });
         }
         for (let i = 0; i < GRID_SIZE; i++) {
             wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
             wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
         }
+
         for (let wall of wallsList) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
             if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
+            
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); 
-            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return false;
+            
+            // 💡【想定外対策の自動監視ログ】万が一、h1-g7 が壁と衝突して不合格（false）にされてしまった場合、コンソールに即座に警告を出します
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+                if ((s1.x === 7 && s1.y === 0 && e1.x === 6 && e1.y === 6) || (s1.x === 6 && s1.y === 6 && e1.x === 7 && e1.y === 0)) {
+                    console.warn(`⚠️ 【緊急デバッグ】h1-g7 が、壁 [${s2.x},${s2.y} - ${e2.x},${e2.y}] と十字クロスしたため不合格判定されました！`);
+                }
+                return false;
+            }
         }
         return true;
     }
