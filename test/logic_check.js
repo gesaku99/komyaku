@@ -97,6 +97,12 @@ function checkAnswer(isAutoCheck = false) {
     }
     // ─── 🛠️【完全根治版】色塗りマスに依存しない、壁との交差のみを調べる checkInside ───
     function checkInside(p1, p2, cells) {
+        // ─── 💡【完全復元・根治版】消去されていた前任者オリジナルの「部屋の所属ガードゲート」を完璧に復元ドッキング！ ───
+        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
+        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
+        const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
+        const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
+        if (!p1Cell || !p2Cell) return false;
         const wallsList = [];
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
