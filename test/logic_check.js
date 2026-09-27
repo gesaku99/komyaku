@@ -184,7 +184,14 @@ function checkAnswer(isAutoCheck = false) {
     const h1Report = debugH1Logs.length > 0 ? debugH1Logs.join("\n") : "➔ 走査対象にすら入っていません";
     alert("📢 【トリガー①：カド抽出デバッグレポート】\n\n▼ g7(6,6) の状態:\n" + g7Report + "\n\n▼ h1(7,0) の状態:\n" + h1Report + "\n\n・uniqueUserWallsの総数: " + uniqueUserWalls.length);
 
-    //if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
+    // ─── 💡【完全根治・復元版】T字路のゴースト誤検知を完全排除し、本物のエラーだけを画面にクッキリ点灯 ───
+    if (badVertices.length > 0) { 
+        errorDisplayState.show = true; 
+        errorDisplayState.invalidVertices = badVertices; 
+        drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); 
+        return; 
+    }
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
