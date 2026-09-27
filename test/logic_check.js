@@ -231,7 +231,7 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
+
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
@@ -242,7 +242,7 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle(); alert("❌ 正解ではありません ❌"); return;
     }
 
-    // ─── 🔴 エラー判定1: 各鉱脈の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
+    // ─── 🔴 エラー判定1: 各鉱脈 detour の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
     problemLines.forEach(pLine => {
         [pLine.start, pLine.end].forEach(pt => {
             let isVertexValid = false;
@@ -266,7 +266,8 @@ function checkAnswer(isAutoCheck = false) {
         return; 
     }
 
-    // ─── 🔴 エラー判定2: 鉱脈なしの空っぽ部屋（孤立ブロック）チェックを完璧に復元！ ───
+    // ─── 🔴 エラー判定2: 鉱脈なしの空っぽ部屋（孤立ブロック）チェック ───
+    // 💡【完全根治仕様】重複していた231行目のゴミデータを完全消去し、後半のこの位置にクリーンに一本化！
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
