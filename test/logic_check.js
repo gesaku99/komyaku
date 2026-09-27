@@ -242,14 +242,40 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle(); alert("❌ 正解ではありません ❌"); return;
     }
 
+    // ─── 🔴 エラー判定1: 各鉱脈の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
+    problemLines.forEach(pLine => {
+        [pLine.start, pLine.end].forEach(pt => {
+            let isVertexValid = false;
+            for (let blockKey in blocks) {
+                if (blockVerticesMap[blockKey].some(v => v.x === pt.x && v.y === pt.y)) {
+                    isVertexValid = true;
+                    break;
+                }
+            }
+            if (!isVertexValid && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) {
+                badVertices.push(pt);
+            }
+        });
+    });
+
+    if (badVertices.length > 0) {
+        errorDisplayState.show = true; 
+        errorDisplayState.invalidVertices = badVertices; 
+        drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); 
+        return; 
+    }
+
+    // 各部屋の最長対角線の全探索および正解鉱脈との厳密な不等号比較（前任者の完璧な全探索システム）
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
-        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey]; let maxDistSq = 0; let blockDiagonals = [];
+        const cells = blocks[blockKey]; const vertices = blockVerticesMap[blockKey];
+        let maxDistSq = 0; let blockDiagonals = [];
+
         for (let i = 0; i < vertices.length; i++) {
             for (let j = i + 1; j < vertices.length; j++) {
                 const p1 = vertices[i]; const p2 = vertices[j]; const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
                 if (distSq < 1) continue;
-                
                 if (checkInside(p1, p2, cells) && !checkTouching(p1, p2, vertices) && !checkEdge(p1, p2, cells)) {
                     if (distSq > maxDistSq) { maxDistSq = distSq; blockDiagonals = [{ start: p1, end: p2, distSq }]; }
                     else if (distSq === maxDistSq) { blockDiagonals.push({ start: p1, end: p2, distSq }); }
@@ -257,58 +283,59 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
         blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
-        
+
         problemLines.forEach(pLine => {
             if (checkInside(pLine.start, pLine.end, cells)) {
                 const pDistSq = (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2;
                 blockDiagonals.forEach(bDiag => {
                     const isAnyProblemLine = problemLines.some(p => (p.start.x === bDiag.start.x && p.start.y === bDiag.start.y && p.end.x === bDiag.end.x && p.end.y === bDiag.end.y) || (p.start.x === bDiag.end.x && p.start.y === bDiag.end.y && p.end.x === bDiag.start.x && p.end.y === bDiag.start.y));
                     if (isAnyProblemLine) return;
-                    
                     const isSameLine = (pLine.start.x === bDiag.start.x && pLine.start.y === bDiag.start.y && pLine.end.x === bDiag.end.x && pLine.end.y === bDiag.end.y) || (pLine.start.x === bDiag.end.x && pLine.start.y === bDiag.end.y && pLine.end.x === bDiag.start.x && pLine.end.y === bDiag.start.y);
-                    
-                    // 💡【トリガー割り込み】d1-a6 が有罪（不正解の理由）として登録されたその瞬間にインターセプト
-                    const isD1A6 = ((bDiag.start.x === 3 && bDiag.start.y === 0 && bDiag.end.x === 0 && bDiag.end.y === 5) || (bDiag.start.x === 0 && bDiag.start.y === 5 && bDiag.end.x === 3 && bDiag.end.y === 0));
-                    if (!isSameLine && bDiag.distSq >= pDistSq) {
-                        if (isD1A6) {
-                            alert(`🚨 【検証ポイント検知：d1-a6 がエラー赤線に登録されました】\n\n・この線分が検知した境界線との合計交差/接触回数: ${checkInside.lastD1A6CrossCount} 回\n\n◆判定指標:\n・回数が「0」➔ 接触判定(checkInside)側の防壁展開にミスがあります\n・回数が「1以上」➔ 全探索・比較登録ロジックの不等号にミスがあります`);
-                        }
-                        wrongReasonLines.push(bDiag); 
-                        errorBlockIds.add(blockKey); 
-                    }
+                    if (!isSameLine && bDiag.distSq >= pDistSq) { wrongReasonLines.push(bDiag); errorBlockIds.add(blockKey); }
                 });
             }
         });
     }
+
     let isCorrect = true;
     for (let pLine of problemLines) {
-        if (!discoveredMaxDiagonals.some(dLine => (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && dLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y))) isCorrect = false;
+        if (!discoveredMaxDiagonals.some(dLine => (pLine.start.x === dLine.start.x && pLine.start.y === dLine.start.y && pLine.end.x === dLine.end.x && pLine.end.y === dLine.end.y) || (pLine.start.x === dLine.end.x && pLine.start.y === dLine.end.y && pLine.end.x === dLine.start.x && pLine.end.y === dLine.start.y))) isCorrect = false;
     }
     if (discoveredMaxDiagonals.length !== problemLines.length) {
         isCorrect = false;
         discoveredMaxDiagonals.forEach(dLine => {
             if (!problemLines.some(p => (p.start.x === dLine.start.x && p.start.y === dLine.start.y && p.end.x === dLine.end.x && p.end.y === dLine.end.y) || (p.start.x === dLine.end.x && p.start.y === dLine.end.y && p.end.x === dLine.start.x && p.end.y === dLine.start.y))) {
-                
-                // 💡【トリガー割り込み：後半の登録漏れ側チェック】
-                const isD1A6_back = ((dLine.start.x === 3 && dLine.start.y === 0 && dLine.end.x === 0 && dLine.end.y === 5) || (dLine.start.x === 0 && dLine.start.y === 5 && dLine.end.x === 3 && dLine.end.y === 0));
-                if (isD1A6_back) {
-                    alert(`🚨 【検証ポイント検知（後半）：d1-a6 がエラー赤線に登録されました】\n\n・この線分が検知した境界線との合計交差/接触回数: ${checkInside.lastD1A6CrossCount} 回\n\n◆判定指標:\n・回数が「0」➔ 接触判定(checkInside)側の防壁展開にミスがあります\n・回数が「1以上」➔ 全探索・比較登録ロジックの不等号にミスがあります`);
-                }
-                wrongReasonLines.push(dLine); 
-                for (let blockKey in blocks) { if (checkInside(dLine.start, dLine.end, blocks[blockKey])) errorBlockIds.add(blockKey); }
+                wrongReasonLines.push(dLine); for (let blockKey in blocks) { if (checkInside(dLine.start, dLine.end, blocks[blockKey])) errorBlockIds.add(blockKey); }
             }
         });
     }
+
+    // ─── 採点結果の最終表示出力（100%赤ヒント出現保証セーフティ機構ドッキング） ───
     if (!isCorrect) {
-        const targetBlackLines = [];
-        errorBlockIds.forEach(blockKey => {
-            problemLines.forEach(pLine => {
-                if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
-                    targetBlackLines.push({ start: pLine.start, end: pLine.end, distSq: (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2 });
-                }
+        if (wrongReasonLines.length === 0 && badVertices.length === 0 && errorBlockIds.size === 0) {
+            for (let blockKey in blocks) {
+                errorBlockIds.add(blockKey);
+                blocks[blockKey].forEach(cell => {
+                    if (!errorDisplayState.isolatedCells.some(c => c.r === cell.r && c.c === cell.c)) {
+                        errorDisplayState.isolatedCells.push(cell);
+                    }
+                });
+            }
+        } else {
+            const targetBlackLines = [];
+            errorBlockIds.forEach(blockKey => {
+                problemLines.forEach(pLine => {
+                    if (checkInside(pLine.start, pLine.end, blocks[blockKey])) {
+                        targetBlackLines.push({ start: pLine.start, end: pLine.end, distSq: (pLine.end.x - pLine.start.x) ** 2 + (pLine.end.y - pLine.start.y) ** 2 });
+                    }
+                });
             });
-        });
-        errorDisplayState.show = true; errorDisplayState.wrongLines = wrongReasonLines; errorDisplayState.blackAlertLines = targetBlackLines; drawPuzzle(); 
+            errorDisplayState.blackAlertLines = targetBlackLines;
+        }
+
+        errorDisplayState.show = true; 
+        errorDisplayState.wrongLines = wrongReasonLines; 
+        drawPuzzle(); 
     }
     alert("❌ 正解ではありません ❌");
 }
