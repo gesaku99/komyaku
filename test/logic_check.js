@@ -181,6 +181,7 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
 
+    // ─── 🛠️【完全正常化仕様】境界線の四方センサーとマスの接合数チェックを完璧にドッキング！ ───
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const rawV = new Set();
@@ -195,7 +196,19 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
             if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) { vList.push({ x: cx, y: cy }); }
+            // 💡【解決策】四方の境界線が直角（hasV && hasH）をなしていることに加え、
+            // その格子点を中心とした周囲4マスのうち、今調べている部屋のマス（cells）が「1つ(凸)」または「3つ(凹)」接しているときだけを正当な頂点とする！
+            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
+                let cnt = 0;
+                if (cells.some(c => c.r === cy && c.c === cx)) cnt++;
+                if (cells.some(c => c.r === cy-1 && c.c === cx)) cnt++;
+                if (cells.some(c => c.r === cy && c.c === cx-1)) cnt++;
+                if (cells.some(c => c.r === cy-1 && c.c === cx-1)) cnt++;
+                
+                if (cnt === 1 || cnt === 3) {
+                    vList.push({ x: cx, y: cy });
+                }
+            }
         });
         blockVerticesMap[blockKey] = vList;
     }
