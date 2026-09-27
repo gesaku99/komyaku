@@ -93,11 +93,10 @@ function checkAnswer(isAutoCheck = false) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
             if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
-            // 💡【完全根治】外積計算のベクトル対応関係（末尾の引き算の対象）を数学的に100%正確に補正！
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x); // ➔ 末尾を s2.x から e2.x へ修正
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); // ➔ 末尾を s1.x から e1.x へ修正
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x); 
             if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return false;
         }
         return true;
@@ -131,7 +130,7 @@ function checkAnswer(isAutoCheck = false) {
             return true;
         }
     }
-    let debugG7Logs = []; let debugH1Logs = [];
+    let debugC3Walls = 0; let debugD3Walls = 0;
     const blockVerticesMap = {};
     for (let blockKey in blocks) {
         const cells = blocks[blockKey]; const rawV = new Set();
@@ -146,13 +145,20 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${cy},${cx-1}-${cy},${cx}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
             if (uniqueUserWalls.includes(`${cy},${cx}-${cy},${cx+1}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            // 💡（中略：前回ここで passCondition 周りの記述を部分的に書き換えた箇所）
-            // ... (下部にある debugG7Logs や debugH1Logs の push 処理なども含む) ...
+            if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
+                let roomCellCount = 0;
+                if (cells.some(c => c.r === cy - 1 && c.c === cx - 1)) roomCellCount++;
+                if (cells.some(c => c.r === cy - 1 && c.c === cx)) roomCellCount++;
+                if (cells.some(c => c.r === cy && c.c === cx - 1)) roomCellCount++;
+                if (cells.some(c => c.r === cy && c.c === cx)) roomCellCount++;
+                if (roomCellCount === 1 || roomCellCount === 3) { vList.push({ x: cx, y: cy }); }
+            }
+            if (cx === 2 && cy === 2) debugC3Walls = edgeCount; // c3は格子点(2,2)
+            if (cx === 3 && cy === 2) debugD3Walls = edgeCount; // d3は格子点(3,2)
         });
         blockVerticesMap[blockKey] = vList;
     }
 
-    // ─── 💡【完全根治版】クラッシュの原因になっていた不要なデバッグポップアップを完全にゴミ箱へ撤去！ ───
     const badVertices = [];
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
@@ -161,9 +167,11 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c-1}(H)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
-            if (connectedEdgeCount === 1) badVertices.push({ x: c, y: r });
+            if (connectedEdgeCount === 1) { badVertices.push({ x: c, y: r }); }
         }
     }
+
+    alert("📢 【孤立端点・検知レポート】\n\n・c3格子点(2,2)の接続壁数: " + debugC3Walls + " 本\n・d3格子点(3,2)の接続壁数: " + debugD3Walls + " 本\n・badVertices(赤丸リスト)の総登録数: " + badVertices.length + " 個");
 
     if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
     const activeBlockIds = new Set();
@@ -186,7 +194,7 @@ function checkAnswer(isAutoCheck = false) {
                 if (checkInside(p1, p2, cells) && !checkTouching(p1, p2, vertices) && !checkEdge(p1, p2, cells)) {
                     if (distSq > maxDistSq) { maxDistSq = distSq; blockDiagonals = [{ start: p1, end: p2, distSq }]; }
                     else if (distSq === maxDistSq) { blockDiagonals.push({ start: p1, end: p2, distSq }); }
-                }
+                }maxDistSq = distSq;
             }
         }
         blockDiagonals.forEach(diag => discoveredMaxDiagonals.push(diag));
