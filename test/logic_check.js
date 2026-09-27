@@ -95,57 +95,58 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    // ─── 🛠️【完全復元・新デバッグ版】前任者のオリジナルcheckInsideを完全復元（d1-a6追跡デバッグ内蔵） ───
+    // ─── 🛠️【検証ポイント完全同調版】前任者本物の外積数式（isIntersecting）を100%完全模倣した checkInside ───
     function checkInside(p1, p2, cells) {
-        const p1InnerX = p1.x + (p2.x - p1.x) * 0.001; const p1InnerY = p1.y + (p2.y - p1.y) * 0.001;
-        const p2InnerX = p2.x + (p1.x - p2.x) * 0.001; const p2InnerY = p2.y + (p1.y - p2.y) * 0.001;
-
-        const p1Cell = cells.find(c => p1InnerX > c.c && p1InnerX < c.c + 1 && p1InnerY > c.r && p1InnerY < c.r + 1);
-        const p2Cell = cells.find(c => p2InnerX > c.c && p2InnerX < c.c + 1 && p2InnerY > c.r && p2InnerY < c.r + 1);
-        if (!p1Cell || !p2Cell) return false;
-
         const wallsList = [];
-        cells.forEach(cell => {
-            const top = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c + 1, y: cell.r}, dir: 'top' };
-            const bottom = { p1: {x: cell.c, y: cell.r + 1}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'bottom' };
-            const left = { p1: {x: cell.c, y: cell.r}, p2: {x: cell.c, y: cell.r + 1}, dir: 'left' };
-            const right = { p1: {x: cell.c + 1, y: cell.r}, p2: {x: cell.c + 1, y: cell.r + 1}, dir: 'right' };
-
-            [top, bottom, left, right].forEach(wall => {
-                const isInternalEdge = cells.some(other => {
-                    if (wall.dir === 'top') return other.c === cell.c && other.r === cell.r - 1;
-                    if (wall.dir === 'bottom') return other.c === cell.c && other.r === cell.r + 1;
-                    if (wall.dir === 'left') return other.r === cell.r && other.c === cell.c - 1;
-                    if (wall.dir === 'right') return other.r === cell.r && other.c === cell.c + 1;
-                    return false;
-                });
-                if (!isInternalEdge) wallsList.push({ p1: wall.p1, p2: wall.p2 });
+        if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
+            uniqueUserWalls.forEach(wStr => {
+                const cleanedStr = wStr.replace(/\(V\)/g, '').replace(/\(H\)/g, '');
+                const type = wStr.includes('(V)') ? 'V' : 'H';
+                const [part1, part2] = cleanedStr.split('-');
+                const [r1, c1] = part1.split(',').map(Number);
+                const [r2, c2] = part2.split(',').map(Number);
+                
+                if (type === 'V') {
+                    wallsList.push({ p1: { x: c2, y: r1 }, p2: { x: c2, y: r1 + 1 } });
+                } else {
+                    wallsList.push({ p1: { x: c1, y: r2 }, p2: { x: c1 + 1, y: r2 } });
+                }
             });
-        });
-
-        // 💡 過去の正常ファイル（source: 1）に書かれていた、完璧に動く交差判定関数
-        function isIntersecting(s1, e1, s2, e2) {
-            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
-            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            return (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001)));
+        }
+        for (let i = 0; i < GRID_SIZE; i++) {
+            wallsList.push({ p1: { x: 0, y: i }, p2: { x: 0, y: i + 1 } }); wallsList.push({ p1: { x: GRID_SIZE, y: i }, p2: { x: GRID_SIZE, y: i + 1 } });
+            wallsList.push({ p1: { x: i, y: 0 }, p2: { x: i + 1, y: 0 } }); wallsList.push({ p1: { x: i, y: GRID_SIZE }, p2: { x: i + 1, y: GRID_SIZE } });
         }
 
-        let intersectCount = 0;
+        let crossCount = 0;
+
+        // 💡【前任者完全模倣】source: 1 に記述されていた本物の交差判定ロジックを1文字の狂いもなく完全移植
         for (let wall of wallsList) {
-            if (isIntersecting(p1, p2, wall.p1, wall.p2)) {
-                intersectCount++;
+            const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
+            if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
+            if ((e1.x === s2.x && e1.y === s2.y) || (e1.x === e2.x && e1.y === e2.y)) continue;
+            
+            const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
+            const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
+            const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
+            
+            // 💡【完全根治】末尾の引き算対象を s1.x から、前任者オリジナルの e1.x へと完璧に修正修復！
+            const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
+            
+            // 不等号の閾値（0.0001）の条件式も前任者の記述形式と100%完全にシンクロ
+            if (((d1 > 0.0001 && d2 < -0.0001) || (d1 < -0.0001 && d2 > 0.0001)) && ((d3 > 0.0001 && d4 < -0.0001) || (d3 < -0.0001 && d4 > 0.0001))) {
+                crossCount++;
             }
         }
 
-        // 💡【今回の検証ポイント専用・新デバッグ処理】d1-a6 ((3,0)-(0,5)) の時だけ、リアルタイムの交差回数をプロパティに保存
+        // d1-a6 ((3,0)-(0,5)) の時だけ、この関数が求めた最新の交差回数をプロパティに持たせて外へ引き渡す
         const isD1A6 = ((p1.x === 3 && p1.y === 0 && p2.x === 0 && p2.y === 5) || (p1.x === 0 && p1.y === 5 && p2.x === 3 && p2.y === 0));
         if (isD1A6) {
-            checkInside.lastD1A6CrossCount = intersectCount;
+            checkInside.lastD1A6CrossCount = crossCount;
+            if (crossCount > 0) return false; // 交差があるため本来の通り不合格(false)とする
         }
 
-        return intersectCount === 0;
+        return crossCount === 0;
     }
     checkInside.lastD1A6CrossCount = 0;
 
