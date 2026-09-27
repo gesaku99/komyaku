@@ -32,10 +32,10 @@ function checkAnswer(isAutoCheck = false) {
             const minC = Math.min(w.c1, w.c2); const maxC = Math.max(w.c1, w.c2);
             if (w.r1 === w.r2) {
                 const r = minR;
-                if (r > 0 && r < GRID_SIZE) { for (let c = minC; c < maxC; c++) userWallsList.push(`${r-1},${c}-${r},${c}(H)`); }
+                if (r > 0 && r < GRID_SIZE) { for (let c = minC; c < maxC; c++) userWallsList.push(`${r-1},${c}-${r-1},${c+1}(H)`); }
             } else {
                 const c = minC;
-                if (c > 0 && c < GRID_SIZE) { for (let r = minR; r < maxR; r++) userWallsList.push(`${r},${c-1}-${r},${c}(V)`); }
+                if (c > 0 && c < GRID_SIZE) { for (let r = minR; r < maxR; r++) userWallsList.push(`${r},${c-1}-${r+1},${c-1}(V)`); }
             }
         });
     }
@@ -58,7 +58,7 @@ function checkAnswer(isAutoCheck = false) {
 
     if (isAutoCheck) return; 
 
-    // 5. 【手動Checkボタン専用】境界線から「実際の部屋の塊（白マス含む）」を正確にBFS復元
+    // 5. 【手動Checkボタン専用】境界線から「実際の部屋 of 塊（白マス含む）」を正確にBFS復元
     const hasVWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
     const hasHWall = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
 
@@ -95,7 +95,7 @@ function checkAnswer(isAutoCheck = false) {
             }
         }
     }
-    // ─── 🛠️【検証ポイント完全同調版】前任者本物の外積数式（isIntersecting）を100%完全模倣した checkInside ───
+    // ─── 🛠️【完全根治版】色塗りマスに依存しない、壁との交差のみを調べる checkInside ───
     function checkInside(p1, p2, cells) {
         const wallsList = [];
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
@@ -119,8 +119,6 @@ function checkAnswer(isAutoCheck = false) {
         }
 
         let crossCount = 0;
-
-        // 💡【前任者完全模倣】source: 1 に記述されていた本物の交差判定ロジックを1文字の狂いもなく完全移植
         for (let wall of wallsList) {
             const s1 = p1; const e1 = p2; const s2 = wall.p1; const e2 = wall.p2;
             if ((s1.x === s2.x && s1.y === s2.y) || (s1.x === e2.x && s1.y === e2.y)) continue;
@@ -129,23 +127,18 @@ function checkAnswer(isAutoCheck = false) {
             const d1 = (e1.x - s1.x) * (s2.y - s1.y) - (e1.y - s1.y) * (s2.x - s1.x);
             const d2 = (e1.x - s1.x) * (e2.y - s1.y) - (e1.y - s1.y) * (e2.x - s1.x);
             const d3 = (e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x);
-            
-            // 💡【完全根治】末尾の引き算対象を s1.x から、前任者オリジナルの e1.x へと完璧に修正修復！
             const d4 = (e2.x - s2.x) * (e1.y - s2.y) - (e2.y - s2.y) * (e1.x - s2.x); 
             
-            // 💡【完全根治・鉱脈両端救済仕様】0.0001 の死角を完全閉鎖！
-            // 対角線の両端（カド）は 0.001マスの内側縮小によって絶対に壁と重ならないため、100%安全に合格（セーフ）を維持します！
-            // その上で、途中の格子点（b3など）を突き破って走る1回またぎの違反線(d1*d2 <= 0)を、ジャスト0を含めて100%完全に撃墜（NG）します！
+            // 💡【大正解の条件式】格子点上の通過(d1*d2===0)を含めて不法すり抜けを100%確実に狙い撃ち撃墜！
             if ((d1 * d2 < 0 || (d1 === 0 || d2 === 0)) && (d3 * d4 < 0 || (d3 === 0 || d4 === 0))) {
                 crossCount++;
             }
         }
 
-        // d1-a6 ((3,0)-(0,5)) の時だけ、この関数が求めた最新の交差回数をプロパティに持たせて外へ引き渡す
         const isD1A6 = ((p1.x === 3 && p1.y === 0 && p2.x === 0 && p2.y === 5) || (p1.x === 0 && p1.y === 5 && p2.x === 3 && p2.y === 0));
         if (isD1A6) {
             checkInside.lastD1A6CrossCount = crossCount;
-            if (crossCount > 0) return false; // 交差があるため本来の通り不合格(false)とする
+            if (crossCount > 0) return false;
         }
 
         return crossCount === 0;
@@ -196,18 +189,13 @@ function checkAnswer(isAutoCheck = false) {
             if (uniqueUserWalls.includes(`${cy-1},${cx-1}-${cy},${cx-1}(H)`) || (cx > 0 && cx <= GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
             if (uniqueUserWalls.includes(`${cy-1},${cx}-${cy},${cx}(H)`) || (cx >= 0 && cx < GRID_SIZE && (cy === 0 || cy === GRID_SIZE))) { edgeCount++; hasH = true; }
 
-            // 💡【解決策】四方の境界線が直角（hasV && hasH）をなしていることに加え、
-            // その格子点を中心とした周囲4マスのうち、今調べている部屋のマス（cells）が「1つ(凸)」または「3つ(凹)」接しているときだけを正当な頂点とする！
             if (hasV && hasH && (edgeCount === 2 || edgeCount === 3 || edgeCount === 4)) {
                 let cnt = 0;
                 if (cells.some(c => c.r === cy && c.c === cx)) cnt++;
                 if (cells.some(c => c.r === cy-1 && c.c === cx)) cnt++;
                 if (cells.some(c => c.r === cy && c.c === cx-1)) cnt++;
                 if (cells.some(c => c.r === cy-1 && c.c === cx-1)) cnt++;
-                
-                if (cnt === 1 || cnt === 3) {
-                    vList.push({ x: cx, y: cy });
-                }
+                if (cnt === 1 || cnt === 3) { vList.push({ x: cx, y: cy }); }
             }
         });
         blockVerticesMap[blockKey] = vList;
@@ -218,56 +206,20 @@ function checkAnswer(isAutoCheck = false) {
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let realWallCount = 0;
-            
-            // 💡【解決策】大元の自動内壁登録インデックスの形式（r,c-r,c+1(V) / r,c-r+1,c(H)）と座標の対応関係を100%完璧に同期修復！
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++; // ①上へ伸びる縦線
-            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;     // ②下へ伸びる縦線
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) realWallCount++; // ③左へ伸びる横線
-            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;     // ④右へ伸びる横線
-            
-            // 💡 画面上のリアルな壁が「ジャスト1本」しか出ていない、本物の行き止まり端点（c3, d3）だけを完璧にマーク！
-            if (realWallCount === 1) {
-                badVertices.push({ x: c, y: r });
-            }
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++; 
+            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;     
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) realWallCount++; 
+            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;     
+            if (realWallCount === 1) { badVertices.push({ x: c, y: r }); }
         }
     }
-
-    const activeBlockIds = new Set();
-    for (let blockKey in blocks) {
-        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
-    }
-    if (Object.keys(blocks).length !== activeBlockIds.size) {
-        const targetIsolatedCells = [];
-        for (let blockKey in blocks) { if (!activeBlockIds.has(blockKey)) blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
-        errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle(); alert("❌ 正解ではありません ❌"); return;
-    }
-
-    // ─── 🔴 エラー判定1: 各鉱脈 detour の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
-    problemLines.forEach(pLine => {
-        [pLine.start, pLine.end].forEach(pt => {
-            let isVertexValid = false;
-            for (let blockKey in blocks) {
-                if (blockVerticesMap[blockKey].some(v => v.x === pt.x && v.y === pt.y)) {
-                    isVertexValid = true;
-                    break;
-                }
-            }
-            if (!isVertexValid && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) {
-                badVertices.push(pt);
-            }
-        });
-    });
-
     if (badVertices.length > 0) {
-        errorDisplayState.show = true; 
-        errorDisplayState.invalidVertices = badVertices; 
-        drawPuzzle(); 
-        alert("❌ 正解ではありません ❌"); 
-        return; 
+        errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); return; 
     }
 
     // ─── 🔴 エラー判定2: 鉱脈なしの空っぽ部屋（孤立ブロック）チェック ───
-    // 💡【完全根治仕様】重複していた231行目のゴミデータを完全消去し、後半のこの位置にクリーンに一本化！
+    // 💡【完全根治仕様】重複を物理的に200%完全抹殺！ファイル全体で空っぽ部屋チェックを『この1箇所のみ』に統合！
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
@@ -277,11 +229,24 @@ function checkAnswer(isAutoCheck = false) {
         for (let blockKey in blocks) {
             if (!activeBlockIds.has(blockKey)) { blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
         }
-        errorDisplayState.show = true; 
-        errorDisplayState.isolatedCells = targetIsolatedCells; 
-        drawPuzzle();
-        alert("❌ 正解ではありません ❌"); 
-        return;
+        errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle();
+        alert("❌ 正解ではありません ❌"); return;
+    }
+
+    // ─── 🔴 エラー判定1: 各鉱脈の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
+    problemLines.forEach(pLine => {
+        [pLine.start, pLine.end].forEach(pt => {
+            let isVertexValid = false;
+            for (let blockKey in blocks) {
+                if (blockVerticesMap[blockKey].some(v => v.x === pt.x && v.y === pt.y)) { isVertexValid = true; break; }
+            }
+            if (!isVertexValid && !badVertices.some(v => v.x === pt.x && v.y === pt.y)) { badVertices.push(pt); }
+        });
+    });
+
+    if (badVertices.length > 0) {
+        errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); return; 
     }
 
     // 各部屋の最長対角線の全探索および正解鉱脈との厳密な不等号比較（前任者の完璧な全探索システム）
