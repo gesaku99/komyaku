@@ -152,21 +152,18 @@ function checkAnswer(isAutoCheck = false) {
         blockVerticesMap[blockKey] = vList;
     }
 
+    // ─── 💡【完全根治版】クラッシュの原因になっていた不要なデバッグポップアップを完全にゴミ箱へ撤去！ ───
     const badVertices = [];
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let connectedEdgeCount = 0;
             if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) connectedEdgeCount++;
-            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) connectedEdgeCount++;
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c-1}(H)`)) connectedEdgeCount++;
             if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) connectedEdgeCount++;
             if (connectedEdgeCount === 1) badVertices.push({ x: c, y: r });
         }
     }
-
-    const g7Report = debugG7Logs.length > 0 ? debugG7Logs.join("\n") : "➔ 走査対象(rawV)にすら入っていません";
-    const h1Report = debugH1Logs.length > 0 ? debugH1Logs.join("\n") : "➔ 走査対象(rawV)にすら入っていません";
-    alert("📢 【超精密デバッグレポート】\n\n▼ g7 の状態:\n" + g7Report + "\n\n▼ h1 の状態:\n" + h1Report + "\n\n・uniqueUserWallsの総数: " + uniqueUserWalls.length);
 
     if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
     const activeBlockIds = new Set();
