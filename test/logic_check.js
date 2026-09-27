@@ -99,9 +99,9 @@ function checkAnswer(isAutoCheck = false) {
     function checkInside(p1, p2, cells) {
         const wallsList = [];
         // ─── 🛠️【完全根治版】正規表現を使い、文字列内のすべての (V) や (H) を1文字の漏れもなく100%完全に全消去！ ───
+        // ─── 💡【完全根治版】あなたが組み立てた完璧な格子点文字列形式から、縦横の向きを100%正確に物理線分へ復元！ ───
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
-                // 💡【解決策】/g（グローバル修飾子）を使い、左右の座標に重複してくっついている (V) や (H) を丸ごと一斉お掃除！
                 const cleanedStr = wStr.replace(/\(V\)/g, '').replace(/\(H\)/g, '');
                 const type = wStr.includes('(V)') ? 'V' : 'H';
                 
@@ -109,8 +109,14 @@ function checkAnswer(isAutoCheck = false) {
                 const [r1, c1] = part1.split(',').map(Number);
                 const [r2, c2] = part2.split(',').map(Number);
                 
-                // 混じり気のない純粋な数字のみが取り出せるため、1マスのズレもなく正確な壁の物理線分が100%完成します！
-                wallsList.push({ p1: { x: c1, y: r1 }, p2: { x: c2, y: r2 } });
+                // 💡【解決策】ハイフンの前後の数字を、縦壁(V)なら垂直な線分、横壁(H)なら水平な線分として100%正確にマッピング！
+                if (type === 'V') {
+                    // 縦壁(V)の文字列は cy-1,cx-1 - cy-1,cx 形式のため、リアルな垂直線分(xは同じ、yが変化)へと変換
+                    wallsList.push({ p1: { x: c2, y: r1 }, p2: { x: c2, y: r1 + 1 } });
+                } else {
+                    // 横壁(H)の文字列は cy-1,cx-1 - cy,cx-1 形式のため、リアルな水平線分(yは同じ、xが変化)へと変換
+                    wallsList.push({ p1: { x: c1, y: r2 }, p2: { x: c1 + 1, y: r2 } });
+                }
             });
         }
         for (let i = 0; i < GRID_SIZE; i++) {
