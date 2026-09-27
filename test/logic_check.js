@@ -266,6 +266,23 @@ function checkAnswer(isAutoCheck = false) {
         return; 
     }
 
+    // ─── 🔴 エラー判定2: 鉱脈なしの空っぽ部屋（孤立ブロック）チェックを完璧に復元！ ───
+    const activeBlockIds = new Set();
+    for (let blockKey in blocks) {
+        problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
+    }
+    if (Object.keys(blocks).length !== activeBlockIds.size) {
+        const targetIsolatedCells = [];
+        for (let blockKey in blocks) {
+            if (!activeBlockIds.has(blockKey)) { blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
+        }
+        errorDisplayState.show = true; 
+        errorDisplayState.isolatedCells = targetIsolatedCells; 
+        drawPuzzle();
+        alert("❌ 正解ではありません ❌"); 
+        return;
+    }
+
     // 各部屋の最長対角線の全探索および正解鉱脈との厳密な不等号比較（前任者の完璧な全探索システム）
     const discoveredMaxDiagonals = []; const wrongReasonLines = []; const errorBlockIds = new Set(); 
     for (let blockKey in blocks) {
