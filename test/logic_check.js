@@ -214,23 +214,40 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     if (badVertices.length > 0) {
-        errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); 
-        alert("❌ 正解ではありません ❌"); return; 
+        errorDisplayState.show = true; 
+        errorDisplayState.invalidVertices = badVertices; 
+        drawPuzzle(); 
+        alert("❌ 正解ではありません ❌"); 
+        return; 
     }
 
     // ─── 🔴 エラー判定2: 鉱脈なしの空っぽ部屋（孤立ブロック）チェック ───
-    // 💡【完全根治仕様】重複を物理的に200%完全抹殺！ファイル全体で空っぽ部屋チェックを『この1箇所のみ』に統合！
     const activeBlockIds = new Set();
     for (let blockKey in blocks) {
         problemLines.forEach(pLine => { if (checkInside(pLine.start, pLine.end, blocks[blockKey])) activeBlockIds.add(blockKey); });
     }
+
+    // 💡【原因特定用デバッグ割り込み】C3マスが孤立している時の内部数値を画面に強制出力！
+    let hasC3Isolated = false;
+    for (let blockKey in blocks) {
+        if (blocks[blockKey].length === 1 && blocks[blockKey][0].r === 2 && blocks[blockKey][0].c === 2) {
+            hasC3Isolated = true;
+        }
+    }
+    if (hasC3Isolated) {
+        alert(`📢 【孤立ブロック検知デバッグレポート】\n\n・復元された総ブロック数: ${Object.keys(blocks).length} 個\n・鉱脈が通っている合格ブロック数: ${activeBlockIds.size} 個\n・判定式 (総数 !== 合格数) の結果: ${Object.keys(blocks).length !== activeBlockIds.size}\n\n◆判定指標:\n・結果が「false」➔ checkInsideがC3マスの中に鉱脈が通っていると誤認しています\n・結果が「true」 ➔ ロジックは正しく検知していますが描画側への引き渡しにミスがあります`);
+    }
+
     if (Object.keys(blocks).length !== activeBlockIds.size) {
         const targetIsolatedCells = [];
         for (let blockKey in blocks) {
             if (!activeBlockIds.has(blockKey)) { blocks[blockKey].forEach(cell => targetIsolatedCells.push(cell)); }
         }
-        errorDisplayState.show = true; errorDisplayState.isolatedCells = targetIsolatedCells; drawPuzzle();
-        alert("❌ 正解ではありません ❌"); return;
+        errorDisplayState.show = true; 
+        errorDisplayState.isolatedCells = targetIsolatedCells; 
+        drawPuzzle();
+        alert("❌ 正解ではありません ❌"); 
+        return;
     }
 
     // ─── 🔴 エラー判定1: 各鉱脈の端点が正しい部屋の頂点(カド)になっているかを厳密チェック ───
