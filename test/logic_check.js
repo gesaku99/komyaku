@@ -98,12 +98,18 @@ function checkAnswer(isAutoCheck = false) {
     // ─── 🛠️【検証ポイント専用】d1-a6 の交差・接触回数をリアルタイムに数え上げる checkInside ───
     function checkInside(p1, p2, cells) {
         const wallsList = [];
+        // ─── 🛠️【完全根治版】正規表現を使い、文字列内のすべての (V) や (H) を1文字の漏れもなく100%完全に全消去！ ───
         if (typeof uniqueUserWalls !== 'undefined' && uniqueUserWalls) {
             uniqueUserWalls.forEach(wStr => {
-                const type = wStr.endsWith('(V)') ? 'V' : 'H';
-                const [part1, part2] = wStr.replace('(V)', '').replace('(H)', '').split('-');
+                // 💡【解決策】/g（グローバル修飾子）を使い、左右の座標に重複してくっついている (V) や (H) を丸ごと一斉お掃除！
+                const cleanedStr = wStr.replace(/\(V\)/g, '').replace(/\(H\)/g, '');
+                const type = wStr.includes('(V)') ? 'V' : 'H';
+                
+                const [part1, part2] = cleanedStr.split('-');
                 const [r1, c1] = part1.split(',').map(Number);
                 const [r2, c2] = part2.split(',').map(Number);
+                
+                // 混じり気のない純粋な数字のみが取り出せるため、1マスのズレもなく正確な壁の物理線分が100%完成します！
                 wallsList.push({ p1: { x: c1, y: r1 }, p2: { x: c2, y: r2 } });
             });
         }
