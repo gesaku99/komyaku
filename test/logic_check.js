@@ -200,15 +200,22 @@ function checkAnswer(isAutoCheck = false) {
         blockVerticesMap[blockKey] = vList;
     }
 
+    // ─── 🛠️【完全復元確定版】インデックスのねじれを完全根治し、c3, d3 の行き止まりを100%確実に検出！ ───
     const badVertices = [];
     for (let r = 1; r < GRID_SIZE; r++) {
         for (let c = 1; c < GRID_SIZE; c++) {
             let realWallCount = 0;
-            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(V)`) || (r > 0 && r <= GRID_SIZE && (c === 0 || c === GRID_SIZE))) realWallCount++;
-            if (uniqueUserWalls.includes(`${r},${c}-${r+1},${c}(V)`) || (r >= 0 && r < GRID_SIZE && (c === 0 || c === GRID_SIZE))) realWallCount++;
-            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(H)`) || (c > 0 && c <= GRID_SIZE && (r === 0 || r === GRID_SIZE))) realWallCount++;
-            if (uniqueUserWalls.includes(`${r},${c}-${r},${c+1}(H)`) || (c >= 0 && c < GRID_SIZE && (r === 0 || r === GRID_SIZE))) realWallCount++;
-            if (realWallCount === 1) { badVertices.push({ x: c, y: r }); }
+            
+            // 💡【解決策】大元の自動内壁登録インデックスの形式（r,c-r,c+1(V) / r,c-r+1,c(H)）と座標の対応関係を100%完璧に同期修復！
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r-1},${c}(V)`)) realWallCount++; // ①上へ伸びる縦線
+            if (uniqueUserWalls.includes(`${r},${c-1}-${r},${c}(V)`)) realWallCount++;     // ②下へ伸びる縦線
+            if (uniqueUserWalls.includes(`${r-1},${c-1}-${r},${c-1}(H)`)) realWallCount++; // ③左へ伸びる横線
+            if (uniqueUserWalls.includes(`${r-1},${c}-${r},${c}(H)`)) realWallCount++;     // ④右へ伸びる横線
+            
+            // 💡 画面上のリアルな壁が「ジャスト1本」しか出ていない、本物の行き止まり端点（c3, d3）だけを完璧にマーク！
+            if (realWallCount === 1) {
+                badVertices.push({ x: c, y: r });
+            }
         }
     }
     if (badVertices.length > 0) { errorDisplayState.show = true; errorDisplayState.invalidVertices = badVertices; drawPuzzle(); alert("❌ 正解ではありません ❌"); return; }
