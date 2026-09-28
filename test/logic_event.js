@@ -12,14 +12,10 @@ function sendKomyakuPlayLog(statusType) {
         userAgent: navigator.userAgent                                          
     };
 
-    // 💡【解決策】門前払いを引き起こす application/json を完全に撤去！
-    // データをただの1本の純粋なテキスト文字列(text/plain)として、ノイズなしでCloudflareの奥底へ100%確実に届けます！
-    fetch(KOMYAKU_LOGGER_URL, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "text/plain" }, // ➔ text/plain へ完璧に修正修復！
-        body: JSON.stringify(logPayload)
-    }).catch(err => console.error("Log send failed:", err));
+    // 💡【解決策】400門前払いを起こす fetch と CORS モードを完全撤去！
+    // ブラウザ内蔵のログ専用コマンド(sendBeacon)に切り替えることで、事前確認を100%パスしてCloudflareの奥底へ確実にデータを叩き込みます！
+    const blob = new Blob([JSON.stringify(logPayload)], { type: 'text/plain' });
+    navigator.sendBeacon(KOMYAKU_LOGGER_URL, blob);
 }
 
 sendKomyakuPlayLog("OPEN");
