@@ -97,7 +97,7 @@ function checkAnswer(isAutoCheck = false) {
         setTimeout(() => confettiContainer.remove(), 2500);
 
         // 100ミリ秒だけ演出を見せてから、いつものアラートを表示
-        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 100);
+        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
         return; 
     }
 
