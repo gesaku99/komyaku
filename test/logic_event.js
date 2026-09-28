@@ -249,39 +249,28 @@ canvas.addEventListener('mousedown', function(e) {
     isDrawing = true; 
     const rect = canvas.getBoundingClientRect(); 
     
-    // 💡【解決策】3倍の内部解像度比率を完璧に取得！
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    // 💡【解決策】大元のキャンバス倍率から、高画質分の「3倍」を割り算して純粋なウィンドウ縮小率だけを完璧に抽出！
+    const scaleX = (canvas.width / rect.width) / 3;
+    const scaleY = (canvas.height / rect.height) / 3;
     
-    // 💡【数学的大正解の順序】生の表示座標から rect.left を引いたあと、関数の奥底で引かれる OFFSET（30px分）を
-    // 「先に縮小率で割り算して引き算しておく」ことで、3倍の世界に引き戻したときの1マスのズレを200%完璧に永久シャットアウトします！
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
-    const offset = 30; // 前任者の固定値OFFSET
-    
-    const correctX = (rawX - (offset / scaleX)) * scaleX + offset;
-    const correctY = (rawY - ((offset + 30) / scaleY)) * scaleY + (offset + 30);
-    
-    handleActionStart(correctX, correctY); 
+    handleActionStart((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
 });
 
 canvas.addEventListener('mousemove', function(e) { 
     if (!isDrawing) return; 
     const rect = canvas.getBoundingClientRect(); 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = (canvas.width / rect.width) / 3;
+    const scaleY = (canvas.height / rect.height) / 3;
     
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
-    const offset = 30;
-    
-    const correctX = (rawX - (offset / scaleX)) * scaleX + offset;
-    const correctY = (rawY - ((offset + 30) / scaleY)) * scaleY + (offset + 30);
-    
-    handleActionMove(correctX, correctY); 
+    handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
 });
 
-window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
+window.addEventListener('mouseup', () => { 
+    if (isDrawing) { 
+        isDrawing = false; 
+        handleActionEnd(); 
+    } 
+});
 
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); 
@@ -289,17 +278,10 @@ canvas.addEventListener('touchstart', function(e) {
     const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches; // 💡 前任者のタッチバグを完璧に救済！
     
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = (canvas.width / rect.width) / 3;
+    const scaleY = (canvas.height / rect.height) / 3;
     
-    const rawX = touch.clientX - rect.left;
-    const rawY = touch.clientY - rect.top;
-    const offset = 30;
-    
-    const correctX = (rawX - (offset / scaleX)) * scaleX + offset;
-    const correctY = (rawY - ((offset + 30) / scaleY)) * scaleY + (offset + 30);
-    
-    handleActionStart(correctX, correctY);
+    handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
 }, { passive: false });
 
 canvas.addEventListener('touchmove', function(e) {
@@ -308,17 +290,10 @@ canvas.addEventListener('touchmove', function(e) {
     const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches; // 💡 前任者のタッチバグを完璧に救済！
     
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = (canvas.width / rect.width) / 3;
+    const scaleY = (canvas.height / rect.height) / 3;
     
-    const rawX = touch.clientX - rect.left;
-    const rawY = touch.clientY - rect.top;
-    const offset = 30;
-    
-    const correctX = (rawX - (offset / scaleX)) * scaleX + offset;
-    const correctY = (rawY - ((offset + 30) / scaleY)) * scaleY + (offset + 30);
-    
-    handleActionMove(correctX, correctY);
+    handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
 }, { passive: false });
 
 canvas.addEventListener('touchend', function(e) { 
