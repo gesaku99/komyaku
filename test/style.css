@@ -23,8 +23,14 @@ body {
 }
 h1 {
     font-size: 24px;
-    font-weight: normal; /* ★追加：全体を標準の太さに固定 */
-    margin: 10px 0;
+    font-weight: normal; 
+    margin: 10px 0 0 0; /* 💡【解決策】タイトルの下側の余白を完全にゼロ(0)にして引き締める */
+}
+
+/* 💡【新設】「Day176」のバーや周辺要素の上マージンを完全にリセットし、タイトルと盤面を上側に密着させる */
+div[class*="day"], div[class*="header"], h2, p {
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
 }
 canvas {
     background-color: #ffffff;
