@@ -225,9 +225,10 @@ function redo() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-function getNearestVertex(x, y) {
+// 💡 引数の末尾に可変距離を受け取る customMaxDist を追加し、未指定時は元の黄金比 25 を自動適用
+function getNearestVertex(x, y, customMaxDist = 25) {
     let nearestV = null;
-    let minDistance = 25; 
+    let minDistance = customMaxDist; 
     for (let r = 0; r <= GRID_SIZE; r++) {
         for (let c = 0; c <= GRID_SIZE; c++) {
             const vx = OFFSET + c * CELL_PIXEL;
