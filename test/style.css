@@ -23,27 +23,22 @@ body {
 }
 h1 {
     font-size: 24px;
-    font-weight: normal; 
-    margin: 10px 0 0 0; /* 💡【解決策】タイトルの下側の余白を完全にゼロ(0)にして引き締める */
-}
-
-/* 💡【新設】「Day176」のバーや周辺要素の上マージンを完全にリセットし、タイトルと盤面を上側に密着させる */
-div[class*="day"], div[class*="header"], h2, p {
-    margin-top: 5px !important;
-    margin-bottom: 5px !important;
+    font-weight: normal;
+    margin: 10px 0; /* ➔ 元通り上下に10pxの美しい隙間をホールド */
 }
 canvas {
     background-color: #ffffff;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     cursor: pointer;
     
-    /* 💡【完全根治・余白ゼロ仕様】あなたのディレクション通り 100% に一元化！ */
-    width: 100%;               /* ➔ 親要素の横幅いっぱいにダイレクトに広げる */
+    /* 💡【完全根治・縦余白ゼロ仕様】 */
+    width: 100%;               /* ➔ 画面の横幅いっぱいにダイレクトに広げる */
     max-width: 100%;           /* ➔ 画面の横幅を絶対に1ミリも突き破らない */
-    max-height: 100%;          /* ➔ 縦幅も100%を限界とし、70vhのような突っかかりを完全撤去！ */
-    aspect-ratio: 1 / 1;       /* ➔ どんなに縮んでも、200%完璧な正方形(1:1)を強力にロック */
-    object-fit: contain;       /* ➔ 縮小された盤面の中身をクッキリ美しく保つ */
-    display: block;            /* ➔ インライン要素特有の不自然な余白や広がりを完全消滅させる */
+    
+    /* 🚨 諸悪の根源、ここを aspect-ratio や 100% ではなく「auto」に強制指定します！ */
+    height: auto !important;   /* ➔ キャンバス内の実際の絵の縮み方に合わせて、HTML要素の高さも自動で縦にギュッと縮める */
+    
+    display: block;            /* ➔ インライン要素特有の不自然な隙間や広がりを完全消滅させる */
     margin: 0 auto;            /* ➔ 左右の余白を完璧に中央へ吸収して密着させる */
     
     /* 📱 iPhoneお守り：タップした瞬間にiPhone特有のグレーの四角い影が出るのを完全消去 */
