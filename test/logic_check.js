@@ -54,49 +54,29 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = false;
         if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        // ─── 🎉【演出案①：クラッカー紙吹雪】CSSアニメーションによる華やかな祝福 ───
-        const confettiContainer = document.createElement("div");
-        confettiContainer.style.position = "fixed";
-        confettiContainer.style.top = "0"; confettiContainer.style.left = "0";
-        confettiContainer.style.width = "100vw"; confettiContainer.style.height = "100vh";
-        confettiContainer.style.pointerEvents = "none"; confettiContainer.style.zIndex = "9999";
-        document.body.appendChild(confettiContainer);
+        // ─── ⚡【演出案②：ネオンネオウェイブ】キャンバスを包み込む近未来的閃光 ───
+        if (canvas) {
+            canvas.style.transition = "box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out";
+            
+            // 激しいネオンパルスと、盤面が一瞬クッと拡大する躍動感を表現
+            canvas.style.boxShadow = "0 0 30px #00ff88, 0 0 60px #00ff88, inset 0 0 20px #00ff88";
+            canvas.style.transform = "scale(1.03)";
+            
+            let toggle = true;
+            const pulseTimer = setInterval(() => {
+                canvas.style.boxShadow = toggle 
+                    ? "0 0 15px #00ff88, 0 0 30px #00ff88" 
+                    : "0 0 35px #00ff88, 0 0 70px #00ff88, inset 0 0 15px #00ff88";
+                toggle = !toggle;
+            }, 150);
 
-        const colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"];
-        for (let i = 0; i < 100; i++) {
-            const confetti = document.createElement("div");
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            confetti.style.position = "absolute";
-            confetti.style.width = `${Math.random() * 8 + 6}px`;
-            confetti.style.height = `${Math.random() * 12 + 8}px`;
-            confetti.style.backgroundColor = color;
-            confetti.style.left = "50%"; confetti.style.bottom = "0";
-            confetti.style.opacity = "0.9";
-            confetti.style.borderRadius = "2px";
-            
-            // 物理シミュレーション風の飛び散りアニメーションをダイレクトに注入
-            const angle = (Math.random() * 60 + 60) * (Math.PI / 180); // 60度〜120度の方向
-            const velocity = Math.random() * 15 + 15;
-            let vx = Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1);
-            let vy = -Math.sin(angle) * velocity;
-            let x = window.innerWidth / 2;
-            let y = window.innerHeight;
-            
-            let count = 0;
-            const timer = setInterval(() => {
-                x += vx; y += vy; vy += 0.6; // 重力
-                vx *= 0.98; // 空気抵抗
-                confetti.style.transform = `translate(${x - window.innerWidth/2}px, ${y - window.innerHeight}px) rotate(${count * 5}deg)`;
-                count++;
-                if (y > window.innerHeight + 20 || count > 100) {
-                    clearInterval(timer); confetti.remove();
-                }
-            }, 16);
-            confettiContainer.appendChild(confetti);
+            setTimeout(() => {
+                clearInterval(pulseTimer);
+                canvas.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)"; // 元の美しい影に戻す
+                canvas.style.transform = "scale(1)";
+            }, 1200);
         }
-        setTimeout(() => confettiContainer.remove(), 2500);
 
-        // 100ミリ秒だけ演出を見せてから、いつものアラートを表示
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
         return; 
     }
