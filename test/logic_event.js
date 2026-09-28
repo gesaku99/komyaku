@@ -1,3 +1,30 @@
+// ─── 🌐【新設】Cookie不使用・安全中継対応 プレイログ一括自動送信システム ───
+const KOMYAKU_LOGGER_URL = "https://autumn-sun-42c9.gesaku419.workers.dev/";
+
+function sendKomyakuPlayLog(statusType) {
+    if (!KOMYAKU_LOGGER_URL || KOMYAKU_LOGGER_URL.includes("あなたの")) return;
+    
+    // Cookieを一切使わず、ブラウザから取れる最大限の環境ファクトを1行に集約
+    const logPayload = {
+        timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }), // 日本時間
+        url: window.location.href,                                              // IDやDay番号入りのURL
+        status: statusType,                                                     // 'OPEN' または 'SUCCESS'
+        referrer: document.referrer || "Direct",                                // 流入元（Xや検索など）
+        userAgent: navigator.userAgent                                          // デバイス・ブラウザ情報
+    };
+
+    // 💡【非同期通信】fetchのバックグラウンド通信により、ゲームの処理や演出を1ミリもカクつかせずに裏側で超高速送信
+    fetch(KOMYAKU_LOGGER_URL, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(logPayload)
+    }).catch(err => console.error("Log send failed:", err));
+}
+
+// 💡 ユーザーがページを開いた「その瞬間」に、バックグラウンドでOPENログを全自動送信！
+sendKomyakuPlayLog("OPEN");
+
 let isErasingMode = false;     
 let lastIntersectedV = null; // ★追加：壁引きドラッグ中に直前に通過した格子点を記憶するフラグ
 

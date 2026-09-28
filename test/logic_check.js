@@ -52,6 +52,12 @@ function checkAnswer(isAutoCheck = false) {
     // 4. 一致していれば、即座に大正解ポップアップを呼び出す
     if (isPerfect) {
         errorDisplayState.show = false;
+        
+        // 💡【自動・手動完全網羅】isAutoCheckの有無を問わず、色がすべて揃って大正解になった「その瞬間」にSUCCESSログを裏側で全自動送信！
+        if (typeof sendKomyakuPlayLog === 'function') {
+            sendKomyakuPlayLog("SUCCESS");
+        }
+
         alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
         return; 
     }
