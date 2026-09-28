@@ -54,28 +54,30 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = false;
         if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        // ─── ⚡【演出案②：ネオンネオウェイブ】キャンバスを包み込む近未来的閃光 ───
-        if (canvas) {
-            canvas.style.transition = "box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out";
-            
-            // 激しいネオンパルスと、盤面が一瞬クッと拡大する躍動感を表現
-            canvas.style.boxShadow = "0 0 30px #00ff88, 0 0 60px #00ff88, inset 0 0 20px #00ff88";
-            canvas.style.transform = "scale(1.03)";
-            
-            let toggle = true;
-            const pulseTimer = setInterval(() => {
-                canvas.style.boxShadow = toggle 
-                    ? "0 0 15px #00ff88, 0 0 30px #00ff88" 
-                    : "0 0 35px #00ff88, 0 0 70px #00ff88, inset 0 0 15px #00ff88";
-                toggle = !toggle;
-            }, 150);
+        // ─── 🌊【演出案③：サークル波紋】クリック位置から広がる静かな水面演出 ───
+        const ripple = document.createElement("div");
+        ripple.style.position = "fixed";
+        
+        // ユーザーが最後に触った画面上のリアルな表示座標を取得（なければ画面中央を基準にする）
+        const lastX = typeof e !== 'undefined' ? e.clientX : window.innerWidth / 2;
+        const lastY = typeof e !== 'undefined' ? e.clientY : window.innerHeight / 2;
+        
+        ripple.style.left = `${lastX}px`; ripple.style.top = `${lastY}px`;
+        ripple.style.width = "0px"; ripple.style.height = "0px";
+        ripple.style.borderRadius = "50%";
+        ripple.style.border = "4px solid #1982c4"; // 鉱脈をイメージした美しいブルーの細い線
+        ripple.style.backgroundColor = "rgba(25, 130, 196, 0.05)";
+        ripple.style.transform = "translate(-50%, -50%)";
+        ripple.style.pointerEvents = "none"; ripple.style.zIndex = "9999";
+        ripple.style.transition = "width 0.8s cubic-bezier(0.1, 0.8, 0.3, 1), height 0.8s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.8s ease-out";
+        document.body.appendChild(ripple);
 
-            setTimeout(() => {
-                clearInterval(pulseTimer);
-                canvas.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)"; // 元の美しい影に戻す
-                canvas.style.transform = "scale(1)";
-            }, 1200);
-        }
+        // JavaScriptのタイムラインを一瞬ずらして、波紋を一気に直径500pxまで滑らかに巨大化させる
+        setTimeout(() => {
+            ripple.style.width = "500px"; ripple.style.height = "500px";
+            ripple.style.opacity = "0";
+        }, 16);
+        setTimeout(() => ripple.remove(), 800);
 
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
         return; 
