@@ -229,45 +229,21 @@ function getNearestVertex(x, y) {
     return nearestV;
 }
 
-// ─── 💡【完全根治・レスポンシブ座標補正版】CSSによる縮小比率を自動計測し、1ピクセルの狂いもなく元の正しい内部座標へ引き戻す！ ───
-canvas.addEventListener('mousedown', function(e) { 
-    if (e.button !== 0) return; 
-    isDrawing = true; 
-    const rect = canvas.getBoundingClientRect(); 
-    // 💡【解決策】実際のキャンバスピクセル(canvas.width)と表示幅(rect.width)の比率から、縮小スケールを完璧に逆算！
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    handleActionStart((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
-});
-
-canvas.addEventListener('mousemove', function(e) { 
-    if (!isDrawing) return; 
-    const rect = canvas.getBoundingClientRect(); 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
-});
-
+// ─── 🛠️【完全復元・デトックス確定版】二重計算のワープバグを完全消滅させ、オリジナルの正しいリスナーへ完全復帰！ ───
+canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; isDrawing = true; const rect = canvas.getBoundingClientRect(); handleActionStart(e.clientX - rect.left, e.clientY - rect.top); });
+canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); handleActionMove(e.clientX - rect.left, e.clientY - rect.top); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
 canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault(); 
-    isDrawing = true; 
-    const rect = canvas.getBoundingClientRect(); 
+    e.preventDefault(); isDrawing = true; const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches[0]; 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+    handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
 }, { passive: false });
 
 canvas.addEventListener('touchmove', function(e) {
-    if (!isDrawing) return; 
-    e.preventDefault(); 
-    const rect = canvas.getBoundingClientRect(); 
+    if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); 
     const touch = e.touches[0]; 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+    handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
 }, { passive: false });
 
 canvas.addEventListener('touchend', function(e) { 
