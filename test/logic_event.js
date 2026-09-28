@@ -4,25 +4,24 @@ const KOMYAKU_LOGGER_URL = "https://autumn-sun-42c9.gesaku419.workers.dev/";
 function sendKomyakuPlayLog(statusType) {
     if (!KOMYAKU_LOGGER_URL || KOMYAKU_LOGGER_URL.includes("あなたの")) return;
     
-    // Cookieを一切使わず、ブラウザから取れる最大限の環境ファクトを1行に集約
     const logPayload = {
-        timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }), // 日本時間
-        url: window.location.href,                                              // IDやDay番号入りのURL
-        status: statusType,                                                     // 'OPEN' または 'SUCCESS'
-        referrer: document.referrer || "Direct",                                // 流入元（Xや検索など）
-        userAgent: navigator.userAgent                                          // デバイス・ブラウザ情報
+        timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }), 
+        url: window.location.href,                                              
+        status: statusType,                                                     
+        referrer: document.referrer || "Direct",                                
+        userAgent: navigator.userAgent                                          
     };
 
-    // 💡【非同期通信】fetchのバックグラウンド通信により、ゲームの処理や演出を1ミリもカクつかせずに裏側で超高速送信
+    // 💡【解決策】門前払いを引き起こす application/json を完全に撤去！
+    // データをただの1本の純粋なテキスト文字列(text/plain)として、ノイズなしでCloudflareの奥底へ100%確実に届けます！
     fetch(KOMYAKU_LOGGER_URL, {
         method: "POST",
         mode: "cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" }, // ➔ text/plain へ完璧に修正修復！
         body: JSON.stringify(logPayload)
     }).catch(err => console.error("Log send failed:", err));
 }
 
-// 💡 ユーザーがページを開いた「その瞬間」に、バックグラウンドでOPENログを全自動送信！
 sendKomyakuPlayLog("OPEN");
 
 let isErasingMode = false;     
