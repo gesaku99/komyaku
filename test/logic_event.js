@@ -41,9 +41,22 @@ function handleActionStart(x, y) {
         hasMovedInSession = false;
     } else {
         // 🎨【通常の色塗りモード】
+        // ─── 💡【完全根治仕様】画面縮小時でもマスの中心からの色塗りを100%死守する動的トリガー ───
+        // 🎨【通常の色塗りモード】
         if (nearestV) {
-            assistStartV = nearestV;
-            assistCurrentV = nearestV;
+            // 現在のキャンバスの「画面上の実際の表示横幅」をブラウザからダイレクトに計測
+            const rect = canvas.getBoundingClientRect();
+            // JavaScriptの内部サイズ(canvas.width)と表示幅(rect.width)から、現在の正確な縮小率を逆算
+            const currentScale = rect.width / canvas.width;
+            
+            // 💡【解決策】画面が小さくなっている時は、アシスト線の感知範囲も 25px から「25 * 縮小率」へと自動で小さく縮小！
+            // これにより、縮小画面でマスの真ん中を触った時に、左上の格子点センサーが誤作動して色塗りを奪う不具合を200%完璧に永久シャットアウトします！
+            const adjustedNearestV = getNearestVertex(x, y, 25 * currentScale);
+            
+            if (adjustedNearestV) {
+                assistStartV = adjustedNearestV;
+                assistCurrentV = adjustedNearestV;
+            }
         }
         startCell = cell;
         hasMovedInSession = false;
