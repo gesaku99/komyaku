@@ -52,13 +52,52 @@ function checkAnswer(isAutoCheck = false) {
     // 4. 一致していれば、即座に大正解ポップアップを呼び出す
     if (isPerfect) {
         errorDisplayState.show = false;
-        
-        // 💡【自動・手動完全網羅】isAutoCheckの有無を問わず、色がすべて揃って大正解になった「その瞬間」にSUCCESSログを裏側で全自動送信！
-        if (typeof sendKomyakuPlayLog === 'function') {
-            sendKomyakuPlayLog("SUCCESS");
-        }
+        if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        alert("\n✨ 🎉 正解です！！ 🎉 ✨\n");
+        // ─── 🎉【演出案①：クラッカー紙吹雪】CSSアニメーションによる華やかな祝福 ───
+        const confettiContainer = document.createElement("div");
+        confettiContainer.style.position = "fixed";
+        confettiContainer.style.top = "0"; confettiContainer.style.left = "0";
+        confettiContainer.style.width = "100vw"; confettiContainer.style.height = "100vh";
+        confettiContainer.style.pointerEvents = "none"; confettiContainer.style.zIndex = "9999";
+        document.body.appendChild(confettiContainer);
+
+        const colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"];
+        for (let i = 0; i < 100; i++) {
+            const confetti = document.createElement("div");
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.position = "absolute";
+            confetti.style.width = `${Math.random() * 8 + 6}px`;
+            confetti.style.height = `${Math.random() * 12 + 8}px`;
+            confetti.style.backgroundColor = color;
+            confetti.style.left = "50%"; confetti.style.bottom = "0";
+            confetti.style.opacity = "0.9";
+            confetti.style.borderRadius = "2px";
+            
+            // 物理シミュレーション風の飛び散りアニメーションをダイレクトに注入
+            const angle = (Math.random() * 60 + 60) * (Math.PI / 180); // 60度〜120度の方向
+            const velocity = Math.random() * 15 + 15;
+            let vx = Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1);
+            let vy = -Math.sin(angle) * velocity;
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight;
+            
+            let count = 0;
+            const timer = setInterval(() => {
+                x += vx; y += vy; vy += 0.6; // 重力
+                vx *= 0.98; // 空気抵抗
+                confetti.style.transform = `translate(${x - window.innerWidth/2}px, ${y - window.innerHeight}px) rotate(${count * 5}deg)`;
+                count++;
+                if (y > window.innerHeight + 20 || count > 100) {
+                    clearInterval(timer); confetti.remove();
+                }
+            }, 16);
+            confettiContainer.appendChild(confetti);
+        }
+        setTimeout(() => confettiContainer.remove(), 2500);
+
+        // 100ミリ秒だけ演出を見せてから、いつものアラートを表示
+        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 100);
         return; 
     }
 
