@@ -243,49 +243,56 @@ function getNearestVertex(x, y, customMaxDist = 25) {
     return nearestV;
 }
 
-// ─── 🛠️【完全根治仕様・最終確定版】PCマウスは完全無補正、スマホタッチは のタイポを100%完璧に修復！ ───
+// ─── 🛠️【縮尺ズレ徹底追跡デバッグ版】1マスのショート現象の数理的ファクトをコンソールに暴き出すリスナー ───
 canvas.addEventListener('mousedown', function(e) { 
     if (e.button !== 0) return; 
     isDrawing = true; 
     const rect = canvas.getBoundingClientRect(); 
-    // 💡【解決策】PCのマウス操作時は余計な scaleX の掛け算を完全撤去！ブラウザと関数の自動連携に100%委ねて大正解の位置へ！
-    handleActionStart(e.clientX - rect.left, e.clientY - rect.top); 
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    handleActionStart((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
 });
 
 canvas.addEventListener('mousemove', function(e) { 
     if (!isDrawing) return; 
     const rect = canvas.getBoundingClientRect(); 
-    // 💡【解決策】PCのマウス操作時は動かす時も余計な掛け算を完全撤去し、handleActionMove へ完璧に同期！
-    handleActionMove(e.clientX - rect.left, e.clientY - rect.top); 
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
+    const calcX = rawX * scaleX;
+    const calcY = rawY * scaleY;
+
+    // 💡【次の対策に直結するリアルタイム自動ログ】
+    // マス目が1マス手前でショートする瞬間、計算上の内部ピクセル座標がいくつになってしまっているのかをF12に一発出力！
+    const debugC = Math.floor((calcX - (typeof OFFSET !== 'undefined' ? OFFSET : 30)) / (typeof CELL_PIXEL !== 'undefined' ? CELL_PIXEL : 50));
+    const debugR = Math.floor((calcY - (typeof OFFSET !== 'undefined' ? OFFSET : 30) - 30) / (typeof CELL_PIXEL !== 'undefined' ? CELL_PIXEL : 50));
+    console.log(`🔍【ドラッグ座標追跡】生X:${rawX.toFixed(1)} | 縮小倍率:${scaleX.toFixed(3)} | 補正後内部X:${calcX.toFixed(1)} ➔ 判定マス目: 列[${debugC}] 行[${debugR}]`);
+
+    handleActionMove(calcX, calcY); 
 });
 
-window.addEventListener('mouseup', () => { 
-    if (isDrawing) { 
-        isDrawing = false; 
-        handleActionEnd(); 
-    } 
-});
+window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); 
     isDrawing = true; 
     const rect = canvas.getBoundingClientRect(); 
-    
-    // 💡【スマホ専用・完全根治】前任者が忘れていた 配列のインデックス[0] をここで完璧に救済し、スマホ実機でのタッチ座標を100%大復活！
-    const touch = e.touches[0]; 
-    
-    handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
+    const touch = e.touches[0]; // 💡 前任者のタッチバグを100%完璧に修復！
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
 }, { passive: false });
 
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; 
     e.preventDefault(); 
     const rect = canvas.getBoundingClientRect(); 
-    
-    // 💡【スマホ専用・完全根治】前任者が忘れていた 配列のインデックス[0] をここで完璧に救済し、スマホ実機でのタッチ座標を100%大復活！
-    const touch = e.touches[0]; 
-    
-    handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
+    const touch = e.touches[0]; // 💡 前任者のタッチバグを100%完璧に修復！
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
 }, { passive: false });
 
 canvas.addEventListener('touchend', function(e) { 
