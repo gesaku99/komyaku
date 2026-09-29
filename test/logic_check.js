@@ -97,12 +97,12 @@ function checkAnswer(isAutoCheck = false) {
                 
                 // 💡【ご要望ファクト】アニメーション再生時間をジャスト1000ms（1秒：約60フレーム）へ完璧に制限！
                 // 40フレームを超えたあたりから、1秒のゴールに向けて美しく滑らかにフェードアウトします
-                if (count > 40) {
-                    paper.style.opacity = `${(60 - count) / 20}`;
+                if (count > 100) {
+                    paper.style.opacity = `${(120 - count) / 20}`;
                 }
 
                 count++;
-                if (count >= 60 || py > window.innerHeight + 30) {
+                if (count >= 120 || py > window.innerHeight + 30) {
                     clearInterval(paperTimer); paper.remove();
                 }
             }, 16);
@@ -111,10 +111,10 @@ function checkAnswer(isAutoCheck = false) {
         }
 
         // 🚀【1000ms（1秒）の絶対時間】1秒後に演出コンテナを完全消去して大団円
-        setTimeout(() => masterContainer.remove(), 1000);
+        setTimeout(() => masterContainer.remove(), 2000);
 
         // 🚀【1000ms（1秒）の絶対時間】演出が完全に1秒で終了したジャストの瞬間に、いつものアラートを表示！
-        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
+        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 2000);
         return; 
     }
 
