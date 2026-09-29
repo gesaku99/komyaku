@@ -64,7 +64,7 @@ function checkAnswer(isAutoCheck = false) {
         document.body.appendChild(masterContainer);
 
         // 画面下中央から弾け飛ぶ「表が白、裏が黒」の薄い紙吹雪（負荷ゼロの適正量: 70枚）
-        for (let i = 0; i < 70; i++) {
+        for (let i = 0; i < 100; i++) {
             const paper = document.createElement("div");
             paper.style.position = "absolute";
             paper.style.width = `${Math.random() * 6 + 8}px`;   
