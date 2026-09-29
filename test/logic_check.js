@@ -49,51 +49,55 @@ function checkAnswer(isAutoCheck = false) {
         for (let aw of answerWalls) { if (!uniqueUserWalls.includes(aw)) { isPerfect = false; break; } }
     }
 
-    // 4. 一致していれば、即座に大正解ポップアップを呼び出す
+    // 4. 一致いていれば、即座に大正解ポップアップを呼び出す
     if (isPerfect) {
         errorDisplayState.show = false;
         if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        // ─── 🌸【演出案④：満開の百花繚乱】盤面いっぱいに祝福の花々が咲き誇る ───
-        const flowerContainer = document.createElement("div");
-        flowerContainer.style.position = "fixed";
-        flowerContainer.style.top = "0"; flowerContainer.style.left = "0";
-        flowerContainer.style.width = "100vw"; flowerContainer.style.height = "100vh";
-        flowerContainer.style.pointerEvents = "none"; flowerContainer.style.zIndex = "9999";
-        document.body.appendChild(flowerContainer);
+        // ─── ✨【演出案⑤：黄金の流星雨】天から降り注ぐメタリックキラキラ紙吹雪 ───
+        const showerContainer = document.createElement("div");
+        showerContainer.style.position = "fixed";
+        showerContainer.style.top = "0"; showerContainer.style.left = "0";
+        showerContainer.style.width = "100vw"; showerContainer.style.height = "100vh";
+        showerContainer.style.pointerEvents = "none"; showerContainer.style.zIndex = "9999";
+        document.body.appendChild(showerContainer);
 
-        const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: window.innerWidth/2 - 200, top: window.innerHeight/2 - 200, width: 400, height: 400 };
-        const flowers = ["🌸", "💮", "✨", "🌺", "🌼"];
+        // キラキラ感を極限まで高めるためのゴールド＆シャンパンメタリックカラー
+        const glitterColors = ["#ffd700", "#ffa500", "#ffdf7a", "#fffacd", "#e6ca65"];
+        
+        for (let i = 0; i < 80; i++) {
+            const glitter = document.createElement("div");
+            const color = glitterColors[Math.floor(Math.random() * glitterColors.length)];
+            
+            glitter.style.position = "absolute";
+            glitter.style.width = `${Math.random() * 6 + 6}px`;  // 6px〜12px
+            glitter.style.height = `${Math.random() * 6 + 6}px`;
+            glitter.style.backgroundColor = color;
+            glitter.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px"; // 丸と四角を混ぜる
+            glitter.style.left = `${Math.random() * 100}vw`; // 画面の横幅全体にランダム配置
+            glitter.style.top = `-${Math.random() * 50 + 20}px`; // 画面の上の見えない位置からスタート
+            glitter.style.opacity = `${Math.random() * 0.4 + 0.6}`;
+            
+            // キラキラした光の反射を表現する強烈なグロー（ボカシ影）を注入
+            glitter.style.boxShadow = `0 0 8px ${color}, 0 0 12px #ffffff`;
 
-        // 1秒間で一気に華やかに咲かせるため、35個の花をランダムに配置
-        for (let i = 0; i < 35; i++) {
-            const f = document.createElement("div");
-            f.innerText = flowers[Math.floor(Math.random() * flowers.length)];
-            f.style.position = "absolute";
-            
-            // 盤面の範囲内を中心に、少し外側までランダムに散らす
-            const randomX = canvasRect.left + Math.random() * canvasRect.width + (Math.random() * 60 - 30);
-            const randomY = canvasRect.top + Math.random() * canvasRect.height + (Math.random() * 60 - 30);
-            
-            f.style.left = `${randomX}px`; f.style.top = `${randomY}px`;
-            f.style.fontSize = `${Math.random() * 20 + 40}px`; // 24px〜44pxの華やかなサイズ
-            f.style.transform = "scale(0) rotate(0deg)";
-            f.style.opacity = "1";
-            
-            // 🚀【1000ms（1秒）の絶対時間】滑らかなイージングで拡大回転消滅
-            f.style.transition = "transform 3.0s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 3.0s ease-in, top 3.0s ease-out";
-            flowerContainer.appendChild(f);
+            // 🚀【1000ms（1秒）の絶対時間】1秒間で超高速に画面下部へ落下させるためのCSS直線移動を設定
+            glitter.style.transition = "transform 3.0s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 3.0s ease-out";
+            showerContainer.appendChild(glitter);
 
-            // タイムラインをずらしてアニメーションを再生
+            // タイムラインをずらして一気に流星雨を降らせる
             setTimeout(() => {
-                f.style.transform = `scale(${Math.random() * 0.5 + 0.8}) rotate(${Math.random() * 180 - 90}deg)`;
-                f.style.opacity = "0";
-                f.style.top = `${randomY - 40}px`; // 少し上にふわっと浮き上がる
-            }, Math.random() * 100); // 咲くタイミングをわずかにズラして心地よい躍動感を出す
+                const dropHeight = window.innerHeight + 100;
+                const driftWidth = Math.random() * 100 - 50; // 左右にひらひらと流れる
+                const rotateDeg = Math.random() * 720 - 360; // 高速回転させてキラキラ感を強調
+                
+                glitter.style.transform = `translate(${driftWidth}px, ${dropHeight}px) rotate(${rotateDeg}deg)`;
+                glitter.style.opacity = "0";
+            }, Math.random() * 50); // 0.05秒の間にすべてのキラキラを時間差で一気に落とす
         }
 
-        // 🚀【1000ms（1秒）の絶対時間】1秒後にコンテナを完全に消去
-        setTimeout(() => flowerContainer.remove(), 3000);
+        // 🚀【1000ms（1秒）の絶対時間】1秒後にコンテナを完全消去
+        setTimeout(() => showerContainer.remove(), 3000);
 
         // 🚀【1000ms（1秒）の絶対時間】演出が完全に1秒で終了したジャストの瞬間にアラートを表示！
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 3000);
