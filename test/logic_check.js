@@ -76,12 +76,12 @@ function checkAnswer(isAutoCheck = false) {
             const randomY = canvasRect.top + Math.random() * canvasRect.height + (Math.random() * 60 - 30);
             
             f.style.left = `${randomX}px`; f.style.top = `${randomY}px`;
-            f.style.fontSize = `${Math.random() * 20 + 24}px`; // 24px〜44pxの華やかなサイズ
+            f.style.fontSize = `${Math.random() * 20 + 40}px`; // 24px〜44pxの華やかなサイズ
             f.style.transform = "scale(0) rotate(0deg)";
             f.style.opacity = "1";
             
             // 🚀【1000ms（1秒）の絶対時間】滑らかなイージングで拡大回転消滅
-            f.style.transition = "transform 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 1.0s ease-in, top 1.0s ease-out";
+            f.style.transition = "transform 3.0s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 3.0s ease-in, top 3.0s ease-out";
             flowerContainer.appendChild(f);
 
             // タイムラインをずらしてアニメーションを再生
@@ -93,7 +93,7 @@ function checkAnswer(isAutoCheck = false) {
         }
 
         // 🚀【1000ms（1秒）の絶対時間】1秒後にコンテナを完全に消去
-        setTimeout(() => flowerContainer.remove(), 1000);
+        setTimeout(() => flowerContainer.remove(), 3000);
 
         // 🚀【1000ms（1秒）の絶対時間】演出が完全に1秒で終了したジャストの瞬間にアラートを表示！
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 3000);
