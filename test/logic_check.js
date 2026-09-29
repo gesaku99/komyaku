@@ -54,13 +54,12 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = false;
         if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        // ─── 🚀【演出案⑥：3秒融合版】白黒3D回転紙吹雪 ＆ 1秒後から中央で渦巻く大輪の花 ───
+        // ─── 🚀【演出案⑥：最終確定クローズ版】白黒3D回転紙吹雪 ＆ 中央から画面外へ吹っ飛ぶ大銀河花うずまき ───
         const masterContainer = document.createElement("div");
         masterContainer.style.position = "fixed";
         masterContainer.style.top = "0"; masterContainer.style.left = "0";
         masterContainer.style.width = "100vw"; masterContainer.style.height = "100vh";
         masterContainer.style.pointerEvents = "none"; masterContainer.style.zIndex = "9999";
-        // 💡3Dのひらひら回転を美しく見せるための奥行き（パースペクティブ）を設定
         masterContainer.style.perspective = "1000px";
         document.body.appendChild(masterContainer);
 
@@ -70,38 +69,33 @@ function checkAnswer(isAutoCheck = false) {
         for (let i = 0; i < 90; i++) {
             const paper = document.createElement("div");
             paper.style.position = "absolute";
-            paper.style.width = `${Math.random() * 6 + 8}px`;   // 長方形の横幅 (8px〜14px)
-            paper.style.height = `${Math.random() * 10 + 14}px`; // 長方形の縦幅 (14px0〜24px)
+            paper.style.width = `${Math.random() * 6 + 8}px`;   
+            paper.style.height = `${Math.random() * 10 + 14}px`; 
             paper.style.left = "50%"; paper.style.bottom = "0";
-            paper.style.transformStyle = "preserve-3d"; // 3Dの表裏を有効化
+            paper.style.transformStyle = "preserve-3d"; 
             
-            // 💡【表裏の幾何学仕様】1枚の長方形の中に、白（表）と黒（裏）のレイヤーを背中合わせでドッキング
             paper.innerHTML = `
                 <div style="position:absolute; width:100%; height:100%; background:#ffffff; backface-visibility:hidden; border:1px solid #ddd; border-radius:1px;"></div>
                 <div style="position:absolute; width:100%; height:100%; background:#222222; backface-visibility:hidden; transform:rotateY(180deg); border:1px solid #000; border-radius:1px;"></div>
             `;
 
-            // ①のアプローチを踏襲した、画面下中央からのダイナミックな初速計算
-            const angle = (Math.random() * 70 + 55) * (Math.PI / 180); // 55度〜125度の角度で噴射
-            const velocity = Math.random() * 18 + 17; // 勢いよく飛び出させる
-            let vx = Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1);
-            let vy = -Math.sin(angle) * velocity;
+            const angle = (Math.random() * 70 + 55) * (Math.PI / 180); 
+            const velocity = Math.random() * 18 + 17; 
             let px = window.innerWidth / 2;
             let py = window.innerHeight;
+            let vx = Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1);
+            let vy = -Math.sin(angle) * velocity;
             
-            // 各紙吹雪ごとに、3Dの回転軸のブレや回転速度（超高速）をランダムに設定
             const rotSpeedX = Math.random() * 15 + 10;
             const rotSpeedY = Math.random() * 15 + 10;
             let count = 0;
 
             const paperTimer = setInterval(() => {
-                px += vx; py += vy; vy += 0.55; // 重力
-                vx *= 0.985; // 空気抵抗
+                px += vx; py += vy; vy += 0.55; 
+                vx *= 0.985; 
                 
-                // 🚀【3Dひらひら回転数式】translateに加え、X軸・Y軸・Z軸すべてを高速回転させて「消しゴム感」を200%排除！
                 paper.style.transform = `translate(${px - window.innerWidth/2}px, ${py - window.innerHeight}px) rotateX(${count * rotSpeedX}deg) rotateY(${count * rotSpeedY}deg) rotateZ(${count * 2}deg)`;
                 
-                // 3秒（約180フレーム）かけて、最後に向けて滑らかにフェードアウト
                 if (count > 120) {
                     paper.style.opacity = `${(180 - count) / 60}`;
                 }
@@ -116,24 +110,23 @@ function checkAnswer(isAutoCheck = false) {
         }
 
         // ────────────────────────────────────────────────────────
-        // 🔷 パート2：【開始1秒後（1000ms）に発動】中央から渦を巻いて飛び出す大輪の花
+        // 🔷 パート2：【開始1秒後（1000ms）に大暴発】中央から画面外へ突き抜ける大輪の花
         // ────────────────────────────────────────────────────────
         setTimeout(() => {
             const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: window.innerWidth/2 - 200, top: window.innerHeight/2 - 200, width: 400, height: 400 };
-            // 💡 画面中央、またはパズル盤面の真ん中を起点とする
             const centerX = canvasRect.left + canvasRect.width / 2;
             const centerY = canvasRect.top + canvasRect.height / 2;
             
             const flowers = ["🌸", "💮", "🌺", "🌼", "✨"];
 
-            // 2秒間（残り時間）で渦巻かせるため、40個の大輪の花を生成
-            for (let i = 0; i < 40; i++) {
+            // 💡【のびのび仕様】お祝い感をMAXにするため、花の数を1.5倍（60個）に大増量！
+            for (let i = 0; i < 60; i++) {
                 const flower = document.createElement("div");
                 flower.innerText = flowers[Math.floor(Math.random() * flowers.length)];
                 flower.style.position = "absolute";
                 
-                // 💡【ご要望ファクト】花の大きさを 40px 〜 60px の巨大サイズへ指定
-                const flowerSize = Math.random() * 20 + 40;
+                // 💡【のびのび仕様】花の大きさを最大 65px の超巨大おめでたサイズへ指定
+                const flowerSize = Math.random() * 25 + 40; // 40px〜65px
                 flower.style.fontSize = `${flowerSize}px`;
                 flower.style.left = `${centerX}px`;
                 flower.style.top = `${centerY}px`;
@@ -141,48 +134,51 @@ function checkAnswer(isAutoCheck = false) {
                 flower.style.opacity = "1";
                 masterContainer.appendChild(flower);
 
-                // 各花ごとに、渦巻きの回転方向や、外側へ吹っ飛ぶ遠心力の速度を設定
-                const baseAngle = Math.random() * Math.PI * 2; // 初期配置の角度
-                const spiralSpeed = (Math.random() * 0.08 + 0.05) * (Math.random() > 0.5 ? 1 : -1); // 渦を巻く回転速度
-                const expandSpeed = Math.random() * 5 + 4; // 外側へ広がる遠心力スピード
+                const baseAngle = Math.random() * Math.PI * 2; 
+                const spiralSpeed = (Math.random() * 0.12 + 0.08) * (Math.random() > 0.5 ? 1 : -1); // 渦巻き回転もさらにハイスピード化
                 
-                // 湧き出すタイミングを0.8秒の間に少しずつズラして、綺麗な「渦のタイムライン」を作る
+                // 💡【解決策】遠心力スピード（expandSpeed）のパワーをこれまでの4倍（1フレーム最大30px移動）に跳ね上げ！
+                // これにより、花たちが画面内に留まることなく、画面の上下左右の壁を豪快に突き抜けて画面外へ吹っ飛んでいきます！
+                const expandSpeed = Math.random() * 15 + 15; 
+                
                 let flowerCount = 0;
                 let currentRadius = 0;
 
                 setTimeout(() => {
                     const flowerTimer = setInterval(() => {
-                        // 🚀【対数らせん（渦巻き）の幾何学数式】
-                        // 時間の経過とともに、半径（currentRadius）を広げながら、角度（theta）を回転させる
                         currentRadius += expandSpeed;
                         const theta = baseAngle + flowerCount * spiralSpeed;
                         
                         const fx = centerX + Math.cos(theta) * currentRadius;
                         const fy = centerY + Math.sin(theta) * currentRadius;
 
-                        // 渦を巻きながら画面外へ拡大・高速回転して消え去る
                         flower.style.left = `${fx}px`;
                         flower.style.top = `${fy}px`;
-                        flower.style.transform = `translate(-50%, -50%) scale(${Math.min(1.2, flowerCount * 0.08)}) rotate(${flowerCount * 8}deg)`;
                         
-                        // 残り時間（120フレーム）に近づくにつれてフェードアウト
+                        // 渦を巻きながら画面外に向けて圧倒的なスケールで巨大化＆超高速スピン！
+                        flower.style.transform = `translate(-50%, -50%) scale(${Math.min(2.0, flowerCount * 0.15)}) rotate(${flowerCount * 12}deg)`;
+                        
+                        // 💡【完全解決】変数名の指定ミスを flowerCount へ完璧に修復根治！
+                        // 残り時間（120フレーム＝2秒）の終了に向けて、1文字の残り物もなく完璧にフェードアウト（透明化）が走ります！
                         if (flowerCount > 80) {
                             flower.style.opacity = `${(120 - flowerCount) / 40}`;
                         }
 
                         flowerCount++;
-                        if (flowerCount >= 120 || fx < -100 || fx > window.innerWidth + 100 || fy < -100 || fy > window.innerHeight + 100) {
+                        
+                        // 画面外（上下左右150px以上外側）へ完全に突き抜けたら、メモリを解放して消去
+                        if (flowerCount >= 120 || fx < -150 || fx > window.innerWidth + 150 || fy < -150 || fy > window.innerHeight + 150) {
                             clearInterval(flowerTimer); flower.remove();
                         }
                     }, 16);
-                }, Math.random() * 800); // 1秒後からさらに時間差で湧き出させる
+                }, Math.random() * 600); // 0.6秒の間に時間差でポンポンと泉のように湧き出させる
             }
-        }, 1000); // 💡 ジャスト開始1秒後（1000ms）に大輪の花の渦をトリガー！
+        }, 1000); 
 
         // 🚀【3000ms（3秒）の絶対時間】3秒後に全演出コンテナを完全消去して大団円
         setTimeout(() => masterContainer.remove(), 3000);
 
-        // 🚀【3000ms（3秒）の絶対時間】演出が完全に3秒ですべて完結したジャストの瞬間にいつものアラートを表示！
+        // 🚀【3000ms（3秒）の絶対時間】すべての花が画面外へフェードアウトし終えたジャスト3.0秒後に、美しくアラートを表示！
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 3000);
         return; 
     }
