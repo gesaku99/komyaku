@@ -54,31 +54,48 @@ function checkAnswer(isAutoCheck = false) {
         errorDisplayState.show = false;
         if (typeof sendKomyakuPlayLog === 'function') sendKomyakuPlayLog("SUCCESS");
 
-        // ─── 🌊【演出案③：サークル波紋】クリック位置から広がる静かな水面演出 ───
-        const ripple = document.createElement("div");
-        ripple.style.position = "fixed";
-        
-        // ユーザーが最後に触った画面上のリアルな表示座標を取得（なければ画面中央を基準にする）
-        const lastX = typeof e !== 'undefined' ? e.clientX : window.innerWidth / 2;
-        const lastY = typeof e !== 'undefined' ? e.clientY : window.innerHeight / 2;
-        
-        ripple.style.left = `${lastX}px`; ripple.style.top = `${lastY}px`;
-        ripple.style.width = "0px"; ripple.style.height = "0px";
-        ripple.style.borderRadius = "50%";
-        ripple.style.border = "4px solid #1982c4"; // 鉱脈をイメージした美しいブルーの細い線
-        ripple.style.backgroundColor = "rgba(25, 130, 196, 0.05)";
-        ripple.style.transform = "translate(-50%, -50%)";
-        ripple.style.pointerEvents = "none"; ripple.style.zIndex = "9999";
-        ripple.style.transition = "width 0.8s cubic-bezier(0.1, 0.8, 0.3, 1), height 0.8s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.8s ease-out";
-        document.body.appendChild(ripple);
+        // ─── 🌸【演出案④：満開の百花繚乱】盤面いっぱいに祝福の花々が咲き誇る ───
+        const flowerContainer = document.createElement("div");
+        flowerContainer.style.position = "fixed";
+        flowerContainer.style.top = "0"; flowerContainer.style.left = "0";
+        flowerContainer.style.width = "100vw"; flowerContainer.style.height = "100vh";
+        flowerContainer.style.pointerEvents = "none"; flowerContainer.style.zIndex = "9999";
+        document.body.appendChild(flowerContainer);
 
-        // JavaScriptのタイムラインを一瞬ずらして、波紋を一気に直径500pxまで滑らかに巨大化させる
-        setTimeout(() => {
-            ripple.style.width = "500px"; ripple.style.height = "500px";
-            ripple.style.opacity = "0";
-        }, 16);
-        setTimeout(() => ripple.remove(), 800);
+        const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: window.innerWidth/2 - 200, top: window.innerHeight/2 - 200, width: 400, height: 400 };
+        const flowers = ["🌸", "💮", "✨", "🌺", "🌼"];
 
+        // 1秒間で一気に華やかに咲かせるため、35個の花をランダムに配置
+        for (let i = 0; i < 35; i++) {
+            const f = document.createElement("div");
+            f.innerText = flowers[Math.floor(Math.random() * flowers.length)];
+            f.style.position = "absolute";
+            
+            // 盤面の範囲内を中心に、少し外側までランダムに散らす
+            const randomX = canvasRect.left + Math.random() * canvasRect.width + (Math.random() * 60 - 30);
+            const randomY = canvasRect.top + Math.random() * canvasRect.height + (Math.random() * 60 - 30);
+            
+            f.style.left = `${randomX}px`; f.style.top = `${randomY}px`;
+            f.style.fontSize = `${Math.random() * 20 + 24}px`; // 24px〜44pxの華やかなサイズ
+            f.style.transform = "scale(0) rotate(0deg)";
+            f.style.opacity = "1";
+            
+            // 🚀【1000ms（1秒）の絶対時間】滑らかなイージングで拡大回転消滅
+            f.style.transition = "transform 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 1.0s ease-in, top 1.0s ease-out";
+            flowerContainer.appendChild(f);
+
+            // タイムラインをずらしてアニメーションを再生
+            setTimeout(() => {
+                f.style.transform = `scale(${Math.random() * 0.5 + 0.8}) rotate(${Math.random() * 180 - 90}deg)`;
+                f.style.opacity = "0";
+                f.style.top = `${randomY - 40}px`; // 少し上にふわっと浮き上がる
+            }, Math.random() * 100); // 咲くタイミングをわずかにズラして心地よい躍動感を出す
+        }
+
+        // 🚀【1000ms（1秒）の絶対時間】1秒後にコンテナを完全に消去
+        setTimeout(() => flowerContainer.remove(), 1000);
+
+        // 🚀【1000ms（1秒）の絶対時間】演出が完全に1秒で終了したジャストの瞬間にアラートを表示！
         setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
         return; 
     }
