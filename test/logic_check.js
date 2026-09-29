@@ -96,7 +96,7 @@ function checkAnswer(isAutoCheck = false) {
         setTimeout(() => flowerContainer.remove(), 1000);
 
         // 🚀【1000ms（1秒）の絶対時間】演出が完全に1秒で終了したジャストの瞬間にアラートを表示！
-        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 1000);
+        setTimeout(() => { alert("\n✨ 🎉 正解です！！ 🎉 ✨\n"); }, 3000);
         return; 
     }
 
