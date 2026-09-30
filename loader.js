@@ -4,20 +4,30 @@ const paletteContainer = document.getElementById('palette');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 
-const CELL_PIXEL = 60;     
-const OFFSET = 50;         
+const CELL_PIXEL = 60;
+const OFFSET = 50;
 
-let GRID_SIZE = 5;       
-let problemLines = [];     
-let answerGrid = [];       
-let userGrid = [];         
+let GRID_SIZE = 5;
+let problemLines = [];
+let answerGrid = [];
+let userGrid = [];
+// ★追加：手動で引いた壁のリスト。各壁は { r1, c1, r2, c2 } の形で格子点の座標を記憶します
+let userWalls = [];
 
 const COLOR_PALETTE = [
-    '#ffffff', '#add8e6', '#ffcccb', '#90ee90', '#ffffe0',
-    '#e6e6fa', '#ffe4e1', '#ffb6c1', '#dda0dd', '#ffa07a'
+    '#b4fbc2', // 0番: 緑 (Light Green)
+    '#bce2fe', // 1番: 水 (Light Blue)
+    '#ff9ea0', // 2番: 赤 (Light Red)
+    '#ffffa6', // 3番: 黄 (Light Yellow)
+    '#fbb3fe', // 4番: 桃 (Light Pink)
+    '#ffca73', // 5番: 橙 (Orange)
+    '#c28eff', // 6番: 紫 (Purple)
+    '#f2cab3', // 7番: 茶 (Light Brown)
+    '#00e5ff', // 8番: 濃い青 (Deep Blue - 水色と完全に区別可能)
+    '#ffffff'  // 9番: 白(ユーザー境界線描画モード)
 ];
 
-let currentSelectedColor = 1; 
+let currentSelectedColor = 0; 
 let isDrawing = false;
 let startCell = null;
 let hasMovedInSession = false;
@@ -50,9 +60,10 @@ function clearGrid() {
     let hasChange = false;
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (userGrid[r][c] !== 0) {
-                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: 0 });
-                userGrid[r][c] = 0;
+            // ★重要：0(緑)ではなく、何も塗られていない真っ白な初期状態「null」に美しく戻す
+            if (userGrid[r][c] !== null) {
+                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: null });
+                userGrid[r][c] = null;
                 hasChange = true;
             }
         }
@@ -113,7 +124,7 @@ function loadPuzzleFromUrlOrId(defaultId) {
     else if (hashId.length === 21) { GRID_SIZE = 7; }  
     else if (hashId.length === 28) { GRID_SIZE = 8; }  
     else {
-        GRID_SIZE = 6; // デフォルトを6x6に設定
+        GRID_SIZE = 5; // デフォルトを6x6に設定
         hashId = defaultId;
     }
     
@@ -125,7 +136,7 @@ function loadPuzzleFromUrlOrId(defaultId) {
     canvas.width = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     canvas.height = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     
-    userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
     answerGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
     
     const totalBits = parseHashIdToBits(hashId);

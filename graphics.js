@@ -8,38 +8,30 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
 
     const titleBarHeight = 30;
-    
-    // 1. まず、画面上の「見た目の大きさ（論理サイズ）」を計算
     const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
     const logicalHeight = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + titleBarHeight;
     
-    // 2. ★重要：X投稿用に、Canvasの内部のドット数（解像度）を「3倍」に巨大化させる
     const scaleFactor = 3; 
     canvas.width = logicalWidth * scaleFactor;
     canvas.height = logicalHeight * scaleFactor;
-    
-    // 3. 巨大化したCanvasが画面からはみ出さないよう、CSSで元のスマートなサイズにギュッと凝縮させる
     canvas.style.width = logicalWidth + "px";
     canvas.style.height = logicalHeight + "px";
-    
-    // 4. すべての描画命令（線や文字）を、自動的に3倍の大きさでクッキリ描くように設定
     ctx.scale(scaleFactor, scaleFactor);
 
-    // 一度画面をクリアし、真っ白な高解像度の下地を敷く
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
-    // ─── 1. 上部黒タイトルバーの描画 ───
+    // ─── 1. 上部黒タイトルバーの描画（ご自身によるカスタマイズを100%無傷で維持） ───
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, titleBarHeight);
-
     ctx.fillStyle = '#ffffff';
     ctx.font = '26px "Tenor Sans", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     
-    let titleText = `Day${dayValue}`;
+    // 三項演算子による洗練されたタイトル切り替えロジック
+    let titleText = (dayValue === "XXX") ? `Example` : `Day${dayValue}`;
     if (isSolutionImage) titleText += " Solution";
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 
@@ -49,7 +41,9 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const x = OFFSET + c * CELL_PIXEL;
                 const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-                ctx.fillStyle = COLOR_PALETTE[userGrid[r][c]];
+                const colorNum = userGrid[r][c];
+                if (colorNum === null || colorNum === undefined) continue;
+                ctx.fillStyle = COLOR_PALETTE[colorNum];
                 ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
             }
         }
@@ -62,26 +56,19 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     }
 
     // ─── 3. グリッド（細い破線）を描画 ───
-    ctx.strokeStyle = '#cccccc'; 
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]); // 内枠を綺麗な点線（破線）にする設定
+    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 1;
     for (let i = 1; i < GRID_SIZE; i++) {
         const pos = OFFSET + i * CELL_PIXEL;
         ctx.beginPath(); ctx.moveTo(OFFSET, pos + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, pos + titleBarHeight); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(pos, OFFSET + titleBarHeight); ctx.lineTo(pos, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.stroke();
     }
-    ctx.setLineDash([]); 
 
-    // ─── 4. 座標記号・数字の描画（Biomeフォント適用） ───
-    ctx.fillStyle = '#000000';
-    ctx.font = '20px "Tenor Sans", sans-serif';
-    ctx.textAlign = 'center'; 
-    ctx.textBaseline = 'middle';
-    
+    // ─── 4. 座標記号・数字の描画（Tenor Sans完全統一） ───
+    ctx.fillStyle = '#000000'; ctx.font = '20px "Tenor Sans", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const xLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
     for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText(xLabels[i], OFFSET + i * CELL_PIXEL, OFFSET - 18 + titleBarHeight); }
     for (let i = 0; i <= GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET - 18, OFFSET + i * CELL_PIXEL + titleBarHeight); }
-    
     const cellXLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18 + titleBarHeight); }
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
@@ -90,9 +77,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     ctx.lineCap = 'square';
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            const x = OFFSET + c * CELL_PIXEL;
-            const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-
+            const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
             ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
             if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, y); ctx.lineTo(OFFSET, y + CELL_PIXEL); ctx.stroke(); }
             if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET + titleBarHeight); ctx.lineTo(x + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
@@ -102,61 +87,140 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             if (!isProblemImage) {
                 const targetGrid = isSolutionImage ? answerGrid : userGrid;
                 const currentIdx = targetGrid[r][c];
-
-                if (c < GRID_SIZE - 1) {
-                    const rightIdx = targetGrid[r][c + 1];
-                    if (currentIdx !== 0 && rightIdx !== 0 && currentIdx !== rightIdx) {
-                        ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; 
-                        ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); // ★完全修修復：ctx.を付与！
-                    }
+                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
+                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                 }
-                if (r < GRID_SIZE - 1) {
-                    const bottomIdx = targetGrid[r + 1][c];
-                    if (currentIdx !== 0 && bottomIdx !== 0 && currentIdx !== bottomIdx) {
-                        ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5;
-                        ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                    }
+                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
+                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                 }
             }
         }
     }
 
+    // ★手動壁の描画
+    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    userWalls.forEach(wall => {
+        ctx.beginPath();
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+        ctx.stroke();
+    });
+
     // ─── 6. 鉱脈（黒の斜線）の描画 ───
     ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 3;
-
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
     problemLines.forEach(line => {
-        ctx.beginPath(); 
-        ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
-        ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); 
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
     });
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
 
+    // ─── 7. ★新仕様：シンプルオレンジアシスト ＆ 全鉱脈黒丸表示（V0.9最終確定版） ───
+    if (!isSolutionImage && !isProblemImage && typeof assistStartV !== 'undefined' && assistStartV && assistCurrentV) {
+        const p1 = { x: assistStartV.c, y: assistStartV.r };
+        const p2 = { x: assistCurrentV.c, y: assistCurrentV.r };
+
+        const x1 = OFFSET + p1.x * CELL_PIXEL;
+        const y1 = OFFSET + p1.y * CELL_PIXEL + titleBarHeight;
+        const x2 = OFFSET + p2.x * CELL_PIXEL;
+        const y2 = OFFSET + p2.y * CELL_PIXEL + titleBarHeight;
+
+        const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+        const assistColor = '#ff9500'; // 新仕様：赤変化はすべて廃止し、一律で鮮やかなオレンジに統一
+
+        // 💡【New仕様】すべての鉱脈（正解の斜線）の黒丸表示を「先」にまとめてすべて描画する
+        if (typeof problemLines !== 'undefined' && problemLines) {
+            problemLines.forEach(line => {
+                const bx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                const by = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + titleBarHeight;
+                const bDistSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+
+                ctx.fillStyle = '#ffffff'; 
+                ctx.strokeStyle = '#000000'; 
+                ctx.lineWidth = 2;
+                ctx.beginPath(); 
+                ctx.arc(bx, by, 12, 0, Math.PI * 2); 
+                ctx.fill(); 
+                ctx.stroke();
+
+                ctx.fillStyle = '#000000'; 
+                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                ctx.textAlign = 'center'; 
+                ctx.textBaseline = 'middle';
+                ctx.fillText(bDistSq.toString(), bx, by + 0.5);
+            });
+        }
+
+        // 始点格子点のオレンジ円を描画
+        ctx.strokeStyle = assistColor; 
+        ctx.lineWidth = 2; 
+        ctx.setLineDash([]);
+        ctx.beginPath(); 
+        ctx.arc(x1, y1, 15, 0, Math.PI * 2); 
+        ctx.stroke();
+        // 終点格子点が動いているとき（線が引かれているとき）の描画
+        if (p1.x !== p2.x || p1.y !== p2.y) {
+            // 終点のオレンジ円を描画
+            ctx.beginPath(); 
+            ctx.arc(x2, y2, 15, 0, Math.PI * 2); 
+            ctx.stroke();
+
+            // 始点から終点までを繋ぐ「オレンジの綺麗な実線（衝突判定による赤変化は完全撤去）」
+            ctx.lineWidth = 3; 
+            ctx.beginPath(); 
+            ctx.moveTo(x1, y1); 
+            ctx.lineTo(x2, y2); 
+            ctx.stroke();
+
+            // 💡【New仕様】中央のオレンジ丸を、先ほど描いた黒丸を完全に押しつぶして上に重ねるよう「最後」に描画
+            const mx = (x1 + x2) / 2; 
+            const my = (y1 + y2) / 2;
+
+            ctx.fillStyle = '#ffffff'; 
+            ctx.strokeStyle = assistColor; 
+            ctx.lineWidth = 2;
+            ctx.beginPath(); 
+            ctx.arc(mx, my, 12, 0, Math.PI * 2); 
+            ctx.fill(); 
+            ctx.stroke();
+            
+            ctx.fillStyle = assistColor; 
+            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+            ctx.textAlign = 'center'; 
+            ctx.textBaseline = 'middle';
+            ctx.fillText(distSq.toString(), mx, my + 0.5);
+        }
+        ctx.setLineDash([]); 
+    }
+
+    // ─── 8. 判定エラーの赤線・中央赤丸の表示（手動Checkボタン専用のエラービジュアル） ───
     if (!isSolutionImage && !isProblemImage && errorDisplayState.show) {
         ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3;
         errorDisplayState.wrongLines.forEach(line => {
             ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + titleBarHeight);
             ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
-        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        errorDisplayState.wrongLines.forEach(line => {
-            const rx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.7) * CELL_PIXEL;
-            const ry = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.7) * CELL_PIXEL + titleBarHeight;
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
-        });
+        
+        ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        
+        // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に中点に描画（下層レイヤー）
         errorDisplayState.blackAlertLines.forEach(line => {
-            const bx = OFFSET + (line.start.x + (line.end.x - line.start.x) * 0.3) * CELL_PIXEL;
-            const by = OFFSET + (line.start.y + (line.end.y - line.start.y) * 0.3) * CELL_PIXEL + titleBarHeight;
+            const bx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
+            const by = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
+
+        // 💡修正(1)：不正解理由の赤丸表示（wrongLines）を後に中点に描画（最前面レイヤー）
+        errorDisplayState.wrongLines.forEach(line => {
+            const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
+            const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
+        });
+
         errorDisplayState.invalidVertices.forEach(v => {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
@@ -164,21 +228,12 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 }
 
 function downloadPuzzleImage(isSolution) {
-    if (isSolution) {
-        drawPuzzle(true, false); 
-    } else {
-        drawPuzzle(false, true); 
-    }
-
+    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
     const urlParams = new URLSearchParams(window.location.search);
     const dayValue = urlParams.get('day') || "XXX";
     const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
-
     const link = document.createElement('a');
-    link.download = filename;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-
+    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
     drawPuzzle();
 }
 

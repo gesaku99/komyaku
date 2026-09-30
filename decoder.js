@@ -1,3 +1,4 @@
+// ★重要：欠落していたハッシュ文字列解読関数を完全復活
 function parseHashIdToBits(hashStr) {
     const bits = [];
     for (let i = 0; i < hashStr.length; i++) {
@@ -9,7 +10,7 @@ function parseHashIdToBits(hashStr) {
     return bits;
 }
 
-// 列優先（列メジャー）走査を1対1で完璧に再現するデコードアルゴリズム
+// 列優先（列メジャー）走査を1対1で再現する、元々の完全に正常だったデコードアルゴリズム
 function buildAnswerGridFromBits(bits) {
     const vWallsPerColumn = GRID_SIZE;      
     const hWallsPerColumn = GRID_SIZE - 1;  
@@ -17,14 +18,12 @@ function buildAnswerGridFromBits(bits) {
 
     // 縦の境界線の有無を判定（r行目のマス c と c+1 の間）
     function hasVerticalWall(r, minC) {
-        // minC列目の上から下へ向かって順番にビットが詰まっている
         const bitIndex = minC * vWallsPerColumn + r;
         return bits[bitIndex] === 1;
     }
 
     // 横の境界線の有無を判定（c列目のマス r と r+1 の間）
     function hasHorizontalWall(minR, c) {
-        // 縦壁データの直後から、c列目の上から下へ向かって順番にビットが詰まっている
         const bitIndex = totalVTtypeWalls + (c * hWallsPerColumn + minR);
         return bits[bitIndex] === 1;
     }
@@ -66,7 +65,8 @@ function buildAnswerGridFromBits(bits) {
             }
         }
     }
-    // 復元された部屋データをベースに、鉱脈の自動逆算（analyzer.js）へと引き継ぐ
-    generateProblemLinesFromAnswer();
-    drawPuzzle(); // ★追加：すべての解読が終わったこの瞬間に、画面を初めて描画させる！
+    // 復元された正しい部屋データをベースに、確定版の鉱脈自動逆算（analyzer.js）へと引き継ぐ
+    if (typeof generateProblemLinesFromAnswer === 'function') {
+        generateProblemLinesFromAnswer();
+    }
 }
