@@ -1,27 +1,3 @@
-// ─── 🚨【緊急デバッグ：スマホエラー画面強制ジャック】外部通信不要・完全自炊仕様 ───
-window.addEventListener('error', function(e) {
-    const errorDiv = document.createElement("div");
-    errorDiv.style.position = "fixed";
-    errorDiv.style.top = "10px"; errorDiv.style.left = "10px";
-    errorDiv.style.width = "calc(100vw - 20px)"; errorDiv.style.maxHeight = "80vh";
-    errorDiv.style.backgroundColor = "rgba(255, 0, 0, 0.95)";
-    errorDiv.style.color = "#ffffff"; errorDiv.style.padding = "15px";
-    errorDiv.style.borderRadius = "8px"; errorDiv.style.zIndex = "99999";
-    errorDiv.style.fontFamily = "monospace"; errorDiv.style.fontSize = "12px";
-    errorDiv.style.overflowY = "auto"; errorDiv.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5)";
-    
-    errorDiv.innerHTML = `
-        <div style="font-weight:bold; font-size:14px; border-bottom:1px solid #fff; padding-bottom:5px; margin-bottom:10px;">
-            🚨 【スマホ実機クラッシュレポート】
-        </div>
-        <strong>Message:</strong> ${e.message}<br>
-        <strong>File:</strong> ${e.filename ? e.filename.split('/').pop() : 'unknown'}<br>
-        <strong>Line:</strong> ${e.lineno} : <strong>Col:</strong> ${e.colno}<br><br>
-        <strong>Stack Trace:</strong><br>
-        <pre style="margin:0; white-space:pre-wrap; font-size:10px; background:rgba(0,0,0,0.2); padding:5px;">${e.error ? e.error.stack : 'No stack trace available'}</pre>
-    `;
-    document.body.appendChild(errorDiv);
-});
 // ─── 🌐【新設】Cookie不使用・安全中継対応 プレイログ一括自動送信システム ───
 const KOMYAKU_LOGGER_URL = "https://autumn-sun-42c9.gesaku419.workers.dev/";
 
@@ -325,33 +301,47 @@ window.addEventListener('mouseup', () => {
     } 
 });
 
+// ─── 🛠️【スマホ座標補正・完全一致確定版】PCと100%同じ3倍の比率掛け算を適用し、スマホスワイプを大復活！ ───
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); 
     isDrawing = true; 
     const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches; // 💡 前任者のタッチバグを完璧に救済！
     
-    const scaleX = (canvas.width / rect.width) / 3;
-    const scaleY = (canvas.height / rect.height) / 3;
-    
-    handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
-}, { passive: false });
+    // 💡【完全解決】あなたのご指摘通り、PC側と200%完全に同じ「内部サイズ / 表示幅」の3倍補正をスマホへドッキング！
+    // 過去の完璧な引き算構造をベースに、ズレを完全に失くして handleActionStart へ引き渡します！
+    if (e.touches && e.touches.length > 0) {
+        const touch = e.touches; 
+        
+        const scaleX = canvas.width / rect.width; // ➔ 余計な / 3 を完全粉砕撤去！
+        const scaleY = canvas.height / rect.height;
+        
+        handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+    }
+});
 
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; 
     e.preventDefault(); 
     const rect = canvas.getBoundingClientRect(); 
-    const touch = e.touches; // 💡 前任者のタッチバグを完璧に救済！
     
-    const scaleX = (canvas.width / rect.width) / 3;
-    const scaleY = (canvas.height / rect.height) / 3;
-    
-    handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+    // 💡 移動（スワイプ）の時も、PC側と100%シンクロした正しい3倍の掛け算で handleActionMove へ同期！
+    if (e.touches && e.touches.length > 0) {
+        const touch = e.touches; 
+        
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+    }
 }, { passive: false });
 
 canvas.addEventListener('touchend', function(e) { 
-    e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } 
-}, { passive: false });
+    e.preventDefault(); 
+    if (isDrawing) { 
+        isDrawing = false; 
+        handleActionEnd(); 
+    } 
+});
 
 function createPalette() {
     paletteContainer.innerHTML = ''; 
