@@ -1,3 +1,27 @@
+// ─── 🚨【緊急デバッグ：スマホエラー画面強制ジャック】外部通信不要・完全自炊仕様 ───
+window.addEventListener('error', function(e) {
+    const errorDiv = document.createElement("div");
+    errorDiv.style.position = "fixed";
+    errorDiv.style.top = "10px"; errorDiv.style.left = "10px";
+    errorDiv.style.width = "calc(100vw - 20px)"; errorDiv.style.maxHeight = "80vh";
+    errorDiv.style.backgroundColor = "rgba(255, 0, 0, 0.95)";
+    errorDiv.style.color = "#ffffff"; errorDiv.style.padding = "15px";
+    errorDiv.style.borderRadius = "8px"; errorDiv.style.zIndex = "99999";
+    errorDiv.style.fontFamily = "monospace"; errorDiv.style.fontSize = "12px";
+    errorDiv.style.overflowY = "auto"; errorDiv.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5)";
+    
+    errorDiv.innerHTML = `
+        <div style="font-weight:bold; font-size:14px; border-bottom:1px solid #fff; padding-bottom:5px; margin-bottom:10px;">
+            🚨 【スマホ実機クラッシュレポート】
+        </div>
+        <strong>Message:</strong> ${e.message}<br>
+        <strong>File:</strong> ${e.filename ? e.filename.split('/').pop() : 'unknown'}<br>
+        <strong>Line:</strong> ${e.lineno} : <strong>Col:</strong> ${e.colno}<br><br>
+        <strong>Stack Trace:</strong><br>
+        <pre style="margin:0; white-space:pre-wrap; font-size:10px; background:rgba(0,0,0,0.2); padding:5px;">${e.error ? e.error.stack : 'No stack trace available'}</pre>
+    `;
+    document.body.appendChild(errorDiv);
+});
 // ─── 🌐【新設】Cookie不使用・安全中継対応 プレイログ一括自動送信システム ───
 const KOMYAKU_LOGGER_URL = "https://autumn-sun-42c9.gesaku419.workers.dev/";
 
