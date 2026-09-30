@@ -38,5 +38,60 @@
         </div>
     </div>
 
+    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！
+    <script>
+    document.fonts.ready.then(function() {
+        // 1. 本番のパズルデータを読み込んで一発起動！
+        loadPuzzleFromUrlOrId("E95A000007C1084");
+        createPalette(); 
+        updateHistoryButtons(); 
+
+        // 2. 🔍【確定版：スマホタッチ座標リアルタイム可視化デバッグウィンドウ】
+        // キャンバスも変数もすべてが100%この世に誕生し終わっているため、タイムアウト不要で200%確実に安全起動します！
+        const debugDiv = document.createElement("div");
+        debugDiv.id = "komyaku-debug-window";
+        debugDiv.style.position = "fixed";
+        debugDiv.style.top = "5px"; debugDiv.style.left = "5px";
+        debugDiv.style.width = "calc(100vw - 10px)"; debugDiv.style.height = "120px";
+        debugDiv.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+        debugDiv.style.color = "#00ff88"; debugDiv.style.padding = "10px";
+        debugDiv.style.borderRadius = "6px"; debugDiv.style.zIndex = "99999";
+        debugDiv.style.fontFamily = "monospace"; debugDiv.style.fontSize = "11px";
+        debugDiv.style.pointerEvents = "none"; debugDiv.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
+        debugDiv.style.lineHeight = "1.4";
+        
+        debugDiv.innerHTML = `
+            <div style="font-weight:bold; border-bottom:1px solid #00ff88; padding-bottom:3px; margin-bottom:5px;">📊 KOMYAKU COORD DEBUG</div>
+            <div id="db-raw">Raw Touch : X=---, Y=---</div>
+            <div id="db-rect">Rect Top : Left=---, Top=---, Width=---</div>
+            <div id="db-scale">Scale    : scaleX=---, canvasW=---</div>
+            <div id="db-final">Final (X*scale) : X=---, Y=---</div>
+        `;
+        document.body.appendChild(debugDiv);
+
+        function updateDebugInfo(e, label) {
+            if (!e.touches || e.touches.length === 0) return;
+            const touch = e.touches[0]; // 1本目の指の生データを正確に取得
+            const rect = canvas.getBoundingClientRect();
+            
+            const currentRectW = rect.width || 275;
+            const currentRectH = rect.height || 275;
+            
+            const scaleX = canvas.width / currentRectW;
+            const scaleY = canvas.height / currentRectH;
+            
+            const finalX = (touch.clientX - rect.left) * scaleX;
+            const finalY = (touch.clientY - rect.top) * scaleY;
+
+            document.getElementById("db-raw").innerText = `[${label}] Raw Touch : clientX=${Math.round(touch.clientX)}, clientY=${Math.round(touch.clientY)}`;
+            document.getElementById("db-rect").innerText = `Rect Border : left=${Math.round(rect.left)}, top=${Math.round(rect.top)}, width=${Math.round(currentRectW)}`;
+            document.getElementById("db-scale").innerText = `Scale Match : scaleX=${scaleX.toFixed(2)}, canvasW=${canvas.width}`;
+            document.getElementById("db-final").innerText = `🔥 Final Sent: X=${Math.round(finalX)}, Y=${Math.round(finalY)}`;
+        }
+
+        window.addEventListener('touchstart', (e) => { updateDebugInfo(e, 'START'); }, { passive: true });
+        window.addEventListener('touchmove', (e) => { updateDebugInfo(e, 'MOVE'); }, { passive: true });
+    });
+    </script> -->
 </body>
 </html>
