@@ -38,7 +38,8 @@
         </div>
     </div>
 
-    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！
+    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！ -->
+    
     <script>
     document.fonts.ready.then(function() {
         // 1. 本番のパズルデータを読み込んで一発起動！
@@ -92,6 +93,6 @@
         window.addEventListener('touchstart', (e) => { updateDebugInfo(e, 'START'); }, { passive: true });
         window.addEventListener('touchmove', (e) => { updateDebugInfo(e, 'MOVE'); }, { passive: true });
     });
-    </script>-->
+    </script>
 </body>
 </html>
