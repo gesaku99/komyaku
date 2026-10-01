@@ -301,17 +301,21 @@ window.addEventListener('mouseup', () => {
     } 
 });
 
-// ─── 🛠️【スマホタッチ座標・完全シンクロ確定版】余計な掛け算を完全撤去し、スマホ操作を100%完全大復活！ ───
+// ─── 🛠️【スマホ縮小全体表示・完全同期確定版】PCと100%同じ縮小比率をスマホへ適用し、大復活！ ───
 canvas.addEventListener('touchstart', function(e) {
     e.preventDefault(); 
     isDrawing = true; 
     const rect = canvas.getBoundingClientRect(); 
     
-    // 💡【完全解決】あなたのご指摘通り、Raw Touch と Final Sent を完璧に合致させる大正義の復元！
-    // 座標を3倍の彼方へ暴走させていた scaleX の掛け算を完全撤去し、過去に100%完璧に動いていた生数字の引き算だけで引き渡します！
     if (e.touches && e.touches.length > 0) {
         const touch = e.touches[0]; // 1本目の指のデータを正確にホールド
-        handleActionStart(touch.clientX - rect.left, touch.clientY - rect.top);
+        
+        // 💡【解決策】PC側で大成功した「内部サイズ / 画面上の実際の表示幅」の比率をスマホへ完全ドッキング！
+        // これにより、盤面がどれだけ小さく縮小全体表示されていようが、指の現在地とマス目の位置が100%完璧にシンクロします！
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
+        
+        handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
     }
 });
 
@@ -320,12 +324,24 @@ canvas.addEventListener('touchmove', function(e) {
     e.preventDefault(); 
     const rect = canvas.getBoundingClientRect(); 
     
-    // 💡 移動（スワイプ）の時も、余計な計算を1文字も挟まず、過去の完璧な正解ルートで handleActionMove へ同期！
     if (e.touches && e.touches.length > 0) {
         const touch = e.touches[0]; 
-        handleActionMove(touch.clientX - rect.left, touch.clientY - rect.top);
+        
+        // 💡 動かしている最中(スワイプ)も、全く同じ縮小比率を掛け算して handleActionMove へ完璧に同期！
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
+        
+        handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
     }
 }, { passive: false });
+
+canvas.addEventListener('touchend', function(e) { 
+    e.preventDefault(); 
+    if (isDrawing) { 
+        isDrawing = false; 
+        handleActionEnd(); 
+    } 
+});
 
 canvas.addEventListener('touchend', function(e) { 
     e.preventDefault(); 
