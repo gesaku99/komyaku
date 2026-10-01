@@ -312,8 +312,8 @@ canvas.addEventListener('touchstart', function(e) {
         
         // 💡【解決策】PC側で大成功した「内部サイズ / 画面上の実際の表示幅」の比率をスマホへ完全ドッキング！
         // これにより、盤面がどれだけ小さく縮小全体表示されていようが、指の現在地とマス目の位置が100%完璧にシンクロします！
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
         
         handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
     }
@@ -328,8 +328,8 @@ canvas.addEventListener('touchmove', function(e) {
         const touch = e.touches[0]; 
         
         // 💡 動かしている最中(スワイプ)も、全く同じ縮小比率を掛け算して handleActionMove へ完璧に同期！
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
         
         handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
     }
