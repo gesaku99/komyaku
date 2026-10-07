@@ -78,7 +78,7 @@ function handleActionStart(x, y) {
             
             // 💡【解決策】画面が小さくなっている時は、アシスト線の感知範囲も 25px から「25 * 縮小率」へと自動で小さく縮小！
             // これにより、縮小画面でマスの真ん中を触った時に、左上の格子点センサーが誤作動して色塗りを奪う不具合を200%完璧に永久シャットアウトします！
-            const adjustedNearestV = getNearestVertex(x, y, 25 * currentScale);
+            const adjustedNearestV = getNearestVertex(x, y, 30 * currentScale);
             
             if (adjustedNearestV) {
                 assistStartV = adjustedNearestV;
@@ -244,7 +244,7 @@ function redo() {
 }
 
 // 💡 引数の末尾に可変距離を受け取る customMaxDist を追加し、未指定時は元の黄金比 25 を自動適用
-function getNearestVertex(x, y, customMaxDist = 25) {
+function getNearestVertex(x, y, customMaxDist = 30) {
     let nearestV = null;
     let minDistance = customMaxDist; 
     for (let r = 0; r <= GRID_SIZE; r++) {
