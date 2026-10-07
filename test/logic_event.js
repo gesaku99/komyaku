@@ -233,22 +233,21 @@ function undo() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// ─── 🛠️【v0.9.1完全クローズ】Clearボタンの全消去操作を1撃で同時に、完全に再現させる大正義のRedoシステム ───
+// ─── 🛠️【v0.9.1真の完全クローズ】あなたのロジックが100%大正解！色マスRedoの直後に、底の壁Redoを一網打尽にする関数 ───
 function redo() {
     if (redoStack.length === 0) return;
     clearErrorDisplay();
     const change = redoStack.pop();
     
     if (change.type === 'wall_step') {
-        // ✏️ 壁引きのRedo処理
+        // ✏️ 通常プレイ時の、手動境界線1マスずつのRedo処理
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else {
-        // 🎨 色塗りのRedo処理
+        // 🎨 色塗り（およびClearボタンによる色消去）のRedo処理
         const batchGroup = [change];
         
-        // 💡【解決策】もし今回のRedoが「Clearボタンによる全消去(toがnull)」だった場合、
-        // そこで終了せずに、その直後に連続して眠っている「手動壁の一括消去履歴(wall_step)」までを一網打尽に1発で同時に連動実行する！
+        // 1. まず、一番上に積み上がっているClearされた色マスの一括消去履歴をすべてポップして実行
         while (redoStack.length > 0 && 
                redoStack[redoStack.length - 1].type !== 'wall_step' && 
                redoStack[redoStack.length - 1].from === null && change.from === null) {
@@ -260,11 +259,14 @@ function redo() {
             userGrid[c.r][c.c] = c.from;
         });
 
-        // 💡【解決策】色マスの全一括消去に連動して、Redoスタックの最先端に眠っている「手動壁の空っぽ化([])」も一瞬で同時にポップして実行！
+        // 2. 💡【解決策：あなたの読み解き通りに完全根治！】
+        // 大量の色マスのRedo（消去）をすべて処理し終えた「まさにこの直後（末尾）」のタイミングで、
+        // もしRedoスタックのすぐ底に、Clearボタンによって同時に消し去られた手動壁の消去履歴（toが空っぽの[]）が
+        // 綺麗にスタンバイして残っていた場合、それも1回目のクリックのタイムラインの中で一網打尽に同時にポップして実行します！
         if (change.from === null && redoStack.length > 0 && redoStack[redoStack.length - 1].type === 'wall_step' && Array.isArray(redoStack[redoStack.length - 1].to) && redoStack[redoStack.length - 1].to.length === 0) {
             const wallChange = redoStack.pop();
             undoStack.push({ type: 'wall_step', from: wallChange.to, to: wallChange.from });
-            userWalls = wallChange.from.map(w => ({ ...w }));
+            userWalls = wallChange.to.map(w => ({ ...w })); // ➔ 手動壁をClear後の綺麗な空っぽの[]に一撃上書き！
         }
     }
     drawPuzzle(); 
