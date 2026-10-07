@@ -26,16 +26,28 @@ function checkAnswer(isAutoCheck = false) {
         }
     }
     
+    // ─── ✏️【v0.9.1デグレード完全根治】格子点座標からマス基準のH/V壁への正義の逆算処理 ───
     if (typeof userWalls !== 'undefined' && userWalls) {
         userWalls.forEach(w => {
             const minR = Math.min(w.r1, w.r2); const maxR = Math.max(w.r1, w.r2);
             const minC = Math.min(w.c1, w.c2); const maxC = Math.max(w.c1, w.c2);
+            
             if (w.r1 === w.r2) {
+                // 💡【横線(H)の場合】：r行目の格子線は、(r-1)行目のマスと r行目のマスの「間」の横壁になる！
                 const r = minR;
-                if (r > 0 && r < GRID_SIZE) { for (let c = minC; c < maxC; c++) userWallsList.push(`${r-1},${c}-${r-1},${c+1}(H)`); }
+                if (r > 0 && r < GRID_SIZE) { 
+                    for (let c = minC; c < maxC; c++) {
+                        userWallsList.push(`${r-1},${c}-${r},${c}(H)`); // ➔ 正確なマス対比インデックスへ修正！
+                    } 
+                }
             } else {
+                // 💡【縦線(V)の場合】：c列目の格子線は、(c-1)列目のマスと c列目のマスの「間」の縦壁になる！
                 const c = minC;
-                if (c > 0 && c < GRID_SIZE) { for (let r = minR; r < maxR; r++) userWallsList.push(`${r},${c-1}-${r+1},${c-1}(V)`); }
+                if (c > 0 && c < GRID_SIZE) { 
+                    for (let r = minR; r < maxR; r++) {
+                        userWallsList.push(`${r},${c-1}-${r},${c}(V)`); // ➔ 正確なマス対比インデックスへ修正！
+                    } 
+                }
             }
         });
     }
