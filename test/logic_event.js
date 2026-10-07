@@ -190,30 +190,39 @@ function handleActionEnd() {
     }, 0);
 }
 
-// ─── 🛠️【完全根治版】通常色塗りの1マスUndoを維持しつつ、Clearボタンによる変化を一撃で一括復元するUndo ───
+// ─── 🛠️【v0.9.1完全クローズ】Clear直前の色塗り＋手動壁を1撃で同時に完全大復活させる大正義のUndoシステム ───
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
     
     if (change.type === 'wall_step') {
-        // ✏️ 手動境界線の1ステップUndo（1マスずつ正確に巻き戻す）
+        // ✏️ 手動境界線のUndo
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
+        
+        // 💡【解決策】もし今回の壁Undoが「Clearボタンによる一括消去(toが空っぽ)」だった場合、
+        // そこで終了せずに、その直下に同時に眠っている「Clearされた色マスの全消去履歴」も一網打尽に1発で同時に連動復元する！
+        if (Array.isArray(change.to) && change.to.length === 0) {
+            const batchGroup = [];
+            while (undoStack.length > 0 && 
+                   undoStack[undoStack.length - 1].type !== 'wall_step' && 
+                   undoStack[undoStack.length - 1].to === null) {
+                batchGroup.push(undoStack.pop());
+            }
+            batchGroup.forEach(c => {
+                redoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
+                userGrid[c.r][c.c] = c.from;
+            });
+        }
     } else {
         // 🎨 通常色塗りのUndo
-        // 💡【解決策】Clearボタン等によって、複数のマスが一気に「null（または特定の色）」へ連続変化させられた履歴を検知！
         const batchGroup = [change];
-        
-        // 直前の操作と「全く同じタイミング、あるいは一連の全マス消去操作（0へのリセット等）」が連続している場合、
-        // それらを1つの「塊（バッチ）」として一括でポップ（引き算）し、1回でまとめて巻き戻します
         while (undoStack.length > 0 && 
                undoStack[undoStack.length - 1].type !== 'wall_step' && 
                undoStack[undoStack.length - 1].to === null && change.to === null) {
             batchGroup.push(undoStack.pop());
         }
-
-        // 集まった一括操作の塊を、すべて同時に盤面に復元し、Redoスタックへも同じ塊として引き渡す
         batchGroup.forEach(c => {
             redoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
             userGrid[c.r][c.c] = c.from;
