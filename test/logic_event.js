@@ -83,6 +83,10 @@ function handleActionStart(x, y) {
             if (adjustedNearestV) {
                 assistStartV = adjustedNearestV;
                 assistCurrentV = adjustedNearestV;
+                // 💡【解決策】指が置かれた・マウスが押された「まさにこの一瞬」に、画面の再描画を強制実行！
+                // これにより、ユーザーはドラッグで動かし始める前に、格子点の半径25px内を正しく捉えたことを意味する
+                // 美しいオレンジ丸の描画をその目で100%見届けて、安心してスワイプを開始できるようになります！
+                if (typeof drawPuzzle === 'function') drawPuzzle();
             }
         }
         startCell = cell;
