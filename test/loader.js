@@ -55,38 +55,38 @@ function recordChange(r, c, oldColor, newColor) {
     updateHistoryButtons();
 }
 
-// ─── 🧹【v0.9.1バグ根治】色マスも手動境界線も1撃で全消去し、完璧にUndo/Redoできる完全リセットシステム ───
+// ─── 🧹【v0.9.1リセット履歴一括凝縮版】あなたのディレクション通り、色と壁の全過去を1つの操作履歴にして1発プッシュ！ ───
 function clearGrid() {
     if (typeof clearErrorDisplay === 'function') clearErrorDisplay();
-    let hasChange = false;
     
-    // 💡【解決策】Clearボタンが押される直前の「手動壁のすべての状態」を深くコピーして一時保存！
+    // 1. Clearボタンが押される「直前」の、すべての色マスと手動壁の完璧な状態を深くコピーして1つの塊にする！
+    const gridSnapshotBeforeClear = userGrid.map(row => [...row]);
     const wallSnapshotBeforeClear = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
 
-    // 1. すべての色マスを2重ループで真っ白(null)にお掃除
+    let hasChange = false;
+
+    // 2. 画面上の色マスを真っ白(null)にする
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             if (userGrid[r][c] !== null) {
-                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: null });
                 userGrid[r][c] = null;
                 hasChange = true;
             }
         }
     }
 
-    // 2. 💡【解決策】手動壁（userWalls）にデータが1本でも入っていたら、配列を完全に空っぽ(リセット)にする！
+    // 3. 画面上の手動壁を空っぽ([])にする
     if (typeof userWalls !== 'undefined' && userWalls && userWalls.length > 0) {
         userWalls = [];
         hasChange = true;
     }
 
+    // 4. 💡【大正解の合流】変化が起きていたら、色と壁の「元の姿」を1つのセットにして、Undoスタックへポチッと1発だけプッシュ！
     if (hasChange) {
-        // 💡【解決策】手動壁が消去されたという歴史の1ステップを、Undoスタックへカチッと注入！
-        // これにより、Clearした直後に「Undo」を押せば、色マスと手動壁が2つとも完全に、同時に一瞬で大復活します！
         undoStack.push({
-            type: 'wall_step',
-            from: wallSnapshotBeforeClear,
-            to: []
+            type: 'clear_all',
+            oldGrid: gridSnapshotBeforeClear,
+            oldWalls: wallSnapshotBeforeClear
         });
 
         if (typeof redoStack !== 'undefined') redoStack.length = 0; 

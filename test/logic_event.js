@@ -190,89 +190,49 @@ function handleActionEnd() {
     }, 0);
 }
 
-// ─── 🛠️【v0.9.1完全クローズ】Clear直前の色塗り＋手動壁を1撃で同時に完全大復活させる大正義のUndoシステム ───
+// ─── 🛠️【v0.9.1完全クローズ版】あなたの数理ロジックを100%具現化！1発で同時に完全連動するUndo/Redoシステム ───
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
     
-    if (change.type === 'wall_step') {
-        // ✏️ 手動境界線のUndo
+    if (change.type === 'clear_all') {
+        // 💡【解決策：Undo】Clearされた歴史(型)を検知したら、保存されていた色と壁を「1発で同時に」元の姿へ完全大復活！
+        redoStack.push(change); // そのままの塊でRedoへ引き渡す
+        userGrid = change.oldGrid.map(row => [...row]);
+        userWalls = change.oldWalls.map(w => ({ ...w }));
+    } else if (change.type === 'wall_step') {
+        // ✏️ 通常プレイ時の、手動境界線1マスずつのUndo処理
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
-        
-        // 💡【解決策】もし今回の壁Undoが「Clearボタンによる一括消去(toが空っぽ)」だった場合、
-        // そこで終了せずに、その直下に同時に眠っている「Clearされた色マスの全消去履歴」も一網打尽に1発で同時に連動復元する！
-        if (Array.isArray(change.to) && change.to.length === 0) {
-            const batchGroup = [];
-            while (undoStack.length > 0 && 
-                   undoStack[undoStack.length - 1].type !== 'wall_step' && 
-                   undoStack[undoStack.length - 1].to === null) {
-                batchGroup.push(undoStack.pop());
-            }
-            batchGroup.forEach(c => {
-                redoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
-                userGrid[c.r][c.c] = c.from;
-            });
-        }
     } else {
-        // 🎨 通常色塗りのUndo
-        const batchGroup = [change];
-        while (undoStack.length > 0 && 
-               undoStack[undoStack.length - 1].type !== 'wall_step' && 
-               undoStack[undoStack.length - 1].to === null && change.to === null) {
-            batchGroup.push(undoStack.pop());
-        }
-        batchGroup.forEach(c => {
-            redoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
-            userGrid[c.r][c.c] = c.from;
-        });
+        // 🎨 通常プレイ時の、色塗り1マスずつのUndo処理
+        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); 
     updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// ─── 🛠️【v0.9.1正真正銘の完全クローズ】大量の色マスの真下(底)に眠る手動壁Redoを一網打尽にする確定関数 ───
 function redo() {
     if (redoStack.length === 0) return;
     clearErrorDisplay();
     const change = redoStack.pop();
     
-    if (change.type === 'wall_step') {
+    if (change.type === 'clear_all') {
+        // 💡【解決策：Redo】やり直す時も、難しいループを一切挟まず、色マスも手動壁も「1発で同時に」クリーンな完全消去状態へ直行！
+        undoStack.push(change);
+        userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+        userWalls = [];
+    } else if (change.type === 'wall_step') {
         // ✏️ 通常プレイ時の、手動境界線1マスずつのRedo処理
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else {
-        // 🎨 色塗り（およびClearボタンによる色消去）のRedo処理
-        const batchGroup = [change];
-        
-        // 1. まず、一番上に積み上がっているClearされた色マスの一括消去履歴をすべてポップして実行
-        while (redoStack.length > 0 && 
-               redoStack[redoStack.length - 1].type !== 'wall_step' && 
-               redoStack[redoStack.length - 1].from === null && change.from === null) {
-            batchGroup.push(redoStack.pop());
-        }
-
-        batchGroup.forEach(c => {
-            undoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
-            userGrid[c.r][c.c] = c.from;
-        });
-
-        // 2. 💡【解決策：数理的完全根治】
-        // 大量の色マスのRedo（消去）をすべて処理し終えた「まさにこの直後（末尾）」のタイミングで、
-        // 次にRedoスタックの最先端（取り出し口）に待機しているデータ、あるいはスタックのなかに
-        // Clearボタンによって同時に消し去られた手動壁の消去履歴（toが空っぽの[]）が眠っている場合、
-        // それも1回目のクリックのタイムラインの中で一網打尽に同時にポップして実行します！
-        if (change.from === null && redoStack.length > 0) {
-            // 色マス山のすぐ直後、またはスタックの一番手前に待機している次のRedoが手動壁の一括消去であるかを確認
-            const nextChange = redoStack[redoStack.length - 1];
-            if (nextChange && nextChange.type === 'wall_step' && Array.isArray(nextChange.to) && nextChange.to.length === 0) {
-                const wallChange = redoStack.pop();
-                undoStack.push({ type: 'wall_step', from: wallChange.to, to: wallChange.from });
-                userWalls = wallChange.to.map(w => ({ ...w })); // ➔ 手動壁をClear後の綺麗な空っぽの[]に一撃上書き！
-            }
-        }
+        // 🎨 通常プレイ時の、色塗り1マスずつのRedo処理
+        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); 
     updateHistoryButtons();
