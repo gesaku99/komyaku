@@ -70,8 +70,6 @@ function handleActionStart(x, y) {
         hasMovedInSession = false;
     } else {
         // 🎨【通常の色塗りモード】
-        // ─── 💡【完全根治仕様】画面縮小時でもマスの中心からの色塗りを100%死守する動的トリガー ───
-        // 🎨【通常の色塗りモード】
         if (nearestV) {
             // 現在のキャンバスの「画面上の実際の表示横幅」をブラウザからダイレクトに計測
             const rect = canvas.getBoundingClientRect();
@@ -90,7 +88,9 @@ function handleActionStart(x, y) {
         startCell = cell;
         hasMovedInSession = false;
         if (cell) {
-            isErasingMode = (userGrid[cell.r][cell.c] !== null);
+            // 💡【解決策：操作性改善1】同じ色のときだけ消しゴムモードにする大正義の条件式！
+            // これにより、別の色を選んでいる時は、白に戻すことなくダイレクトに新しい色へカチッと一発上書き塗り替えが走ります！
+            isErasingMode = (userGrid[cell.r][cell.c] === currentSelectedColor);
         }
     }
 }
