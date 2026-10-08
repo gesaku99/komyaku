@@ -73,59 +73,82 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18 + titleBarHeight); }
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
 
-    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画（v0.9.1：5のセクション完全隔離・縁取り白壁仕様） ───
+    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画（v0.9.1：一括パス結合・分断ノイズ完全消滅版） ───
     
-    // 💡【カラー・太さ集中管理】ここを書き換えるだけで、すべての境界線のデザインが一発で全同期します！
-    const WALL_CORE_COLOR = '#ffffff'; // 本線（中心）の色：シャープな白
+    // 💡【カラー・太さ集中管理】
+    const WALL_CORE_COLOR = '#ffffff'; // 本線（中心）の色：シャープな純白
     const WALL_EDGE_COLOR = '#1a1a1a'; // 縁取り（輪郭）の色：最も締まって見える細い黒
-    const WALL_CORE_WIDTH = 5;         // 本線の太さ（等倍5px ➔ 3倍宇宙で15px）
-    const WALL_EDGE_WIDTH = 7;         // 縁取り全体の太さ（左右に1pxずつ黒がはみ出る計算）
+    const WALL_CORE_WIDTH = 5;         // 本線の太さ（3倍宇宙で15px）
+    const WALL_EDGE_WIDTH = 7;         // 縁取り全体の太さ（左右に1pxずつ黒がはみ出る輪郭）
 
-    // 💡【解決策】前任者の2重ループの構造（rとcの部屋）を1文字も壊さず100%ホールドしたまま、
-    // そのマスの位置(x, y)にやってきたその一瞬のなかで、「まず黒い太い線を引き、その直後に白い細い線を重ねて引く」
-    // というミクロな2層レイヤー処理をこの場で完結させます！
-    // これにより、T字や十字の交差点の内部に一瞬入り込んだ黒いフチが、次の1ミリ秒で上から白いインクで
-    // 完璧に押しつぶされて結合されるため、ループを分離せずとも、完全に地続きで繋がった美しい縁取り白壁が出現します！
-    
-    ctx.lineCap = 'round'; // 角を丸めて交差点の結合部を完全に滑らかにする
-    
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
-            if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, y); ctx.lineTo(OFFSET, y + CELL_PIXEL); ctx.stroke(); }
-            if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET + titleBarHeight); ctx.lineTo(x + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
-            if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
-            if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
+    // ─── ⬛ 【ステップ1】：すべての自動内壁・手動壁の「黒い土台」のパスを全て繋げて、1発で一気に描く！ ───
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; // 繋ぎ目を完全に滑らかに一体化させる
+    ctx.strokeStyle = WALL_EDGE_COLOR;
+    ctx.lineWidth = WALL_EDGE_WIDTH;
+    ctx.beginPath(); // 💡 巨大な1本の黒いパスの箱を開く
 
-            if (!isProblemImage) {
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
                 const targetGrid = isSolutionImage ? answerGrid : userGrid;
                 const currentIdx = targetGrid[r][c];
                 
-                // ➔ 【縦壁の描画】：黒い太線を引いた直後に、白い細線を重ねて交差を相殺！
                 if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
-                    ctx.strokeStyle = WALL_EDGE_COLOR; ctx.lineWidth = WALL_EDGE_WIDTH; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                    ctx.strokeStyle = WALL_CORE_COLOR; ctx.lineWidth = WALL_CORE_WIDTH; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
                 }
-                
-                // ➔ 【横壁の描画】：黒い太線を引いた直後に、白い細線を重ねて交差を相殺！
                 if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
-                    ctx.strokeStyle = WALL_EDGE_COLOR; ctx.lineWidth = WALL_EDGE_WIDTH; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                    ctx.strokeStyle = WALL_CORE_COLOR; ctx.lineWidth = WALL_CORE_WIDTH; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
                 }
             }
         }
     }
-
-    // ★手動壁の描画
-    // 💡 プレイヤーが手動で引く壁も、全く同じように「まず太い黒 ➔ すぐ上に細い白」を重ねて、交差点を完全に一体化！
     userWalls.forEach(wall => {
-        ctx.strokeStyle = WALL_EDGE_COLOR; ctx.lineWidth = WALL_EDGE_WIDTH;
-        ctx.beginPath(); ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight); ctx.stroke();
-        
-        ctx.strokeStyle = WALL_CORE_COLOR; ctx.lineWidth = WALL_CORE_WIDTH;
-        ctx.beginPath(); ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight); ctx.stroke();
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
     });
+    ctx.stroke(); // 💡 画面の裏側で、すべての黒い土台を「1本の塊」として一撃で完全描画！
+
+
+    // ─── ⬜ 【ステップ2】：最前面レイヤーで、すべての壁の「白い本線」のパスを全て繋げて、1発で一気に重ねる！ ───
+    ctx.strokeStyle = WALL_CORE_COLOR;
+    ctx.lineWidth = WALL_CORE_WIDTH;
+    ctx.beginPath(); // 💡 巨大な1本の白いパスの箱を開く
+
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                const targetGrid = isSolutionImage ? answerGrid : userGrid;
+                const currentIdx = targetGrid[r][c];
+                
+                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
+                    ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
+                }
+                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
+                    ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
+                }
+            }
+        }
+    }
+    userWalls.forEach(wall => {
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+    });
+    ctx.stroke(); // 💡 上から白インクを一撃で重ねることで、入り込んでいた黒ノイズを200%完璧に完全消滅！
+
+
+    // ─── 🔲 【ステップ3】：最後に、一番大枠の「外枠（黒の太枠）」を上から重ねてピシッと引き締める！ ───
+    ctx.lineCap = 'square'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * OFFSET - OFFSET + r * CELL_PIXEL + titleBarHeight; // 元の座標計算を安全に維持
+            if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, OFFSET + r * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET, OFFSET + r * CELL_PIXEL + CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+            if (r === 0) { ctx.beginPath(); ctx.moveTo(OFFSET + c * CELL_PIXEL, OFFSET + titleBarHeight); ctx.lineTo(OFFSET + c * CELL_PIXEL + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
+            if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(OFFSET + GRID_SIZE * CELL_PIXEL, OFFSET + r * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, OFFSET + r * CELL_PIXEL + CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+            if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(OFFSET + c * CELL_PIXEL, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + c * CELL_PIXEL + CELL_PIXEL, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+        }
+    }
 
     // ─── 6. 鉱脈（黒の斜線）の描画 ───
     ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.lineCap = 'round';
