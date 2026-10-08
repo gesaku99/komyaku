@@ -139,12 +139,12 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 ctx.strokeStyle = '#000000'; 
                 ctx.lineWidth = 2;
                 ctx.beginPath(); 
-                ctx.arc(bx, by, 12, 0, Math.PI * 2); 
+                ctx.arc(bx, by, 15, 0, Math.PI * 2); 
                 ctx.fill(); 
                 ctx.stroke();
 
                 ctx.fillStyle = '#000000'; 
-                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                ctx.font = 'bold 15px "Tenor Sans", sans-serif'; 
                 ctx.textAlign = 'center'; 
                 ctx.textBaseline = 'middle';
                 ctx.fillText(bDistSq.toString(), bx, by + 0.5);
@@ -180,12 +180,12 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.strokeStyle = assistColor; 
             ctx.lineWidth = 2;
             ctx.beginPath(); 
-            ctx.arc(mx, my, 12, 0, Math.PI * 2); 
+            ctx.arc(mx, my, 15, 0, Math.PI * 2); 
             ctx.fill(); 
             ctx.stroke();
             
             ctx.fillStyle = assistColor; 
-            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+            ctx.font = 'bold 15px "Tenor Sans", sans-serif'; 
             ctx.textAlign = 'center'; 
             ctx.textBaseline = 'middle';
             ctx.fillText(distSq.toString(), mx, my + 0.5);
@@ -201,14 +201,14 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
         
-        ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
         // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に中点に描画（下層レイヤー）
         errorDisplayState.blackAlertLines.forEach(line => {
             const bx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const by = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(bx, by, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
 
@@ -217,7 +217,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(rx, ry, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
         });
 
