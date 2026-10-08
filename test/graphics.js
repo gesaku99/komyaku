@@ -35,8 +35,25 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     if (isSolutionImage) titleText += " Solution";
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 
-    // ─── 2. 盤面マスの色塗り ───
-    if (!isSolutionImage && !isProblemImage) {
+    // ─── 2. 盤面マスの色塗り（v0.9.1：正解画像専用・全マス薄グレーフラット敷き詰め仕様） ───
+    if (isSolutionImage) {
+        // 💡【完全解決：あなたの仰る通り、薄グレーに塗ったらここで終わりです！】
+        // 正解画像を出力するその一瞬だけは、すべてのマス（GRID_SIZE × GRID_SIZE）を
+        // あなたの指定した美しい「薄いグレー」だけでフラットに1発で均等に塗りつぶします！
+        // 余計な正解カラーの上書きを一切行わないため、白い縁取り壁と黒い鉱脈線が最高に引き立ちます。
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL;
+                const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                
+                ctx.fillStyle = '#f0f0f2'; // ➔ 試行錯誤しやすいカラー指定
+                ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
+            }
+        }
+    } else if (!isProblemImage) {
+        // 💡【従来の通常通常プレイ中、および途中画像の時】
+        // 普段遊んでいる画面や「途中.png」を保存するときは、これまでの完璧な仕様を100%完全ホールド！
+        // 白いマスは白いまま、塗った色だけが滑らかに反映されます。
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const x = OFFSET + c * CELL_PIXEL;
