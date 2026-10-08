@@ -225,17 +225,74 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
+    // ─── 📸【v0.9.1新機能：ダウンロードボタン文字・全自動トグルシステム（完全狙い撃ち版）】 ───
+    // 💡【完全解決】カッコの中に「false」が入っている、正真正銘「問題画像をダウンロード」のボタンだけを完璧に識別してロックオン！
+    // これにより、「正解画像をダウンロード」のボタンを200%完全に除外（スルー）し、誤作動を永久にシャットアウトします！
+    const downloadBtn = Array.from(document.querySelectorAll("button")).find(btn => {
+        const clickAttr = btn.getAttribute("onclick");
+        return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
+    });
+    
+    if (downloadBtn) {
+        const isUserGridModified = userGrid.some(row => row.some(cell => cell !== null));
+        const isUserWallsModified = (typeof userWalls !== 'undefined' && userWalls && userWalls.length > 0);
+        const isModified = isUserGridModified || isUserWallsModified;
+
+        if (isModified) {
+            downloadBtn.innerText = "現時点画像をダウンロード";
+            downloadBtn.setAttribute("data-mode", "current");
+        } else {
+            downloadBtn.innerText = "問題画像をダウンロード";
+            downloadBtn.removeAttribute("data-mode");
+        }
+    }
 }
 
-function downloadPuzzleImage(isSolution) {
-    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+// ─── 📸【v0.9.1新機能：問題・答え出力100%完全ホールド ＆ 途中画像完全適合ダウンロードシステム】 ───
+function downloadPuzzleImage(isSolution, btnElement) {
     const urlParams = new URLSearchParams(window.location.search);
     const dayValue = urlParams.get('day') || "XXX";
-    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
-    const link = document.createElement('a');
-    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-    drawPuzzle();
+    
+    // 💡【判定】先ほど引数で渡されたボタン自身の属性を見て、現在が「現時点（途中）」モードであるかどうかをチェック
+    const isCurrentMode = btnElement && btnElement.getAttribute("data-mode") === "current";
+
+    let filename;
+    
+    if (isCurrentMode) {
+        // 🌟【新機能ルート】：1マスでも手が加わっている時は、すり替え描画を一切行わない！
+        // 今プレイヤーの目に見えている「生の色（userGrid）と手動壁」の描画状態をそのままホールドし、
+        // ファイル名を条件通り「DayXXX途中.png」として1発でダイレクトに保存します！
+        filename = `Day${dayValue}途中.png`;
+        
+        const link = document.createElement('a');
+        link.download = filename; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+    } else {
+        // 🌟【従来のオリジナルルートを100%完全無傷でホールド！】
+        // 盤面が完全白紙のときは、これまでと全く同じ歴史が走り、
+        // 引数に応じて「答え画像(DayXXX答え.png)」または「問題画像(DayXXX問題.png)」を完璧に出力・復元します！
+        if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+        
+        filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+        
+        const link = document.createElement('a');
+        link.download = filename; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+        
+        drawPuzzle(); // 元のクリーンな通常画面へ戻す
+    }
 }
+//function downloadPuzzleImage(isSolution) {
+//    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+//    const urlParams = new URLSearchParams(window.location.search);
+//    const dayValue = urlParams.get('day') || "XXX";
+//    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+//    const link = document.createElement('a');
+//    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
+//    drawPuzzle();
+//}
 
 function getCellFromCoords(x, y) {
     const titleBarHeight = 30;
