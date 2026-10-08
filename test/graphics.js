@@ -74,6 +74,10 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
 
     // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画 ───
+    // 💡【解決策】今後、色変更の試行錯誤はこの「下の1行（WALL_COLOR）」を書き換えるだけで、すべての壁の色が1発で全同期します！
+    // ➔ 例：今はシンプルな白 '#ffffff' です。ここを '#70AD47' に戻したり、自由に書き換えてテストしてください。
+    const WALL_COLOR = '#ffffff'; 
+
     ctx.lineCap = 'square';
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -88,17 +92,17 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 const targetGrid = isSolutionImage ? answerGrid : userGrid;
                 const currentIdx = targetGrid[r][c];
                 if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.strokeStyle = WALL_COLOR; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                 }
                 if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.strokeStyle = WALL_COLOR; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
                 }
             }
         }
     }
 
     // ★手動壁の描画
-    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.strokeStyle = WALL_COLOR; ctx.lineWidth = 5; ctx.lineCap = 'round';
     userWalls.forEach(wall => {
         ctx.beginPath();
         ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
