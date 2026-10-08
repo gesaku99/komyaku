@@ -73,31 +73,86 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18 + titleBarHeight); }
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
 
-    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画 ───
-    // 💡【解決策】今後、色変更の試行錯誤はこの「下の1行（WALL_COLOR）」を書き換えるだけで、すべての壁の色が1発で全同期します！
-    // ➔ 例：今はシンプルな白 '#ffffff' です。ここを '#70AD47' に戻したり、自由に書き換えてテストしてください。
-    const WALL_COLOR = '#ffffff'; 
+    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画（v0.9.1：T字・十字完全適合・縁取り集中管理仕様） ───
+    
+    // 💡【カラー・太さ集中管理】ここを書き換えるだけで、すべての自動壁・手動壁のデザインが1発で全同期します！
+    const WALL_CORE_COLOR = '#ffffff'; // 本線（中心）の色：シャープな白
+    const WALL_EDGE_COLOR = '#1a1a1a'; // 縁取り（輪郭）の色：最も締まって見える細い黒
+    
+    const WALL_CORE_WIDTH = 5;         // 本線の太さ（等倍換算5px ➔ 3倍宇宙で15px）
+    const WALL_EDGE_WIDTH = 7;         // 縁取りを含めた全体の太さ（本線より左右に1pxずつ細い黒がはみ出る計算）
 
+    // ─── 【ステップA】：まずは全ての壁の「黒の太い土台（縁取り）」を一気に裏側で全部描く！ ───
+    ctx.lineCap = 'round'; // 角を丸めてT字や十字の結合部を完全に滑らかにする
+    ctx.strokeStyle = WALL_EDGE_COLOR;
+    ctx.lineWidth = WALL_EDGE_WIDTH;
+
+    // A-1. 自動内壁の土台を描画
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                const targetGrid = isSolutionImage ? answerGrid : userGrid;
+                const currentIdx = targetGrid[r][c];
+                
+                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
+                    ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                }
+                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
+                    ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                }
+            }
+        }
+    }
+    // A-2. 手動壁の土台を描画
+    userWalls.forEach(wall => {
+        ctx.beginPath();
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+        ctx.stroke();
+    });
+
+    // ─── 【ステップB】：最前面レイヤーで、全ての壁の「白の本線」を一気に重ねて描く！ ───
+    // 💡 これにより、交差点の内部に一瞬入り込んだ黒い線が上から白インクで完璧に押しつぶされ、
+    // 分岐も交差も1ミリも起こさない、完全に1本に地続きで繋がった美しい「縁取り白壁」が出現します！
+    ctx.strokeStyle = WALL_CORE_COLOR;
+    ctx.lineWidth = WALL_CORE_WIDTH;
+
+    // B-1. 自動内壁の本線を描画
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                const targetGrid = isSolutionImage ? answerGrid : userGrid;
+                const currentIdx = targetGrid[r][c];
+                
+                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
+                    ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                }
+                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
+                    ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                }
+            }
+        }
+    }
+    // B-2. 手動壁の本線を描画
+    userWalls.forEach(wall => {
+        ctx.beginPath();
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+        ctx.stroke();
+    });
+
+    // ─── 【ステップC】：最後に、一番大枠の「外壁（黒の太枠）」を上から重ねてピシッと引き締める！ ───
     ctx.lineCap = 'square';
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
             if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, y); ctx.lineTo(OFFSET, y + CELL_PIXEL); ctx.stroke(); }
             if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET + titleBarHeight); ctx.lineTo(x + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
             if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
             if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
-
-            if (!isProblemImage) {
-                const targetGrid = isSolutionImage ? answerGrid : userGrid;
-                const currentIdx = targetGrid[r][c];
-                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
-                    ctx.strokeStyle = WALL_COLOR; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                }
-                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
-                    ctx.strokeStyle = WALL_COLOR; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
-                }
-            }
         }
     }
 
