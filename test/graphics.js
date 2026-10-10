@@ -46,7 +46,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 const x = OFFSET + c * CELL_PIXEL;
                 const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
                 
-                ctx.fillStyle = '#b8ffc6'; // ➔ 試行錯誤しやすいカラー指定
+                ctx.fillStyle = '#c6ffd2'; // ➔ 試行錯誤しやすいカラー指定
                 ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
             }
         }
