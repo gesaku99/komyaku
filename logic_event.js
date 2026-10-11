@@ -70,8 +70,6 @@ function handleActionStart(x, y) {
         hasMovedInSession = false;
     } else {
         // 🎨【通常の色塗りモード】
-        // ─── 💡【完全根治仕様】画面縮小時でもマスの中心からの色塗りを100%死守する動的トリガー ───
-        // 🎨【通常の色塗りモード】
         if (nearestV) {
             // 現在のキャンバスの「画面上の実際の表示横幅」をブラウザからダイレクトに計測
             const rect = canvas.getBoundingClientRect();
@@ -80,17 +78,23 @@ function handleActionStart(x, y) {
             
             // 💡【解決策】画面が小さくなっている時は、アシスト線の感知範囲も 25px から「25 * 縮小率」へと自動で小さく縮小！
             // これにより、縮小画面でマスの真ん中を触った時に、左上の格子点センサーが誤作動して色塗りを奪う不具合を200%完璧に永久シャットアウトします！
-            const adjustedNearestV = getNearestVertex(x, y, 25 * currentScale);
+            const adjustedNearestV = getNearestVertex(x, y, 25 * currentScale * 3);
             
             if (adjustedNearestV) {
                 assistStartV = adjustedNearestV;
                 assistCurrentV = adjustedNearestV;
+                // 💡【解決策】指が置かれた・マウスが押された「まさにこの一瞬」に、画面の再描画を強制実行！
+                // これにより、ユーザーはドラッグで動かし始める前に、格子点の半径25px内を正しく捉えたことを意味する
+                // 美しいオレンジ丸の描画をその目で100%見届けて、安心してスワイプを開始できるようになります！
+                if (typeof drawPuzzle === 'function') drawPuzzle();
             }
         }
         startCell = cell;
         hasMovedInSession = false;
         if (cell) {
-            isErasingMode = (userGrid[cell.r][cell.c] !== null);
+            // 💡【解決策：操作性改善1】同じ色のときだけ消しゴムモードにする大正義の条件式！
+            // これにより、別の色を選んでいる時は、白に戻すことなくダイレクトに新しい色へカチッと一発上書き塗り替えが走ります！
+            isErasingMode = (userGrid[cell.r][cell.c] === currentSelectedColor);
         }
     }
 }
@@ -190,34 +194,25 @@ function handleActionEnd() {
     }, 0);
 }
 
-// ─── 🛠️【完全根治版】通常色塗りの1マスUndoを維持しつつ、Clearボタンによる変化を一撃で一括復元するUndo ───
+// ─── 🛠️【v0.9.1完全クローズ版】あなたの数理ロジックを100%具現化！1発で同時に完全連動するUndo/Redoシステム ───
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
     
-    if (change.type === 'wall_step') {
-        // ✏️ 手動境界線の1ステップUndo（1マスずつ正確に巻き戻す）
+    if (change.type === 'clear_all') {
+        // 💡【解決策：Undo】Clearされた歴史(型)を検知したら、保存されていた色と壁を「1発で同時に」元の姿へ完全大復活！
+        redoStack.push(change); // そのままの塊でRedoへ引き渡す
+        userGrid = change.oldGrid.map(row => [...row]);
+        userWalls = change.oldWalls.map(w => ({ ...w }));
+    } else if (change.type === 'wall_step') {
+        // ✏️ 通常プレイ時の、手動境界線1マスずつのUndo処理
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else {
-        // 🎨 通常色塗りのUndo
-        // 💡【解決策】Clearボタン等によって、複数のマスが一気に「null（または特定の色）」へ連続変化させられた履歴を検知！
-        const batchGroup = [change];
-        
-        // 直前の操作と「全く同じタイミング、あるいは一連の全マス消去操作（0へのリセット等）」が連続している場合、
-        // それらを1つの「塊（バッチ）」として一括でポップ（引き算）し、1回でまとめて巻き戻します
-        while (undoStack.length > 0 && 
-               undoStack[undoStack.length - 1].type !== 'wall_step' && 
-               undoStack[undoStack.length - 1].to === null && change.to === null) {
-            batchGroup.push(undoStack.pop());
-        }
-
-        // 集まった一括操作の塊を、すべて同時に盤面に復元し、Redoスタックへも同じ塊として引き渡す
-        batchGroup.forEach(c => {
-            redoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
-            userGrid[c.r][c.c] = c.from;
-        });
+        // 🎨 通常プレイ時の、色塗り1マスずつのUndo処理
+        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); 
     updateHistoryButtons();
@@ -229,25 +224,19 @@ function redo() {
     clearErrorDisplay();
     const change = redoStack.pop();
     
-    if (change.type === 'wall_step') {
-        // ✏️ 壁引きのRedo処理（変更形式 wStr の対応を壁引きモードに完全同期）
+    if (change.type === 'clear_all') {
+        // 💡【解決策：Redo】やり直す時も、難しいループを一切挟まず、色マスも手動壁も「1発で同時に」クリーンな完全消去状態へ直行！
+        undoStack.push(change);
+        userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+        userWalls = [];
+    } else if (change.type === 'wall_step') {
+        // ✏️ 通常プレイ時の、手動境界線1マスずつのRedo処理
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else {
-        // 🎨 色塗りのRedo処理
-        const batchGroup = [change];
-        
-        // Undoの時と全く同じように、一括消去の塊を検知して1回でまとめて進める
-        while (redoStack.length > 0 && 
-               redoStack[redoStack.length - 1].type !== 'wall_step' && 
-               redoStack[redoStack.length - 1].from === null && change.from === null) {
-            batchGroup.push(redoStack.pop());
-        }
-
-        batchGroup.forEach(c => {
-            undoStack.push({ r: c.r, c: c.c, from: c.to, to: c.from });
-            userGrid[c.r][c.c] = c.from;
-        });
+        // 🎨 通常プレイ時の、色塗り1マスずつのRedo処理
+        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
+        userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); 
     updateHistoryButtons();
@@ -255,13 +244,13 @@ function redo() {
 }
 
 // 💡 引数の末尾に可変距離を受け取る customMaxDist を追加し、未指定時は元の黄金比 25 を自動適用
-function getNearestVertex(x, y, customMaxDist = 25) {
+function getNearestVertex(x, y, customMaxDist = 25 * 3) {
     let nearestV = null;
     let minDistance = customMaxDist; 
     for (let r = 0; r <= GRID_SIZE; r++) {
         for (let c = 0; c <= GRID_SIZE; c++) {
             const vx = OFFSET + c * CELL_PIXEL;
-            const vy = OFFSET + r * CELL_PIXEL + 30; 
+            const vy = OFFSET + r * CELL_PIXEL + 30;  // titleBarHeight = 30
             const distance = Math.sqrt((x - vx) ** 2 + (y - vy) ** 2);
             if (distance < minDistance) {
                 minDistance = distance;

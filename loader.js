@@ -55,23 +55,43 @@ function recordChange(r, c, oldColor, newColor) {
     updateHistoryButtons();
 }
 
+// ─── 🧹【v0.9.1リセット履歴一括凝縮版】あなたのディレクション通り、色と壁の全過去を1つの操作履歴にして1発プッシュ！ ───
 function clearGrid() {
-    clearErrorDisplay();
+    if (typeof clearErrorDisplay === 'function') clearErrorDisplay();
+    
+    // 1. Clearボタンが押される「直前」の、すべての色マスと手動壁の完璧な状態を深くコピーして1つの塊にする！
+    const gridSnapshotBeforeClear = userGrid.map(row => [...row]);
+    const wallSnapshotBeforeClear = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
+
     let hasChange = false;
+
+    // 2. 画面上の色マスを真っ白(null)にする
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            // ★重要：0(緑)ではなく、何も塗られていない真っ白な初期状態「null」に美しく戻す
             if (userGrid[r][c] !== null) {
-                undoStack.push({ r: r, c: c, from: userGrid[r][c], to: null });
                 userGrid[r][c] = null;
                 hasChange = true;
             }
         }
     }
+
+    // 3. 画面上の手動壁を空っぽ([])にする
+    if (typeof userWalls !== 'undefined' && userWalls && userWalls.length > 0) {
+        userWalls = [];
+        hasChange = true;
+    }
+
+    // 4. 💡【大正解の合流】変化が起きていたら、色と壁の「元の姿」を1つのセットにして、Undoスタックへポチッと1発だけプッシュ！
     if (hasChange) {
-        redoStack.length = 0; 
-        drawPuzzle();
-        updateHistoryButtons();
+        undoStack.push({
+            type: 'clear_all',
+            oldGrid: gridSnapshotBeforeClear,
+            oldWalls: wallSnapshotBeforeClear
+        });
+
+        if (typeof redoStack !== 'undefined') redoStack.length = 0; 
+        if (typeof drawPuzzle === 'function') drawPuzzle();
+        if (typeof updateHistoryButtons === 'function') updateHistoryButtons();
     }
 }
 

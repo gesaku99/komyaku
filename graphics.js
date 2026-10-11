@@ -35,8 +35,25 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     if (isSolutionImage) titleText += " Solution";
     ctx.fillText(titleText, 15, titleBarHeight / 2);
 
-    // ─── 2. 盤面マスの色塗り ───
-    if (!isSolutionImage && !isProblemImage) {
+    // ─── 2. 盤面マスの色塗り（v0.9.1：正解画像専用・全マス薄グレーフラット敷き詰め仕様） ───
+    if (isSolutionImage) {
+        // 💡【完全解決：あなたの仰る通り、薄グレーに塗ったらここで終わりです！】
+        // 正解画像を出力するその一瞬だけは、すべてのマス（GRID_SIZE × GRID_SIZE）を
+        // あなたの指定した美しい「薄いグレー」だけでフラットに1発で均等に塗りつぶします！
+        // 余計な正解カラーの上書きを一切行わないため、白い縁取り壁と黒い鉱脈線が最高に引き立ちます。
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL;
+                const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                
+                ctx.fillStyle = '#d6ffde'; // ➔ 試行錯誤しやすいカラー指定
+                ctx.fillRect(x, y, CELL_PIXEL, CELL_PIXEL);
+            }
+        }
+    } else if (!isProblemImage) {
+        // 💡【従来の通常通常プレイ中、および途中画像の時】
+        // 普段遊んでいる画面や「途中.png」を保存するときは、これまでの完璧な仕様を100%完全ホールド！
+        // 白いマスは白いまま、塗った色だけが滑らかに反映されます。
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const x = OFFSET + c * CELL_PIXEL;
@@ -73,38 +90,82 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText(cellXLabels[i], OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2, OFFSET + GRID_SIZE * CELL_PIXEL + 18 + titleBarHeight); }
     for (let i = 0; i < GRID_SIZE; i++) { ctx.fillText((i + 1).toString(), OFFSET + GRID_SIZE * CELL_PIXEL + 18, OFFSET + i * CELL_PIXEL + CELL_PIXEL / 2 + titleBarHeight); }
 
-    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画 ───
-    ctx.lineCap = 'square';
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
-            if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, y); ctx.lineTo(OFFSET, y + CELL_PIXEL); ctx.stroke(); }
-            if (r === 0) { ctx.beginPath(); ctx.moveTo(x, OFFSET + titleBarHeight); ctx.lineTo(x + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
-            if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
-            if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke(); }
+    // ─── 5. 外壁（黒の太枠）と内壁の境界線の自動描画（v0.9.1：一括パス結合・分断ノイズ完全消滅版） ───
+    
+    // 💡【カラー・太さ集中管理】
+    const WALL_CORE_COLOR = '#ffffff'; // 本線（中心）の色：シャープな純白
+    const WALL_EDGE_COLOR = '#1a1a1a'; // 縁取り（輪郭）の色：最も締まって見える細い黒
+    const WALL_CORE_WIDTH = 5;         // 本線の太さ（3倍宇宙で15px）
+    const WALL_EDGE_WIDTH = 7;         // 縁取り全体の太さ（左右に1pxずつ黒がはみ出る輪郭）
 
-            if (!isProblemImage) {
+    // ─── ⬛ 【ステップ1】：すべての自動内壁・手動壁の「黒い土台」のパスを全て繋げて、1発で一気に描く！ ───
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; // 繋ぎ目を完全に滑らかに一体化させる
+    ctx.strokeStyle = WALL_EDGE_COLOR;
+    ctx.lineWidth = WALL_EDGE_WIDTH;
+    ctx.beginPath(); // 💡 巨大な1本の黒いパスの箱を開く
+
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
                 const targetGrid = isSolutionImage ? answerGrid : userGrid;
                 const currentIdx = targetGrid[r][c];
+                
                 if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
                 }
                 if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
-                    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL); ctx.stroke();
+                    ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
                 }
             }
         }
     }
-
-    // ★手動壁の描画
-    ctx.strokeStyle = '#70AD47'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     userWalls.forEach(wall => {
-        ctx.beginPath();
         ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
         ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
-        ctx.stroke();
     });
+    ctx.stroke(); // 💡 画面の裏側で、すべての黒い土台を「1本の塊」として一撃で完全描画！
+
+
+    // ─── ⬜ 【ステップ2】：最前面レイヤーで、すべての壁の「白い本線」のパスを全て繋げて、1発で一気に重ねる！ ───
+    ctx.strokeStyle = WALL_CORE_COLOR;
+    ctx.lineWidth = WALL_CORE_WIDTH;
+    ctx.beginPath(); // 💡 巨大な1本の白いパスの箱を開く
+
+    if (!isProblemImage) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * CELL_PIXEL + titleBarHeight;
+                const targetGrid = isSolutionImage ? answerGrid : userGrid;
+                const currentIdx = targetGrid[r][c];
+                
+                if (c < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r][c + 1] !== null && currentIdx !== targetGrid[r][c + 1]) {
+                    ctx.moveTo(x + CELL_PIXEL, y); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
+                }
+                if (r < GRID_SIZE - 1 && currentIdx !== null && targetGrid[r + 1][c] !== null && currentIdx !== targetGrid[r + 1][c]) {
+                    ctx.moveTo(x, y + CELL_PIXEL); ctx.lineTo(x + CELL_PIXEL, y + CELL_PIXEL);
+                }
+            }
+        }
+    }
+    userWalls.forEach(wall => {
+        ctx.moveTo(OFFSET + wall.c1 * CELL_PIXEL, OFFSET + wall.r1 * CELL_PIXEL + titleBarHeight);
+        ctx.lineTo(OFFSET + wall.c2 * CELL_PIXEL, OFFSET + wall.r2 * CELL_PIXEL + titleBarHeight);
+    });
+    ctx.stroke(); // 💡 上から白インクを一撃で重ねることで、入り込んでいた黒ノイズを200%完璧に完全消滅！
+
+
+    // ─── 🔲 【ステップ3】：最後に、一番大枠の「外枠（黒の太枠）」を上から重ねてピシッと引き締める！ ───
+    ctx.lineCap = 'square'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const x = OFFSET + c * CELL_PIXEL; const y = OFFSET + r * OFFSET - OFFSET + r * CELL_PIXEL + titleBarHeight; // 元の座標計算を安全に維持
+            if (c === 0) { ctx.beginPath(); ctx.moveTo(OFFSET, OFFSET + r * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET, OFFSET + r * CELL_PIXEL + CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+            if (r === 0) { ctx.beginPath(); ctx.moveTo(OFFSET + c * CELL_PIXEL, OFFSET + titleBarHeight); ctx.lineTo(OFFSET + c * CELL_PIXEL + CELL_PIXEL, OFFSET + titleBarHeight); ctx.stroke(); }
+            if (c === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(OFFSET + GRID_SIZE * CELL_PIXEL, OFFSET + r * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + GRID_SIZE * CELL_PIXEL, OFFSET + r * CELL_PIXEL + CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+            if (r === GRID_SIZE - 1) { ctx.beginPath(); ctx.moveTo(OFFSET + c * CELL_PIXEL, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.lineTo(OFFSET + c * CELL_PIXEL + CELL_PIXEL, OFFSET + GRID_SIZE * CELL_PIXEL + titleBarHeight); ctx.stroke(); }
+        }
+    }
 
     // ─── 6. 鉱脈（黒の斜線）の描画 ───
     ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.lineCap = 'round';
@@ -139,12 +200,12 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
                 ctx.strokeStyle = '#000000'; 
                 ctx.lineWidth = 2;
                 ctx.beginPath(); 
-                ctx.arc(bx, by, 12, 0, Math.PI * 2); 
+                ctx.arc(bx, by, 15, 0, Math.PI * 2); 
                 ctx.fill(); 
                 ctx.stroke();
 
                 ctx.fillStyle = '#000000'; 
-                ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+                ctx.font = 'bold 15px "Tenor Sans", sans-serif'; 
                 ctx.textAlign = 'center'; 
                 ctx.textBaseline = 'middle';
                 ctx.fillText(bDistSq.toString(), bx, by + 0.5);
@@ -180,12 +241,12 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.strokeStyle = assistColor; 
             ctx.lineWidth = 2;
             ctx.beginPath(); 
-            ctx.arc(mx, my, 12, 0, Math.PI * 2); 
+            ctx.arc(mx, my, 15, 0, Math.PI * 2); 
             ctx.fill(); 
             ctx.stroke();
             
             ctx.fillStyle = assistColor; 
-            ctx.font = 'bold 12px "Tenor Sans", sans-serif'; 
+            ctx.font = 'bold 15px "Tenor Sans", sans-serif'; 
             ctx.textAlign = 'center'; 
             ctx.textBaseline = 'middle';
             ctx.fillText(distSq.toString(), mx, my + 0.5);
@@ -201,14 +262,14 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + titleBarHeight); ctx.stroke();
         });
         
-        ctx.font = 'bold 11px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         
         // 💡修正(1)：正解鉱脈の黒丸表示（blackAlertLines）を先に中点に描画（下層レイヤー）
         errorDisplayState.blackAlertLines.forEach(line => {
             const bx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const by = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(bx, by, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#000000'; ctx.fillText(line.distSq.toString(), bx, by + 0.5);
         });
 
@@ -217,7 +278,7 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             const rx = OFFSET + ((line.start.x + line.end.x) / 2) * CELL_PIXEL;
             const ry = OFFSET + ((line.start.y + line.end.y) / 2) * CELL_PIXEL + titleBarHeight;
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(rx, ry, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(rx, ry, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#ff3b30'; ctx.fillText(line.distSq.toString(), rx, ry + 0.5);
         });
 
@@ -225,17 +286,74 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.arc(OFFSET + v.x * CELL_PIXEL, OFFSET + v.y * CELL_PIXEL + titleBarHeight, 6, 0, Math.PI * 2); ctx.fill();
         });
     }
+    // ─── 📸【v0.9.1新機能：ダウンロードボタン文字・全自動トグルシステム（完全狙い撃ち版）】 ───
+    // 💡【完全解決】カッコの中に「false」が入っている、正真正銘「問題画像をダウンロード」のボタンだけを完璧に識別してロックオン！
+    // これにより、「正解画像をダウンロード」のボタンを200%完全に除外（スルー）し、誤作動を永久にシャットアウトします！
+    const downloadBtn = Array.from(document.querySelectorAll("button")).find(btn => {
+        const clickAttr = btn.getAttribute("onclick");
+        return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
+    });
+    
+    if (downloadBtn) {
+        const isUserGridModified = userGrid.some(row => row.some(cell => cell !== null));
+        const isUserWallsModified = (typeof userWalls !== 'undefined' && userWalls && userWalls.length > 0);
+        const isModified = isUserGridModified || isUserWallsModified;
+
+        if (isModified) {
+            downloadBtn.innerText = "現時点画像をダウンロード";
+            downloadBtn.setAttribute("data-mode", "current");
+        } else {
+            downloadBtn.innerText = "問題画像をダウンロード";
+            downloadBtn.removeAttribute("data-mode");
+        }
+    }
 }
 
-function downloadPuzzleImage(isSolution) {
-    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+// ─── 📸【v0.9.1新機能：問題・答え出力100%完全ホールド ＆ 途中画像完全適合ダウンロードシステム】 ───
+function downloadPuzzleImage(isSolution, btnElement) {
     const urlParams = new URLSearchParams(window.location.search);
     const dayValue = urlParams.get('day') || "XXX";
-    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
-    const link = document.createElement('a');
-    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-    drawPuzzle();
+    
+    // 💡【判定】先ほど引数で渡されたボタン自身の属性を見て、現在が「現時点（途中）」モードであるかどうかをチェック
+    const isCurrentMode = btnElement && btnElement.getAttribute("data-mode") === "current";
+
+    let filename;
+    
+    if (isCurrentMode) {
+        // 🌟【新機能ルート】：1マスでも手が加わっている時は、すり替え描画を一切行わない！
+        // 今プレイヤーの目に見えている「生の色（userGrid）と手動壁」の描画状態をそのままホールドし、
+        // ファイル名を条件通り「DayXXX途中.png」として1発でダイレクトに保存します！
+        filename = `Day${dayValue}途中.png`;
+        
+        const link = document.createElement('a');
+        link.download = filename; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+    } else {
+        // 🌟【従来のオリジナルルートを100%完全無傷でホールド！】
+        // 盤面が完全白紙のときは、これまでと全く同じ歴史が走り、
+        // 引数に応じて「答え画像(DayXXX答え.png)」または「問題画像(DayXXX問題.png)」を完璧に出力・復元します！
+        if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+        
+        filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+        
+        const link = document.createElement('a');
+        link.download = filename; 
+        link.href = canvas.toDataURL('image/png'); 
+        link.click();
+        
+        drawPuzzle(); // 元のクリーンな通常画面へ戻す
+    }
 }
+//function downloadPuzzleImage(isSolution) {
+//    if (isSolution) drawPuzzle(true, false); else drawPuzzle(false, true);
+//    const urlParams = new URLSearchParams(window.location.search);
+//    const dayValue = urlParams.get('day') || "XXX";
+//    const filename = `Day${dayValue}${isSolution ? '答え' : '問題'}.png`;
+//    const link = document.createElement('a');
+//    link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
+//    drawPuzzle();
+//}
 
 function getCellFromCoords(x, y) {
     const titleBarHeight = 30;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KOMYAKU Player v0.9</title>
+    <title>KOMYAKU Player v0.9.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="loader.js" defer></script>
     <script src="decoder.js" defer></script>
@@ -15,13 +15,13 @@
 </head>
 <body>
 
-    <h1>KOMYAKU Player v0.9</h1>
+    <h1>KOMYAKU Player v0.9.1</h1>
     <canvas id="puzzleCanvas"></canvas>
     
     <!-- スタジオモード専用のボタン置き場 -->
     <div class="studio-btn-container" id="studioContainer">
-        <button class="btn-studio btn-p" onclick="downloadPuzzleImage(false)">📸 問題画像をダウンロード</button>
-        <button class="btn-studio btn-s" onclick="downloadPuzzleImage(true)">🎉 正解画像をダウンロード</button>
+        <button class="btn-studio btn-p" onclick="downloadPuzzleImage(false,this)">📸 問題画像をダウンロード</button>
+        <button class="btn-studio btn-s" onclick="downloadPuzzleImage(true,this)">🎉 正解画像をダウンロード</button>
     </div>
 
     <div class="controls-wrapper">
@@ -38,7 +38,8 @@
         </div>
     </div>
 
-    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！
+    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！ -->
+    <!--
     <script>
     document.fonts.ready.then(function() {
         // 1. 本番のパズルデータを読み込んで一発起動！
@@ -92,6 +93,6 @@
         window.addEventListener('touchstart', (e) => { updateDebugInfo(e, 'START'); }, { passive: true });
         window.addEventListener('touchmove', (e) => { updateDebugInfo(e, 'MOVE'); }, { passive: true });
     });
-    </script> -->
+    </script>-->
 </body>
 </html>
