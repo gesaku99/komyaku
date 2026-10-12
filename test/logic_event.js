@@ -381,9 +381,8 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定版・完全修正版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定・完全修正版）】 ───
 
-// 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
     active: false,
     blinkLine: null,
@@ -391,45 +390,38 @@ let videoRenderState = {
     texts: []
 };
 
-// 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下）へ全自動で新設
+// 開発者画面（&mode=make）が有効な場合、ご指定の位置（カラーパレットの上部）へ全自動で新設
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make') {
-        // 💡 カッコの中に「false」が入っている「問題画像をダウンロード」ボタンを基準点としてロックオン
-        const refBtn = Array.from(document.querySelectorAll("button")).find(btn => {
-            const clickAttr = btn.getAttribute("onclick");
-            return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
-        });
-        
-        if (refBtn && refBtn.parentNode) {
-            // 重複追加を完全に防止
+        // 💡 ターゲット：カラーパレットを内包するコンテナを正確にロックオン
+        const paletteBox = document.getElementById('palette');
+        if (paletteBox && paletteBox.parentNode) {
             if (document.getElementById('komyakuVideoBtn')) return;
             
-            // レイアウトを崩さないよう、ボタンを美しく内包するためのスタジオ専用コンテナ（縦並び用）を生成・接続
             const videoBtnWrapper = document.createElement('div');
             videoBtnWrapper.style.width = '100%';
             videoBtnWrapper.style.display = 'flex';
             videoBtnWrapper.style.justifyContent = 'center';
-            videoBtnWrapper.style.marginTop = '8px'; // 上のダウンロードボタン群との綺麗な隙間を確保
+            videoBtnWrapper.style.marginBottom = '12px'; // カラーパレット上部との美しい隙間
 
             const videoBtn = document.createElement('button');
             videoBtn.id = 'komyakuVideoBtn';
             videoBtn.className = 'btn-common check-btn';
-            videoBtn.style.backgroundColor = '#007aff'; // 視認性の高い鮮やかなブルー
-            videoBtn.style.width = '200px';              // 押しやすい適正横幅
+            videoBtn.style.backgroundColor = '#007aff'; // 鮮やかなブルー
+            videoBtn.style.width = '200px';
             videoBtn.style.height = '40px';
             videoBtn.style.fontSize = '12px';
             videoBtn.innerText = '正解動画生成';
             videoBtn.onclick = startKomyakuVideoGeneration;
             
             videoBtnWrapper.appendChild(videoBtn);
-            // 💡 指示通り、ダウンロードボタンが属する親要素内の「一番下（下側）」へダイレクトにドッキング
-            refBtn.parentNode.parentNode.appendChild(videoBtnWrapper);
+            // 💡 指示通り、パレットボックスの「直前（上部）」へ全自動で差し込み配置
+            paletteBox.parentNode.insertBefore(videoBtnWrapper, paletteBox);
         }
     }
 })();
 
-// コアエンジン：文字列プロンプトのパーサー ＆ タイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
@@ -438,63 +430,56 @@ async function startKomyakuVideoGeneration() {
     );
     if (!promptInput) return;
 
-    // 現在のユーザーデータを深く退避（動画生成後に1ミリの狂いもなく完全復元するため）
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
 
-    // ─── ➔ プロンプトパース文法ルールの正規表現解析（タイムライン配列の事前構築） ───
+    // ─── ➔ 1文字の狂いもなく完全分解するトークナイズ ───
     const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
     let match;
     const timeline = [];
-    let currentTexts = [];
 
-    // 💡タイポを200%完全に根治したクリーンなパースループ
     while ((match = commandRegex.exec(promptInput)) !== null) {
-        const type = match[1];
-        const content = match[2].trim();
+        const type = match;
+        const content = match.trim();
 
         if (type === 'T') {
-            currentTexts.push(content);
-            continue;
-        }
-
-        if (currentTexts.length > 0) {
-            timeline.push({ type: 'T', data: [...currentTexts] });
-            currentTexts = [];
-        }
-
-        if (type === 'P') {
-            // カラーパレット指定の括弧を保持したままトークン分割
-            const tokens = content.split(/(\(\d+\))/);
-            let currentColorId = 1; // デフォルトはパレット1番
-
-            tokens.forEach(tok => {
-                if (!tok) return;
-                if (tok.startsWith('(') && tok.endsWith(')')) {
-                    // カラーIDを正確に抽出 (0は消しゴム=null)
-                    currentColorId = parseInt(tok.slice(1, -1), 10);
+            // テロップ命令は、直近に独立したテロップタイムラインとしてそのままプッシュ
+            timeline.push({ type: 'T', data: [content] });
+        } else if (type === 'P') {
+            // カッコ位置に依存せず、文字列を頭から順にスキャンしてカラーID変更と座標を仕分け
+            let currentColorId = 1; // デフォルト1番
+            let i = 0;
+            while (i < content.length) {
+                if (content.charAt(i) === '(') {
+                    let closeIdx = content.indexOf(')', i);
+                    if (closeIdx !== -1) {
+                        currentColorId = parseInt(content.substring(i + 1, closeIdx), 10);
+                        i = closeIdx + 1;
+                    } else {
+                        i++;
+                    }
                 } else {
-                    // A1, B2 などのマス記号を2文字ずつパースしてタイムラインへ格納
-                    for (let i = 0; i < tok.length; i += 2) {
-                        const cellStr = tok.substr(i, 2);
-                        if (cellStr.length === 2) {
-                            const c = cellStr.charCodeAt(0) - 65; // A=0, B=1...
-                            const r = parseInt(cellStr.charAt(1), 10) - 1; // 1=0, 2=1...
-                            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-                                timeline.push({ type: 'P', r: r, c: c, color: currentColorId === 0 ? null : currentColorId });
-                            }
+                    const cellStr = content.substr(i, 2);
+                    if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
+                        const c = cellStr.charCodeAt(0) - 65; // A=0
+                        const r = parseInt(cellStr.charAt(1), 10) - 1; // 1=0
+                        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                            timeline.push({ type: 'P', r: r, c: c, color: currentColorId === 0 ? null : currentColorId });
                         }
+                        i += 2;
+                    } else {
+                        i++;
                     }
                 }
-            });
+            }
         } else if (type === 'L' || type === 'B') {
             const vertices = [];
             for (let i = 0; i < content.length; i += 2) {
                 const vStr = content.substr(i, 2);
                 if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 97; // a=0, b=1, c=2...（格子点座標の正義のゼロインデックス変換）
-                    const r = parseInt(vStr.charAt(1), 10) - 1; // 1=0, 2=1...
+                    const c = vStr.charCodeAt(0) - 97; // a=0, b=1...
+                    const r = parseInt(vStr.charAt(1), 10) - 1;
                     vertices.push({ r, c });
                 }
             }
@@ -507,11 +492,26 @@ async function startKomyakuVideoGeneration() {
             }
         }
     }
-    if (currentTexts.length > 0) {
-        timeline.push({ type: 'T', data: [...currentTexts] });
+
+    // 💡 Tコマンドの連続記述を、動画用に「同時表示する複数行テロップ」へと綺麗に一括グルーピング
+    const optimizedTimeline = [];
+    let pendingTexts = [];
+    for (let item of timeline) {
+        if (item.type === 'T') {
+            pendingTexts.push(item.data[0]);
+        } else {
+            if (pendingTexts.length > 0) {
+                optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
+                pendingTexts = [];
+            }
+            optimizedTimeline.push(item);
+        }
+    }
+    if (pendingTexts.length > 0) {
+        optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
     }
 
-    // 💡【重要】パースが完了した「後」に画面状態を真っ白（完全白紙）へリセット
+    // 画面の完全白紙化リセット
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
@@ -519,31 +519,19 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
-    // キャンバスストリームから MediaRecorder を起動（3倍高画質をそのままホールド）
-    const stream = canvas.captureStream(30); // 30 FPS 固定
+    const stream = canvas.captureStream(30);
     let recordedChunks = [];
-    
-    // コーデックの互換性セーフティ判定（WebM or MP4）
     let options = { mimeType: 'video/webm;codecs=vp9' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = { mimeType: 'video/webm;codecs=vp8' };
-    }
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = { mimeType: 'video/mp4' };
-    }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
     
-    // 録画停止時のダウンロード＆復元シーケンス
     recorder.onstop = () => {
-        if (recordedChunks.length === 0) {
-            alert("❌ 動画フレームのキャプチャに失敗しました。もう一度実行してください。");
-            return;
-        }
+        if (recordedChunks.length === 0) return;
         const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType });
         const videoUrl = URL.createObjectURL(videoBlob);
-        
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
         const extension = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
@@ -553,7 +541,6 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
-        // ─── 🔄 元の完璧な通常プレイ画面の状態へ200%完全復元 ───
         userGrid = backupUserGrid.map(row => [...row]);
         if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
         errorDisplayState.show = backupErrorShow;
@@ -563,22 +550,18 @@ async function startKomyakuVideoGeneration() {
         drawPuzzle();
     };
 
-    // 録画開始
     recorder.start();
-
-    // 💡【不具合根治・初コマ完全白紙保証】録画が始まったこの瞬間に、100%完全な白紙状態を1コマ強制秒画・焼き付け
     drawPuzzle();
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 白紙コマをブラウザのストリームへ確実に覚え込ませるウェイト
+    await sleep(400); // 初コマ白紙保持
 
-    // タイムラインの非同期逐次シミュレーション実行
-    for (let cmd of timeline) {
+    // タイムラインの純粋実行ループ
+    for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
             drawPuzzle();
             await sleep(600); 
         } else if (cmd.type === 'B') {
-            // B[...] 仕様：2秒間チカチカ明滅（0.5秒×4回）
             videoRenderState.blinkLine = cmd;
             for (let k = 0; k < 4; k++) {
                 videoRenderState.blinkVisible = (k % 2 === 0);
@@ -588,22 +571,17 @@ async function startKomyakuVideoGeneration() {
             videoRenderState.blinkLine = null;
             drawPuzzle();
         } else if (cmd.type === 'P') {
-            // P[...] 仕様：指定パレット色での正確なマス塗り実行
             userGrid[cmd.r][cmd.c] = cmd.color;
             if (typeof cleanUserWalls === 'function') cleanUserWalls();
             drawPuzzle();
             await sleep(350);
         } else if (cmd.type === 'L') {
-            // L[...] 仕様：境界線の追加
             userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             drawPuzzle();
             await sleep(350);
         }
     }
 
-    // 最後の静止余韻（動画の終わりが唐突にならないよう1秒確保）
     await sleep(1000);
-
-    // 録画停止（自動ダウンロードが発火します）
     recorder.stop();
 }
