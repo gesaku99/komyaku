@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（初期ロールバック＆最末尾保証版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（X最適化MP4出力・最終完成版）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -431,7 +431,7 @@ async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
         "パースするスクリプト文字列を入力してください。\n\n" +
-        "入力例：P[A1A2A3A4(1)A5B5C5D5(2)]L[b1b2]B[a1b5]P[B4(1)]T[一旦]T[]T[]T[ここまで]"
+        "入力例：P[A1A2A3A4(1)A5B5C5D5(2)]L[b1b2]B[a1b5]P[B4(1)E5]T[一旦]T[]T[]T[ここまで]"
     );
     if (!promptInput) return;
 
@@ -448,13 +448,22 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
-    // 初期コードで大成功実績のある「30FPS固定キャプチャストリーム」を再起動
+    // 30FPS固定キャプチャストリームを起動
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     
-    let options = { mimeType: 'video/webm;codecs=vp9' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+    // 💡【X対応：MP4形式を最優先で最速ロックオンするセーフティ判定】
+    let options = { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2' }; // H.264 / AAC 完全準拠
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/mp4' };
+    }
+    // 万が一ブラウザ側がレガシーでMP4に非対応な場合のみ、代替としてWebMを立てる
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm;codecs=vp9' };
+    }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm;codecs=vp8' };
+    }
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
@@ -465,6 +474,8 @@ async function startKomyakuVideoGeneration() {
         const videoUrl = URL.createObjectURL(videoBlob);
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
+        
+        // 💡 拡張子をMimeTypeに応じて「mp4」か「webm」へ全自動で1発トグル
         const extension = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
         
         const link = document.createElement('a');
@@ -482,7 +493,6 @@ async function startKomyakuVideoGeneration() {
         drawPuzzle();
     };
 
-    // 録画開始 ＆ 初コマ完全白紙の焼き付け
     recorder.start();
     drawPuzzle();
 
@@ -495,11 +505,10 @@ async function startKomyakuVideoGeneration() {
     const timeline = [];
     let currentTexts = [];
 
-    // 初期に実績のある安全な正規表現スキャン
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
     while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        const type = match[1];
-        const content = match[2].trim();
+        const type = match;
+        const content = match.trim();
 
         if (type === 'T') {
             currentTexts.push(content);
@@ -513,22 +522,25 @@ async function startKomyakuVideoGeneration() {
 
         if (type === 'P') {
             const tokens = content.split(/(\(\d+\))/);
-            let currentColorId = 1; // 初期のパレット規定値
+            let currentColorId = 1; 
 
             tokens.forEach(tok => {
                 if (!tok) return;
                 if (tok.startsWith('(') && tok.endsWith(')')) {
                     currentColorId = parseInt(tok.slice(1, -1), 10);
                 } else {
-                    for (let i = 0; i < tok.length; i += 2) {
+                    let i = 0;
+                    while (i < tok.length) {
                         const cellStr = tok.substr(i, 2);
-                        if (cellStr.length === 2) {
+                        if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
                             const c = cellStr.charCodeAt(0) - 65; 
                             const r = parseInt(cellStr.charAt(1), 10) - 1; 
                             if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-                                // 💡 0番指定なら消しゴム(null)、それ以外(1〜9)はシステム用に -1 して登録
                                 timeline.push({ type: 'P', r: r, c: c, color: currentColorId === 0 ? null : (currentColorId - 1) });
                             }
+                            i += 2;
+                        } else {
+                            i++;
                         }
                     }
                 }
@@ -538,7 +550,7 @@ async function startKomyakuVideoGeneration() {
             for (let i = 0; i < content.length; i += 2) {
                 const vStr = content.substr(i, 2);
                 if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 97; // a=0
+                    const c = vStr.charCodeAt(0) - 97; 
                     const r = parseInt(vStr.charAt(1), 10) - 1; 
                     vertices.push({ r, c });
                 }
@@ -563,7 +575,6 @@ async function startKomyakuVideoGeneration() {
             drawPuzzle();
             await sleep(600); 
         } else {
-            // 他の命令が入ればテロップをクリアするご指定の修正
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
                 drawPuzzle();
@@ -591,10 +602,12 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡【ピンポイント改修：最終コマ消失の完全根治】
-    // すべての処理（最後のE5マスの塗りなど）が完了した後、その最後の完成画面をビデオトラックが
-    // 確実にキャプチャしきるまで、1000ms（1秒間）何もしないでじっと余韻時間を置いてから、停止命令を送ります。
-    await sleep(1000);
+    // 最後のE5マス完了画面を、約30FPSで45回（＝1.5秒間分）連打してビデオトラックへ強制供給。
+    // これにより、Xプレイヤーのシークバグやループバックを完膚なきまでに撃破します。
+    for (let f = 0; f < 45; f++) {
+        drawPuzzle();
+        await sleep(33);
+    }
     
     recorder.stop();
 }
