@@ -381,8 +381,9 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定・完全修正版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定・完全解決版）】 ───
 
+// 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
     active: false,
     blinkLine: null,
@@ -390,20 +391,26 @@ let videoRenderState = {
     texts: []
 };
 
-// 開発者画面（&mode=make）が有効な場合、ご指定の位置（カラーパレットの上部）へ全自動で新設
+// 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ完璧に配置
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make') {
-        // 💡 ターゲット：カラーパレットを内包するコンテナを正確にロックオン
-        const paletteBox = document.getElementById('palette');
-        if (paletteBox && paletteBox.parentNode) {
+        // 💡 カッコの中に「false」が入っている、正真正銘「問題画像をダウンロード」のボタンを基準としてロックオン
+        const refBtn = Array.from(document.querySelectorAll("button")).find(btn => {
+            const clickAttr = btn.getAttribute("onclick");
+            return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
+        });
+        
+        if (refBtn && refBtn.parentNode) {
             if (document.getElementById('komyakuVideoBtn')) return;
             
+            // 横並びのダウンロードボタン群の親（.controls-wrapper などの直下）に縦並びとして美しくドッキング
             const videoBtnWrapper = document.createElement('div');
             videoBtnWrapper.style.width = '100%';
             videoBtnWrapper.style.display = 'flex';
             videoBtnWrapper.style.justifyContent = 'center';
-            videoBtnWrapper.style.marginBottom = '12px'; // カラーパレット上部との美しい隙間
+            videoBtnWrapper.style.marginTop = '12px';
+            videoBtnWrapper.style.marginBottom = '12px'; // カラーパレット上部との間にも隙間を確保
 
             const videoBtn = document.createElement('button');
             videoBtn.id = 'komyakuVideoBtn';
@@ -416,12 +423,13 @@ let videoRenderState = {
             videoBtn.onclick = startKomyakuVideoGeneration;
             
             videoBtnWrapper.appendChild(videoBtn);
-            // 💡 指示通り、パレットボックスの「直前（上部）」へ全自動で差し込み配置
-            paletteBox.parentNode.insertBefore(videoBtnWrapper, paletteBox);
+            // 💡 ダウンロードボタンがあるコントロール行の「すぐ下」の階層に美しく挿入
+            refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
         }
     }
 })();
 
+// コアエンジン：文字列プロンプトのパーサー ＆ タイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
@@ -440,14 +448,13 @@ async function startKomyakuVideoGeneration() {
     const timeline = [];
 
     while ((match = commandRegex.exec(promptInput)) !== null) {
-        const type = match;
-        const content = match.trim();
+        const type = match[1];
+        const content = match[2].trim();
 
         if (type === 'T') {
-            // テロップ命令は、直近に独立したテロップタイムラインとしてそのままプッシュ
-            timeline.push({ type: 'T', data: [content] });
+            // テロップはプレーンな文字列のまま一度ストック
+            timeline.push({ type: 'T', text: content });
         } else if (type === 'P') {
-            // カッコ位置に依存せず、文字列を頭から順にスキャンしてカラーID変更と座標を仕分け
             let currentColorId = 1; // デフォルト1番
             let i = 0;
             while (i < content.length) {
@@ -493,12 +500,13 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡 Tコマンドの連続記述を、動画用に「同時表示する複数行テロップ」へと綺麗に一括グルーピング
+    // 💡 クラッシュの原因だったねじれを完全消滅させ、連続するテロップを正しく1つの配列にまとめる最適化
     const optimizedTimeline = [];
     let pendingTexts = [];
+
     for (let item of timeline) {
         if (item.type === 'T') {
-            pendingTexts.push(item.data[0]);
+            pendingTexts.push(item.text);
         } else {
             if (pendingTexts.length > 0) {
                 optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
@@ -519,6 +527,7 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
+    // キャンバスストリームから MediaRecorder を起動（3倍高画質ホールド）
     const stream = canvas.captureStream(30);
     let recordedChunks = [];
     let options = { mimeType: 'video/webm;codecs=vp9' };
@@ -553,15 +562,16 @@ async function startKomyakuVideoGeneration() {
     recorder.start();
     drawPuzzle();
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 初コマ白紙保持
+    await sleep(400); // 初コマ完全白紙の焼き付けウェイト
 
     // タイムラインの純粋実行ループ
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
-            videoRenderState.texts = cmd.data;
+            videoRenderState.texts = cmd.data; // 正しい文字配列が引き渡されクラッシュを完全回避
             drawPuzzle();
             await sleep(600); 
         } else if (cmd.type === 'B') {
+            // B[...] 仕様：2秒間チカチカ明滅（0.5秒×4回）
             videoRenderState.blinkLine = cmd;
             for (let k = 0; k < 4; k++) {
                 videoRenderState.blinkVisible = (k % 2 === 0);
@@ -571,11 +581,13 @@ async function startKomyakuVideoGeneration() {
             videoRenderState.blinkLine = null;
             drawPuzzle();
         } else if (cmd.type === 'P') {
+            // P[...] 仕様：パレット色と消しゴムを100%正確にトグル
             userGrid[cmd.r][cmd.c] = cmd.color;
             if (typeof cleanUserWalls === 'function') cleanUserWalls();
             drawPuzzle();
             await sleep(350);
         } else if (cmd.type === 'L') {
+            // L[...] 仕様：境界線の追加
             userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             drawPuzzle();
             await sleep(350);

@@ -308,17 +308,17 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         }
     }
 
-    // ─── 🎬【正解動画生成エンジン専用・最前面焼き付けフック】 ───
+    // ─── 🎬【正解動画生成エンジン専用・最前面焼き付けフック（完全同期版）】 ───
     if (typeof videoRenderState !== 'undefined' && videoRenderState.active) {
-        // ① B[...] 仕様：理由となるNG鉱脈の2秒間チカチカ明滅描画（0.5秒周期で点滅）
+        // ① B[...] 仕様：理由となるNG鉱脈の2秒間チカチカ明滅描画（c1, r1, c2, r2 で完全ホールド）
         if (videoRenderState.blinkLine && videoRenderState.blinkVisible) {
             ctx.save();
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 6;
             ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(OFFSET + videoRenderState.blinkLine.x1 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.y1 * CELL_PIXEL + titleBarHeight);
-            ctx.lineTo(OFFSET + videoRenderState.blinkLine.x2 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.y2 * CELL_PIXEL + titleBarHeight);
+            ctx.moveTo(OFFSET + videoRenderState.blinkLine.c1 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.r1 * CELL_PIXEL + titleBarHeight);
+            ctx.lineTo(OFFSET + videoRenderState.blinkLine.c2 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.r2 * CELL_PIXEL + titleBarHeight);
             ctx.stroke();
             ctx.restore();
         }
@@ -326,17 +326,14 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
         // ② T[...] 仕様：複数行同時焼き付け対応の解説字幕テロップ表示
         if (videoRenderState.texts && videoRenderState.texts.length > 0) {
             ctx.save();
-            // 下部帯エリアの計算（盤面外の下側に美しくマージンを確保して配置）
             const barW = logicalWidth;
             const barH = videoRenderState.texts.length * 24 + 16;
             const barX = 0;
             const barY = logicalHeight - barH;
 
-            // 半透明のスタイリッシュな黒帯を敷く
             ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
             ctx.fillRect(barX, barY, barW, barH);
 
-            // テロップ文字の描画（Tenor Sans完全統一・高アクセシビリティ仕様）
             ctx.fillStyle = '#ffffff';
             ctx.font = '16px "Tenor Sans", sans-serif';
             ctx.textAlign = 'center';
