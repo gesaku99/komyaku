@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 標準レコーダーポーズ完全解決版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終完成版）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -514,7 +514,7 @@ async function startKomyakuVideoGeneration() {
         optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
     }
 
-    // 動画モードを点灯させ、自動判定の割り込み画面破壊を100%永久遮断
+    // 動画モードフラグを点灯させ、自動正誤判定からの割り込み画面上書きを100%永久遮断
     videoRenderState.active = true;
 
     // 画面の完全白紙化リセット
@@ -524,7 +524,6 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
-    // 💡【根治】ブラウザの初期化バグを完全回避するために 30 FPS 固定レートを再適用
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     let options = { mimeType: 'video/webm;codecs=vp9' };
@@ -547,6 +546,7 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
+        // 動画ファイル確定後に、安全にデータを元の通常プレイ画面へ戻す
         setTimeout(() => {
             userGrid = backupUserGrid.map(row => [...row]);
             if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
@@ -558,6 +558,7 @@ async function startKomyakuVideoGeneration() {
         }, 100);
     };
 
+    // 大元の自動正誤判定の画面書き換えを完全シャットアウト
     const originalCheckAnswer = window.checkAnswer;
     window.checkAnswer = function(isAutoCheck) {
         if (videoRenderState.active) return;
@@ -603,19 +604,11 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡【最後のマス焼き付けバッファ】最後のE5マスの描画フレームがストリームに確実に到達するまで極小ウェイト
-    await sleep(100);
+    // 💡【要求への完全回答】
+    // 最末尾コマンド（E5マス着色）が終了したまさにその瞬間に、ブラウザへフレームを送り届けるための
+    // 最低限かつクリーンなタイムラグ（1マスの描画ウェイトと同じ350ms）だけを実直に置いて、即座に録画を停止する。
+    await sleep(350);
     
-    // 💡【究極のスマート根治】MediaRecorderの標準機能「pause()」で、最後の状態のまま録画時間を一時停止！
-    // これによりブラウザの間引きに依存せず、最後のフレームを保持したまま時間を1.5秒間安全にフリーズさせます
-    if (recorder.state === "recording") {
-        recorder.pause();
-    }
-    
-    // 監督のご要望通り、綺麗な状態のまま1.5秒間待機
-    await sleep(1500);
-    
-    // 録画停止（ポーズ中にストップをかけることで、フリーズしていた1.5秒の余韻が完璧にファイルに結合されます）
     recorder.stop();
 
     setTimeout(() => {
