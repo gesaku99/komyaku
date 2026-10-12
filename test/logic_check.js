@@ -1,8 +1,5 @@
 // ★正誤判定・採点ロジックのみを完全に隔離した安全な専用ファイル
 function checkAnswer(isAutoCheck = false) {
-    // ─── 🎬【動画生成中の自動判定干渉を完全遮断】 ───
-    if (typeof videoRenderState !== 'undefined' && videoRenderState && videoRenderState.active) return;
-
     clearErrorDisplay(); 
 
     // 1. 正解のすべての内壁境界線を1マスずつ正確にリストアップ

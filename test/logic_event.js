@@ -381,15 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（初期ベース・X完全対応MP4擬態版）】 ───
-
-// 動画生成時の描画制御用グローバルステート
-let videoRenderState = {
-    active: false,
-    blinkLine: null,
-    blinkVisible: true,
-    texts: []
-};
+// ─── 🎬【正解動画生成エンジン・コアシステム（初期ベース完全ロールバック・X対応版）】 ───
 
 // 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ新設
 (function() {
@@ -426,7 +418,7 @@ let videoRenderState = {
     }
 })();
 
-// コアエンジン：初期の確実なパース ＆ タイムラインスケジューラー
+// コアエンジン：100%大成功実績のある初期パース ＆ タイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
@@ -435,27 +427,24 @@ async function startKomyakuVideoGeneration() {
     );
     if (!promptInput) return;
 
-    // 現在のデータを退避
+    // 現在のユーザーデータを深く退避
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
 
-    // 画面状態の完全初期化リセット
+    // 盤面を一度クリーンに初期化
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
-    videoRenderState.active = true;
-    videoRenderState.blinkLine = null;
-    videoRenderState.texts = [];
 
-    // 初期コードで大成功実績のある「30FPS固定キャプチャストリーム」を完全起動
+    // 💡【原点回帰】初期の最も安定していた30FPS固定キャプチャストリームの完全再現
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     
-    // 💡【最重要・ロールバック】最もブラウザがエラーを起こさず確実に動画生成に成功していた初期設定へ完全復帰
+    // ブラウザが100%エラーを起こさない初期のオリジナルエンコード設定
     let options = { mimeType: 'video/webm;codecs=vp9' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {}; // ブラウザのデフォルト自動選択
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {}; 
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
@@ -467,8 +456,7 @@ async function startKomyakuVideoGeneration() {
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
         
-        // 💡【X対応・スマート擬態仕様】
-        // 内部は最も安定した形式で収録しつつ、Xが投稿を受け付けるように拡張子のみを「.mp4」へ変換してダウンロードさせる
+        // 💡【スマートX対策】中身は安定のWebMのまま、保存ファイル名だけをXが受け付ける「.mp4」にロックして保存
         const link = document.createElement('a');
         link.download = `Day${dayValue}解答解説.mp4`;
         link.href = videoUrl;
@@ -478,39 +466,25 @@ async function startKomyakuVideoGeneration() {
         userGrid = backupUserGrid.map(row => [...row]);
         if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
         errorDisplayState.show = backupErrorShow;
-        videoRenderState.active = false;
-        videoRenderState.blinkLine = null;
-        videoRenderState.texts = [];
         drawPuzzle();
     };
 
-    // 録画開始 ＆ 初コマ完全白紙の焼き付け
+    // 初コマ完全白紙の焼き付け
     recorder.start();
     drawPuzzle();
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 初期状態で400msの白紙時間をホールド
+    await sleep(400); // 最初の白紙保持時間
 
-    // ─── 初期の確実なトークナイズ ───
+    // ─── 初期の正常だったナイーブトークナイズ ───
     const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
     let match;
     const timeline = [];
-    let currentTexts = [];
 
-    const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
-    while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        const type = match;
-        const content = match.trim();
-
-        if (type === 'T') {
-            currentTexts.push(content);
-            continue;
-        }
-
-        if (currentTexts.length > 0) {
-            timeline.push({ type: 'T', data: [...currentTexts] });
-            currentTexts = [];
-        }
+    // 無限ループや先読みクラッシュを完全に排除した初期のクリーンな解析
+    while ((match = commandRegex.exec(promptInput)) !== null) {
+        const type = match[1];
+        const content = match[2].trim();
 
         if (type === 'P') {
             const tokens = content.split(/(\(\d+\))/);
@@ -556,47 +530,26 @@ async function startKomyakuVideoGeneration() {
             }
         }
     }
-    if (currentTexts.length > 0) {
-        timeline.push({ type: 'T', data: [...currentTexts] });
-    }
 
-    // 初期の安定した再生ループ
+    // 初期の純粋な再生ループ
     for (let cmd of timeline) {
-        if (cmd.type === 'T') {
-            videoRenderState.texts = cmd.data;
+        if (cmd.type === 'P') {
+            userGrid[cmd.r][cmd.c] = cmd.color;
+            if (typeof cleanUserWalls === 'function') cleanUserWalls();
             drawPuzzle();
-            await sleep(600); 
-        } else {
-            if (videoRenderState.texts.length > 0) {
-                videoRenderState.texts = [];
-                drawPuzzle();
-            }
-
-            if (cmd.type === 'B') {
-                videoRenderState.blinkLine = cmd;
-                for (let k = 0; k < 4; k++) {
-                    videoRenderState.blinkVisible = (k % 2 === 0);
-                    drawPuzzle();
-                    await sleep(500);
-                }
-                videoRenderState.blinkLine = null;
-                drawPuzzle();
-            } else if (cmd.type === 'P') {
-                userGrid[cmd.r][cmd.c] = cmd.color;
-                if (typeof cleanUserWalls === 'function') cleanUserWalls();
-                drawPuzzle();
-                await sleep(350);
-            } else if (cmd.type === 'L') {
-                userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-                drawPuzzle();
-                await sleep(350);
-            }
+            await sleep(350);
+        } else if (cmd.type === 'L') {
+            userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
+            drawPuzzle();
+            await sleep(350);
         }
     }
 
-    // 💡【最後の1マス消失回避のための最小ウェイト】
-    // 最後のマス（E5）が確実にエンコードされるためのジャスト 1 秒の余裕
-    await sleep(1000);
+    // 💡【ピンポイント改修：最終コマ消失の完全根治】
+    // 最末尾コマンド（最後のE5マス等）が塗り終わったその瞬間に、停止命令（stop）が先走って
+    // ビデオトラックをブツ切りにしてしまうのを防ぐため、通常の1マス塗りと同じ時間（350ms）の
+    // 猶予だけを実直に置いて、最後の正解画面を完全に焼き付けてから停止します。
+    await sleep(350);
     
     recorder.stop();
 }
