@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定・完全解決版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 オンデマンドキャプチャ仕様）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -444,8 +444,8 @@ async function startKomyakuVideoGeneration() {
     const timeline = [];
 
     while ((match = commandRegex.exec(promptInput)) !== null) {
-        const type = match[1];
-        const content = match[2].trim();
+        const type = match;
+        const content = match.trim();
 
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
@@ -514,7 +514,6 @@ async function startKomyakuVideoGeneration() {
         optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
     }
 
-    // 💡 フラグを真っ先に点灯させ、ゲーム側からの自動描画上書き干渉を100%永久遮断
     videoRenderState.active = true;
 
     // 画面の完全白紙化リセット
@@ -524,7 +523,8 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
-    const stream = canvas.captureStream(30);
+    // 💡【スマート解決の鍵】引数を空にして、キャンバス描画の瞬間に1フレームを焼くオンデマンドストリームを構築
+    const stream = canvas.captureStream(); 
     let recordedChunks = [];
     let options = { mimeType: 'video/webm;codecs=vp9' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
@@ -546,7 +546,6 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
-        // 動画確定後に安全にデータを復元
         setTimeout(() => {
             userGrid = backupUserGrid.map(row => [...row]);
             if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
@@ -558,16 +557,22 @@ async function startKomyakuVideoGeneration() {
         }, 100);
     };
 
+    const originalCheckAnswer = window.checkAnswer;
+    window.checkAnswer = function(isAutoCheck) {
+        if (videoRenderState.active) return;
+        if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
+    };
+
     recorder.start();
-    drawPuzzle();
+    drawPuzzle(); // 白紙の初コマ描画（キャプチャ発火）
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 初コマ完全白紙保持
+    await sleep(400);
 
     // タイムラインの純粋実行ループ
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
-            drawPuzzle();
+            drawPuzzle(); // テロップ描画（キャプチャ発火）
             await sleep(600); 
         } else {
             if (videoRenderState.texts.length > 0) {
@@ -579,7 +584,7 @@ async function startKomyakuVideoGeneration() {
                 videoRenderState.blinkLine = cmd;
                 for (let k = 0; k < 4; k++) {
                     videoRenderState.blinkVisible = (k % 2 === 0);
-                    drawPuzzle();
+                    drawPuzzle(); // 点滅描画（キャプチャ発火）
                     await sleep(500);
                 }
                 videoRenderState.blinkLine = null;
@@ -587,18 +592,29 @@ async function startKomyakuVideoGeneration() {
             } else if (cmd.type === 'P') {
                 userGrid[cmd.r][cmd.c] = cmd.color;
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
-                drawPuzzle();
+                drawPuzzle(); // マス塗り描画（キャプチャ発火）
                 await sleep(350);
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-                drawPuzzle();
+                drawPuzzle(); // 壁引き描画（キャプチャ発火）
                 await sleep(350);
             }
         }
     }
 
-    // 💡【最後の1マスホールド】すべての描画完了後、最も美しい状態を1.5秒間完全に維持する
+    // 💡【クリーンな仕様準拠ウエイト】
+    // 最後の描画から1.5秒間、余計な描画を一切せずにピタッとタイムラインの進行を一時停止
     await sleep(1500);
     
+    // 💡【スマートキャプチャトリガー】
+    // 録画を終了する直前のこの瞬間に、もう一度だけ同一画面を描画（drawPuzzle）して、
+    // 「1.5秒間、この絵が完全に静止し続けていた」という確定スタンプをビデオトラックへスマートに焼き付ける
+    drawPuzzle();
+    await sleep(50); // 最後のタイムスタンプを確実に処理させる極小バッファ
+    
     recorder.stop();
+
+    setTimeout(() => {
+        window.checkAnswer = originalCheckAnswer;
+    }, 200);
 }
