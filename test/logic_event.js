@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最末尾描画完全ホールド版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 自動判定干渉完全遮断版）】 ───
 
 let videoRenderState = {
     active: false,
@@ -443,8 +443,8 @@ async function startKomyakuVideoGeneration() {
     const timeline = [];
 
     while ((match = commandRegex.exec(promptInput)) !== null) {
-        const type = match[1];
-        const content = match[2].trim();
+        const type = match;
+        const content = match.trim();
 
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
@@ -513,11 +513,14 @@ async function startKomyakuVideoGeneration() {
         optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
     }
 
+    // 💡【重要】裏側で走る checkAnswer(true) の自動判定を完全に無視させるため、
+    // タイムラインをパースしたこの瞬間に、いち早く録画モードフラグを完全点灯（true）させる
+    videoRenderState.active = true;
+
     // 画面の完全白紙化リセット
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
-    videoRenderState.active = true;
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
@@ -530,7 +533,6 @@ async function startKomyakuVideoGeneration() {
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
     
-    // 💡【確実なる復元遅延ガード】動画データがブラウザに引き渡されるまで、絶対にキャンバスの絵を戻さない
     recorder.onstop = () => {
         if (recordedChunks.length === 0) return;
         const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType });
@@ -544,7 +546,7 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
-        // 💡 動画ファイルが確定した「まさにこの瞬間」に初めて、安全に裏側のデータを復元して通常画面へ戻す
+        // 動画ファイル確定後に、安全にデータを元のプレイ状態へ戻す
         setTimeout(() => {
             userGrid = backupUserGrid.map(row => [...row]);
             if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
@@ -554,6 +556,14 @@ async function startKomyakuVideoGeneration() {
             videoRenderState.texts = [];
             drawPuzzle();
         }, 100);
+    };
+
+    // 💡【追加】大元の checkAnswer 関数自体をハックし、動画生成中（videoRenderState.active === true）は
+    // 画面のすり替えや赤表示、アラート暴発を一律でシャットアウトして即時リターンさせる防壁を接続
+    const originalCheckAnswer = window.checkAnswer;
+    window.checkAnswer = function(isAutoCheck) {
+        if (videoRenderState.active) return; // 動画処理中はゲーム側の干渉を永久遮断
+        if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
     recorder.start();
@@ -584,6 +594,7 @@ async function startKomyakuVideoGeneration() {
                 drawPuzzle();
             } else if (cmd.type === 'P') {
                 userGrid[cmd.r][cmd.c] = cmd.color;
+                // ここで自動的にお掃除（cleanUserWalls）が走り、内部で判定が走っても上の防壁により安全にスルー
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
                 drawPuzzle();
                 await sleep(350);
@@ -595,9 +606,15 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡【最後の描画ホールド保証】最後のE5マスの着色状態をビデオトラックへ完全に流し込み、焼き付けるための十分なウェイト
-    await sleep(800);
+    // 💡【監督のディレクションを具現化】最後のE5マスまで美しく塗り終わった「完全な正解状態」のまま、
+    // 1500ms（1.5秒間）じっと画面をキープして、ビデオトラックへ100%完璧に焼き付ける
+    await sleep(1500);
     
-    // 録画停止（これによって安全に最後の状態が動画ファイルに固定化されます）
+    // 録画停止（これで美しい最後の状態が動画ファイルに固定化されます）
     recorder.stop();
+
+    // 動画生成終了後に、ハックしていた正誤判定関数を元通りに修復
+    setTimeout(() => {
+        window.checkAnswer = originalCheckAnswer;
+    }, 200);
 }
