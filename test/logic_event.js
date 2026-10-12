@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 字幕自動消去＆末尾描画完全保証版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最末尾描画完全ホールド版）】 ───
 
 let videoRenderState = {
     active: false,
@@ -530,6 +530,7 @@ async function startKomyakuVideoGeneration() {
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
     
+    // 💡【確実なる復元遅延ガード】動画データがブラウザに引き渡されるまで、絶対にキャンバスの絵を戻さない
     recorder.onstop = () => {
         if (recordedChunks.length === 0) return;
         const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType });
@@ -543,13 +544,16 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
-        userGrid = backupUserGrid.map(row => [...row]);
-        if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
-        errorDisplayState.show = backupErrorShow;
-        videoRenderState.active = false;
-        videoRenderState.blinkLine = null;
-        videoRenderState.texts = [];
-        drawPuzzle();
+        // 💡 動画ファイルが確定した「まさにこの瞬間」に初めて、安全に裏側のデータを復元して通常画面へ戻す
+        setTimeout(() => {
+            userGrid = backupUserGrid.map(row => [...row]);
+            if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
+            errorDisplayState.show = backupErrorShow;
+            videoRenderState.active = false;
+            videoRenderState.blinkLine = null;
+            videoRenderState.texts = [];
+            drawPuzzle();
+        }, 100);
     };
 
     recorder.start();
@@ -564,7 +568,6 @@ async function startKomyakuVideoGeneration() {
             drawPuzzle();
             await sleep(600); 
         } else {
-            // 💡【新機能】T命令（字幕テロップ）以外の命令が入った瞬間、テロップデータを全自動で美しく消去
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
                 drawPuzzle();
@@ -592,10 +595,9 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡【重要・不具合完全根治】最末尾コマンド（E5マス等）の描画データをビデオトラックへ完全に流し込むための確定フラッシュウェイト
-    await sleep(500);
+    // 💡【最後の描画ホールド保証】最後のE5マスの着色状態をビデオトラックへ完全に流し込み、焼き付けるための十分なウェイト
+    await sleep(800);
     
-    // 最後の静止余韻（動画の終わりが唐突にならないよう1秒確保）
-    await sleep(1000);
+    // 録画停止（これによって安全に最後の状態が動画ファイルに固定化されます）
     recorder.stop();
 }
