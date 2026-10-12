@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終完成版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（初期ロールバック＆最末尾保証版）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -391,7 +391,7 @@ let videoRenderState = {
     texts: []
 };
 
-// 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ完璧に配置
+// 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ新設
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make') {
@@ -426,106 +426,32 @@ let videoRenderState = {
     }
 })();
 
-// コアエンジン：文字列プロンプトのパーサー ＆ タイムラインスケジューラー
+// コアエンジン：初期の確実なパース ＆ タイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
-        "前置パルスルールに従ったスクリプト文字列を入力してください。\n\n" +
-        "入力例：P[A1A2A3A4(2)A5B5C5D5]L[b1b2]B[a1b5]P[(1)B4]T[一旦]T[]T[]T[ここまで]"
+        "パースするスクリプト文字列を入力してください。\n\n" +
+        "入力例：P[A1A2A3A4(1)A5B5C5D5(2)]L[b1b2]B[a1b5]P[B4(1)]T[一旦]T[]T[]T[ここまで]"
     );
     if (!promptInput) return;
 
+    // 現在のデータを退避
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
 
-    const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
-    let match;
-    const timeline = [];
-
-    while ((match = commandRegex.exec(promptInput)) !== null) {
-        const type = match;
-        const content = match.trim();
-
-        if (type === 'T') {
-            timeline.push({ type: 'T', text: content });
-        } else if (type === 'P') {
-            let currentColorId = 0; 
-            let i = 0;
-            while (i < content.length) {
-                if (content.charAt(i) === '(') {
-                    let closeIdx = content.indexOf(')', i);
-                    if (closeIdx !== -1) {
-                        const val = parseInt(content.substring(i + 1, closeIdx), 10);
-                        currentColorId = (val === 0) ? null : (val - 1);
-                        i = closeIdx + 1;
-                    } else {
-                        i++;
-                    }
-                } else {
-                    const cellStr = content.substr(i, 2);
-                    if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
-                        const c = cellStr.charCodeAt(0) - 65; 
-                        const r = parseInt(cellStr.charAt(1), 10) - 1; 
-                        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-                            timeline.push({ type: 'P', r: r, c: c, color: currentColorId });
-                        }
-                        i += 2;
-                    } else {
-                        i++;
-                    }
-                }
-            }
-        } else if (type === 'L' || type === 'B') {
-            const vertices = [];
-            for (let i = 0; i < content.length; i += 2) {
-                const vStr = content.substr(i, 2);
-                if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 97; 
-                    const r = parseInt(vStr.charAt(1), 10) - 1;
-                    vertices.push({ r, c });
-                }
-            }
-            for (let i = 0; i < vertices.length - 1; i++) {
-                timeline.push({
-                    type: type,
-                    r1: vertices[i].r, c1: vertices[i].c,
-                    r2: vertices[i + 1].r, c2: vertices[i + 1].c
-                });
-            }
-        }
-    }
-
-    const optimizedTimeline = [];
-    let pendingTexts = [];
-
-    for (let item of timeline) {
-        if (item.type === 'T') {
-            pendingTexts.push(item.text);
-        } else {
-            if (pendingTexts.length > 0) {
-                optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
-                pendingTexts = [];
-            }
-            optimizedTimeline.push(item);
-        }
-    }
-    if (pendingTexts.length > 0) {
-        optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
-    }
-
-    // 動画モードフラグを点灯させ、自動正誤判定からの割り込み画面上書きを100%永久遮断
-    videoRenderState.active = true;
-
-    // 画面の完全白紙化リセット
+    // 画面状態の完全初期化リセット
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
+    videoRenderState.active = true;
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
+    // 初期コードで大成功実績のある「30FPS固定キャプチャストリーム」を再起動
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
+    
     let options = { mimeType: 'video/webm;codecs=vp9' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
@@ -546,37 +472,98 @@ async function startKomyakuVideoGeneration() {
         link.href = videoUrl;
         link.click();
 
-        // 動画ファイル確定後に、安全にデータを元の通常プレイ画面へ戻す
-        setTimeout(() => {
-            userGrid = backupUserGrid.map(row => [...row]);
-            if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
-            errorDisplayState.show = backupErrorShow;
-            videoRenderState.active = false;
-            videoRenderState.blinkLine = null;
-            videoRenderState.texts = [];
-            drawPuzzle();
-        }, 100);
+        // データの完全復元
+        userGrid = backupUserGrid.map(row => [...row]);
+        if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
+        errorDisplayState.show = backupErrorShow;
+        videoRenderState.active = false;
+        videoRenderState.blinkLine = null;
+        videoRenderState.texts = [];
+        drawPuzzle();
     };
 
-    // 大元の自動正誤判定の画面書き換えを完全シャットアウト
-    const originalCheckAnswer = window.checkAnswer;
-    window.checkAnswer = function(isAutoCheck) {
-        if (videoRenderState.active) return;
-        if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
-    };
-
+    // 録画開始 ＆ 初コマ完全白紙の焼き付け
     recorder.start();
-    drawPuzzle(); 
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 初コマ完全白紙保持
+    drawPuzzle();
 
-    // タイムラインの純粋実行ループ
-    for (let cmd of optimizedTimeline) {
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await sleep(400); // 初期状態で400msの白紙時間をホールド
+
+    // ─── 初期の確実なトークナイズ ───
+    const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
+    let match;
+    const timeline = [];
+    let currentTexts = [];
+
+    // 初期に実績のある安全な正規表現スキャン
+    const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
+    while ((match = commandRegex.exec(cleanedInput)) !== null) {
+        const type = match[1];
+        const content = match[2].trim();
+
+        if (type === 'T') {
+            currentTexts.push(content);
+            continue;
+        }
+
+        if (currentTexts.length > 0) {
+            timeline.push({ type: 'T', data: [...currentTexts] });
+            currentTexts = [];
+        }
+
+        if (type === 'P') {
+            const tokens = content.split(/(\(\d+\))/);
+            let currentColorId = 1; // 初期のパレット規定値
+
+            tokens.forEach(tok => {
+                if (!tok) return;
+                if (tok.startsWith('(') && tok.endsWith(')')) {
+                    currentColorId = parseInt(tok.slice(1, -1), 10);
+                } else {
+                    for (let i = 0; i < tok.length; i += 2) {
+                        const cellStr = tok.substr(i, 2);
+                        if (cellStr.length === 2) {
+                            const c = cellStr.charCodeAt(0) - 65; 
+                            const r = parseInt(cellStr.charAt(1), 10) - 1; 
+                            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                                // 💡 0番指定なら消しゴム(null)、それ以外(1〜9)はシステム用に -1 して登録
+                                timeline.push({ type: 'P', r: r, c: c, color: currentColorId === 0 ? null : (currentColorId - 1) });
+                            }
+                        }
+                    }
+                }
+            });
+        } else if (type === 'L' || type === 'B') {
+            const vertices = [];
+            for (let i = 0; i < content.length; i += 2) {
+                const vStr = content.substr(i, 2);
+                if (vStr.length === 2) {
+                    const c = vStr.charCodeAt(0) - 97; // a=0
+                    const r = parseInt(vStr.charAt(1), 10) - 1; 
+                    vertices.push({ r, c });
+                }
+            }
+            for (let i = 0; i < vertices.length - 1; i++) {
+                timeline.push({
+                    type: type,
+                    r1: vertices[i].r, c1: vertices[i].c,
+                    r2: vertices[i + 1].r, c2: vertices[i + 1].c
+                });
+            }
+        }
+    }
+    if (currentTexts.length > 0) {
+        timeline.push({ type: 'T', data: [...currentTexts] });
+    }
+
+    // 初期の安定した再生ループ
+    for (let cmd of timeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
-            drawPuzzle(); 
+            drawPuzzle();
             await sleep(600); 
         } else {
+            // 他の命令が入ればテロップをクリアするご指定の修正
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
                 drawPuzzle();
@@ -586,7 +573,7 @@ async function startKomyakuVideoGeneration() {
                 videoRenderState.blinkLine = cmd;
                 for (let k = 0; k < 4; k++) {
                     videoRenderState.blinkVisible = (k % 2 === 0);
-                    drawPuzzle(); 
+                    drawPuzzle();
                     await sleep(500);
                 }
                 videoRenderState.blinkLine = null;
@@ -594,24 +581,20 @@ async function startKomyakuVideoGeneration() {
             } else if (cmd.type === 'P') {
                 userGrid[cmd.r][cmd.c] = cmd.color;
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
-                drawPuzzle(); 
+                drawPuzzle();
                 await sleep(350);
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-                drawPuzzle(); 
+                drawPuzzle();
                 await sleep(350);
             }
         }
     }
 
-    // 💡【要求への完全回答】
-    // 最末尾コマンド（E5マス着色）が終了したまさにその瞬間に、ブラウザへフレームを送り届けるための
-    // 最低限かつクリーンなタイムラグ（1マスの描画ウェイトと同じ350ms）だけを実直に置いて、即座に録画を停止する。
-    await sleep(350);
+    // 💡【ピンポイント改修：最終コマ消失の完全根治】
+    // すべての処理（最後のE5マスの塗りなど）が完了した後、その最後の完成画面をビデオトラックが
+    // 確実にキャプチャしきるまで、1000ms（1秒間）何もしないでじっと余韻時間を置いてから、停止命令を送ります。
+    await sleep(1000);
     
     recorder.stop();
-
-    setTimeout(() => {
-        window.checkAnswer = originalCheckAnswer;
-    }, 200);
 }
