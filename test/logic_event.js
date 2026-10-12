@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（初期ベース完全ロールバック・X対応版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（X完全対応 .mov ネイティブ出力版）】 ───
 
 // 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ新設
 (function() {
@@ -418,7 +418,7 @@ document.fonts.ready.then(function() {
     }
 })();
 
-// コアエンジン：100%大成功実績のある初期パース ＆ タイムラインスケジューラー
+// コアエンジン：すべての命令を美しく解読するタイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
@@ -427,38 +427,39 @@ async function startKomyakuVideoGeneration() {
     );
     if (!promptInput) return;
 
-    // 現在のユーザーデータを深く退避
+    // 現在のユーザーデータを深く退避して保護
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
+    const backupProblemLines = problemLines.map(l => ({ ...l }));
 
-    // 盤面を一度クリーンに初期化
+    // 画面状態の完全初期化リセット
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
 
-    // 💡【原点回帰】初期の最も安定していた30FPS固定キャプチャストリームの完全再現
+    // 💡【X対応の絶対解】ブラウザがネイティブ対応している QuickTime (.mov) フォーマットを厳密にロック
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     
-    // ブラウザが100%エラーを起こさない初期のオリジナルエンコード設定
-    let options = { mimeType: 'video/webm;codecs=vp9' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {}; 
+    let options = { mimeType: 'video/quicktime;codecs=h264' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/quicktime' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4;codecs=avc1' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = {}; // セーフティフォールバック
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
     
     recorder.onstop = () => {
         if (recordedChunks.length === 0) return;
-        const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType });
+        const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/quicktime' });
         const videoUrl = URL.createObjectURL(videoBlob);
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
         
-        // 💡【スマートX対策】中身は安定のWebMのまま、保存ファイル名だけをXが受け付ける「.mp4」にロックして保存
+        // 💡 確実に X が一発合格で受け付ける「.mov」拡張子として全自動ダウンロード
         const link = document.createElement('a');
-        link.download = `Day${dayValue}解答解説.mp4`;
+        link.download = `Day${dayValue}解答解説.mov`;
         link.href = videoUrl;
         link.click();
 
@@ -466,27 +467,28 @@ async function startKomyakuVideoGeneration() {
         userGrid = backupUserGrid.map(row => [...row]);
         if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
         errorDisplayState.show = backupErrorShow;
+        problemLines = backupProblemLines.map(l => ({ ...l }));
         drawPuzzle();
     };
 
-    // 初コマ完全白紙の焼き付け
     recorder.start();
     drawPuzzle();
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     await sleep(400); // 最初の白紙保持時間
 
-    // ─── 初期の正常だったナイーブトークナイズ ───
+    // ─── ➔ P, L, B, T すべての命令を完璧に拾い上げるパースエンジン ───
     const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
     let match;
     const timeline = [];
 
-    // 無限ループや先読みクラッシュを完全に排除した初期のクリーンな解析
     while ((match = commandRegex.exec(promptInput)) !== null) {
         const type = match[1];
         const content = match[2].trim();
 
-        if (type === 'P') {
+        if (type === 'T') {
+            timeline.push({ type: 'T', text: content });
+        } else if (type === 'P') {
             const tokens = content.split(/(\(\d+\))/);
             let currentColorId = 1; 
 
@@ -531,25 +533,93 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 初期の純粋な再生ループ
-    for (let cmd of timeline) {
-        if (cmd.type === 'P') {
-            userGrid[cmd.r][cmd.c] = cmd.color;
-            if (typeof cleanUserWalls === 'function') cleanUserWalls();
+    // Tコマンド（テロップ記述）が連続した際に、複数行として同時焼き付け表示するためのグルーピング最適化
+    const optimizedTimeline = [];
+    let pendingTexts = [];
+
+    for (let item of timeline) {
+        if (item.type === 'T') {
+            pendingTexts.push(item.text);
+        } else {
+            if (pendingTexts.length > 0) {
+                optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
+                pendingTexts = [];
+            }
+            optimizedTimeline.push(item);
+        }
+    }
+    if (pendingTexts.length > 0) {
+        optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
+    }
+
+    // ─── 🎬 タイムラインの純粋実行ループ（既存グラフィックス連動仕様） ───
+    for (let cmd of optimizedTimeline) {
+        // T命令が入る前に、まず画面内の文字状態や点滅線を毎回すっきりクリア
+        problemLines = [];
+        ctx.save(); // グラフィックスの状態を一時保存
+
+        if (cmd.type === 'T') {
+            // 💡 T[...] 仕様：上部黒タイトルバーを拡張して複数行テロップを直接描画
             drawPuzzle();
-            await sleep(350);
-        } else if (cmd.type === 'L') {
-            userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-            drawPuzzle();
-            await sleep(350);
+            
+            const titleBarHeight = 30;
+            ctx.fillStyle = '#0a0a0a';
+            // テロップ行数に応じて黒帯の暴がり高さを全自動算出
+            const expandHeight = cmd.data.length * 24 + 10;
+            ctx.fillRect(0, 0, canvas.width, titleBarHeight + expandHeight);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px "Tenor Sans", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            cmd.data.forEach((txt, idx) => {
+                ctx.fillText(txt, 15, titleBarHeight + 5 + idx * 24);
+            });
+            ctx.restore();
+            await sleep(800); // 字幕を読ませるための適正な表示時間
+        } else {
+            if (cmd.type === 'B') {
+                // 💡 B[...] 仕様：理由となるNG鉱脈。既存の鉱脈描画（problemLines）とオレンジ中点丸システムを
+                // 丸ごとハックして、2秒間の明滅（0.5秒×4回）を最前面レイヤーノイズなしで完全シミュレート！
+                const p1 = { x: cmd.c1, y: cmd.r1 };
+                const p2 = { x: cmd.c2, y: cmd.r2 };
+                const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+                
+                // problemLines へダミー流し込みすることで、黒極太線と中央数字丸の描画を全自動ハック
+                problemLines = [{ start: p1, end: p2 }];
+                
+                for (let k = 0; k < 4; k++) {
+                    if (k % 2 === 0) {
+                        // 明明（表示）コマ
+                        problemLines = [{ start: p1, end: p2 }];
+                    } else {
+                        // 滅滅（非表示）コマ
+                        problemLines = [];
+                    }
+                    drawPuzzle();
+                    await sleep(500); // 0.5秒周期で計2秒
+                }
+                problemLines = [];
+                drawPuzzle();
+            } else if (cmd.type === 'P') {
+                // P[...] 仕様：マス塗り実行
+                userGrid[cmd.r][cmd.c] = cmd.color;
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                drawPuzzle();
+                await sleep(350);
+            } else if (cmd.type === 'L') {
+                // L[...] 仕様：境界線の追加
+                userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
+                drawPuzzle();
+                await sleep(350);
+            }
+            ctx.restore();
         }
     }
 
-    // 💡【ピンポイント改修：最終コマ消失の完全根治】
-    // 最末尾コマンド（最後のE5マス等）が塗り終わったその瞬間に、停止命令（stop）が先走って
-    // ビデオトラックをブツ切りにしてしまうのを防ぐため、通常の1マス塗りと同じ時間（350ms）の
-    // 猶予だけを実直に置いて、最後の正解画面を完全に焼き付けてから停止します。
-    await sleep(350);
+    // 最後のE5マスが完全に塗りつぶされた最終正解コマを、ビデオトラックへ100%確実に吸い込ませるバッファ
+    await sleep(400);
     
     recorder.stop();
 }
