@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 仕様）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 最終確定版）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -397,9 +397,13 @@ let videoRenderState = {
     if (urlParams.get('mode') === 'make') {
         const checkBtn = document.querySelector('.check-btn');
         if (checkBtn && checkBtn.parentNode) {
+            // 重複追加を防止
+            if (document.getElementById('komyakuVideoBtn')) return;
+            
             const videoBtn = document.createElement('button');
-            videoBtn.className = 'btn-common check-btn'; // スタイル調和のため共通クラスを適用
-            videoBtn.style.backgroundColor = '#007aff';  // 鮮やかなブルーで識別
+            videoBtn.id = 'komyakuVideoBtn';
+            videoBtn.className = 'btn-common check-btn';
+            videoBtn.style.backgroundColor = '#007aff';
             videoBtn.style.width = 'auto';
             videoBtn.style.padding = '0 12px';
             videoBtn.innerText = '正解動画生成';
@@ -420,7 +424,7 @@ async function startKomyakuVideoGeneration() {
 
     // 現在のユーザーデータを深く退避（動画生成後に1ミリの狂いもなく完全復元するため）
     const backupUserGrid = userGrid.map(row => [...row]);
-    const backupUserWalls = userWalls.map(w => ({ ...w }));
+    const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
 
     // 画面状態を一度クリーンに初期化
@@ -445,120 +449,14 @@ async function startKomyakuVideoGeneration() {
     }
 
     const recorder = new MediaRecorder(stream, options);
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-    recorder.start();
-
-    // ─── ➔ プロンプトパース文法ルールの正規表現解析 ───
-    const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
-    let match;
-    const timeline = [];
-
-    // Tコマンド（連続テロップ）を一括結合して管理するためのテンポラリ
-    let currentTexts = [];
-
-    // トークナイズ処理
-    while ((match = commandRegex = commandRegex.exec(promptInput)) !== null) {
-        const type = match[1];
-        const content = match[2].trim();
-
-        if (type === 'T') {
-            currentTexts.push(content);
-            continue;
-        }
-
-        // T以外のコマンドが出現した時点で、直前までに溜まったテロップをタイムラインにフラッシュ
-        if (currentTexts.length > 0) {
-            timeline.push({ type: 'T', data: [...currentTexts] });
-            currentTexts = [];
-        }
-
-        if (type === 'P') {
-            // パレット指定 (1), (2), (0) 等を抽出
-            const tokens = content.split(/(\(\d+\))/);
-            let currentColorId = 1; // デフォルトはパレット1番
-
-            tokens.forEach(tok => {
-                if (!tok) return;
-                if (tok.startsWith('(') && tok.endsWith(')')) {
-                    currentColorId = parseInt(tok.slice(1, -1), 10);
-                } else {
-                    // A1, B2 などのマス座標ペアを2文字ずつパース
-                    for (let i = 0; i < tok.length; i += 2) {
-                        const cellStr = tok.substr(i, 2);
-                        if (cellStr.length === 2) {
-                            const c = cellStr.charCodeAt(0) - 65; // A=0, B=1...
-                            const r = parseInt(cellStr.charAt(1), 10) - 1; // 1=0, 2=1...
-                            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-                                timeline.push({ type: 'P', r, c, color: currentColorId === 0 ? null : currentColorId });
-                            }
-                        }
-                    }
-                }
-            });
-        } else if (type === 'L' || type === 'B') {
-            // 格子点ID（b1, b3等）を2文字ずつパースして線分を構築
-            const vertices = [];
-            for (let i = 0; i < content.length; i += 2) {
-                const vStr = content.substr(i, 2);
-                if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 98; // b=0, c=1...
-                    const r = parseInt(vStr.charAt(1), 10) - 1; // 1=0, 2=1...
-                    vertices.push({ r, c });
-                }
-            }
-            
-            // 頂点を順番に結ぶリンク構造へ変換
-            for (let i = 0; i < vertices.length - 1; i++) {
-                timeline.push({
-                    type: type,
-                    r1: vertices[i].r, c1: vertices[i].c,
-                    r2: vertices[i + 1].r, c2: vertices[i + 1].c
-                });
-            }
-        }
-    }
-    // 残った最後のテロップ群を回収
-    if (currentTexts.length > 0) {
-        timeline.push({ type: 'T', data: [...currentTexts] });
-    }
-
-    // タイムラインの非同期逐次再生シミュレーション実行
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    for (let cmd of timeline) {
-        if (cmd.type === 'T') {
-            videoRenderState.texts = cmd.data;
-            drawPuzzle();
-            await sleep(500); // テロップ表示の間隔
-        } else if (cmd.type === 'B') {
-            // B[...] 仕様：2秒間チカチカ明滅（0.5秒×4回）
-            videoRenderState.blinkLine = cmd;
-            for (let k = 0; k < 4; k++) {
-                videoRenderState.blinkVisible = (k % 2 === 0);
-                drawPuzzle();
-                await sleep(500);
-            }
-            videoRenderState.blinkLine = null;
-            drawPuzzle();
-        } else if (cmd.type === 'P') {
-            // P[...] 仕様：マス塗り実行
-            userGrid[cmd.r][cmd.c] = cmd.color;
-            if (typeof cleanUserWalls === 'function') cleanUserWalls();
-            drawPuzzle();
-            await sleep(300); // 塗りの心地よいステップウェイト
-        } else if (cmd.type === 'L') {
-            // L[...] 仕様：境界線をuserWallsへ追加
-            userWalls.push({ r1: cmd.r, c1: cmd.c, r2: cmd.r2, c2: cmd.c2 });
-            drawPuzzle();
-            await sleep(300);
-        }
-    }
-
-    // すべてのアクション終了後、最後の静止余韻
-    await sleep(1000);
-
-    // 録画停止、動画ファイルの生成および自動ダウンロード処理
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+    
+    // 💡【最重要セーフティ】録画停止時の保存・復元処理
     recorder.onstop = () => {
+        if (recordedChunks.length === 0) {
+            alert("❌ 動画フレームのキャプチャに失敗しました。もう一度実行してください。");
+            return;
+        }
         const videoBlob = new Blob(recordedChunks, { type: recorder.mimeType });
         const videoUrl = URL.createObjectURL(videoBlob);
         
@@ -573,7 +471,7 @@ async function startKomyakuVideoGeneration() {
 
         // ─── 🔄 元の完璧な通常プレイ画面の状態へ200%完全復元 ───
         userGrid = backupUserGrid.map(row => [...row]);
-        userWalls = backupUserWalls.map(w => ({ ...w }));
+        if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
         errorDisplayState.show = backupErrorShow;
         videoRenderState.active = false;
         videoRenderState.blinkLine = null;
@@ -581,5 +479,110 @@ async function startKomyakuVideoGeneration() {
         drawPuzzle();
     };
 
+    // 録画開始
+    recorder.start();
+
+    // 💡【初コマ強制焼き付け】ストリームを起動するために最初の白紙状態を1発描画
+    drawPuzzle();
+
+    // ─── ➔ プロンプトパース文法ルールの正規表現解析 ───
+    const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
+    let match;
+    const timeline = [];
+    let currentTexts = [];
+
+    // 💡無限ループタイポを完全消滅させたクリーンなトークナイズ
+    while ((match = commandRegex.exec(promptInput)) !== null) {
+        const type = match[1];
+        const content = match[2].trim();
+
+        if (type === 'T') {
+            currentTexts.push(content);
+            continue;
+        }
+
+        if (currentTexts.length > 0) {
+            timeline.push({ type: 'T', data: [...currentTexts] });
+            currentTexts = [];
+        }
+
+        if (type === 'P') {
+            const tokens = content.split(/(\(\d+\))/);
+            let currentColorId = 1;
+
+            tokens.forEach(tok => {
+                if (!tok) return;
+                if (tok.startsWith('(') && tok.endsWith(')')) {
+                    currentColorId = parseInt(tok.slice(1, -1), 10);
+                } else {
+                    for (let i = 0; i < tok.length; i += 2) {
+                        const cellStr = tok.substr(i, 2);
+                        if (cellStr.length === 2) {
+                            const c = cellStr.charCodeAt(0) - 65; // A=0, B=1...
+                            const r = parseInt(cellStr.charAt(1), 10) - 1; // 1=0, 2=1...
+                            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                                timeline.push({ type: 'P', r, c, color: currentColorId === 0 ? null : currentColorId });
+                            }
+                        }
+                    }
+                }
+            });
+        } else if (type === 'L' || type === 'B') {
+            const vertices = [];
+            for (let i = 0; i < content.length; i += 2) {
+                const vStr = content.substr(i, 2);
+                if (vStr.length === 2) {
+                    const c = vStr.charCodeAt(0) - 98; // b=0, c=1...
+                    const r = parseInt(vStr.charAt(1), 10) - 1; // 1=0, 2=1...
+                    vertices.push({ r, c });
+                }
+            }
+            for (let i = 0; i < vertices.length - 1; i++) {
+                timeline.push({
+                    type: type,
+                    r1: vertices[i].r, c1: vertices[i].c,
+                    r2: vertices[i + 1].r, c2: vertices[i + 1].c
+                });
+            }
+        }
+    }
+    if (currentTexts.length > 0) {
+        timeline.push({ type: 'T', data: [...currentTexts] });
+    }
+
+    // 非同期逐次再生ウェイト処理
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // タイムラインの実行
+    for (let cmd of timeline) {
+        if (cmd.type === 'T') {
+            videoRenderState.texts = cmd.data;
+            drawPuzzle();
+            await sleep(600); 
+        } else if (cmd.type === 'B') {
+            videoRenderState.blinkLine = cmd;
+            for (let k = 0; k < 4; k++) {
+                videoRenderState.blinkVisible = (k % 2 === 0);
+                drawPuzzle();
+                await sleep(500); // 計2秒間明滅
+            }
+            videoRenderState.blinkLine = null;
+            drawPuzzle();
+        } else if (cmd.type === 'P') {
+            userGrid[cmd.r][cmd.c] = cmd.color;
+            if (typeof cleanUserWalls === 'function') cleanUserWalls();
+            drawPuzzle();
+            await sleep(350); // 1マスごとに350msの猶予を持たせて録画漏れを完全ガード
+        } else if (cmd.type === 'L') {
+            userWalls.push({ r1: cmd.r, c1: cmd.c, r2: cmd.r2, c2: cmd.c2 });
+            drawPuzzle();
+            await sleep(350);
+        }
+    }
+
+    // 最後の静止余韻（動画の終わりが唐突にならないよう1秒確保）
+    await sleep(1000);
+
+    // 録画停止（これによって上記の recorder.onstop が走り、全自動でダウンロードされます）
     recorder.stop();
 }
