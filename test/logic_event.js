@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 前置インデックス完全クリーン仕様）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（KOMYAKU v0.9.2 字幕自動消去＆末尾描画完全保証版）】 ───
 
 let videoRenderState = {
     active: false,
@@ -449,7 +449,6 @@ async function startKomyakuVideoGeneration() {
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
         } else if (type === 'P') {
-            // 💡【究極にシンプルな直線的スキャン】初期値はパレット1番（内部インデックス0:緑）
             let currentColorId = 0; 
             let i = 0;
             while (i < content.length) {
@@ -457,7 +456,6 @@ async function startKomyakuVideoGeneration() {
                     let closeIdx = content.indexOf(')', i);
                     if (closeIdx !== -1) {
                         const val = parseInt(content.substring(i + 1, closeIdx), 10);
-                        // 0指定なら消しゴム（null）、それ以外（1〜9）は0ベース（0〜8）へ変換
                         currentColorId = (val === 0) ? null : (val - 1);
                         i = closeIdx + 1;
                     } else {
@@ -466,8 +464,8 @@ async function startKomyakuVideoGeneration() {
                 } else {
                     const cellStr = content.substr(i, 2);
                     if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
-                        const c = cellStr.charCodeAt(0) - 65; // A=0
-                        const r = parseInt(cellStr.charAt(1), 10) - 1; // 1=0
+                        const c = cellStr.charCodeAt(0) - 65; 
+                        const r = parseInt(cellStr.charAt(1), 10) - 1; 
                         if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
                             timeline.push({ type: 'P', r: r, c: c, color: currentColorId });
                         }
@@ -482,7 +480,7 @@ async function startKomyakuVideoGeneration() {
             for (let i = 0; i < content.length; i += 2) {
                 const vStr = content.substr(i, 2);
                 if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 97; // a=0, b=1...
+                    const c = vStr.charCodeAt(0) - 97; 
                     const r = parseInt(vStr.charAt(1), 10) - 1;
                     vertices.push({ r, c });
                 }
@@ -565,27 +563,39 @@ async function startKomyakuVideoGeneration() {
             videoRenderState.texts = cmd.data;
             drawPuzzle();
             await sleep(600); 
-        } else if (cmd.type === 'B') {
-            videoRenderState.blinkLine = cmd;
-            for (let k = 0; k < 4; k++) {
-                videoRenderState.blinkVisible = (k % 2 === 0);
+        } else {
+            // 💡【新機能】T命令（字幕テロップ）以外の命令が入った瞬間、テロップデータを全自動で美しく消去
+            if (videoRenderState.texts.length > 0) {
+                videoRenderState.texts = [];
                 drawPuzzle();
-                await sleep(500);
             }
-            videoRenderState.blinkLine = null;
-            drawPuzzle();
-        } else if (cmd.type === 'P') {
-            userGrid[cmd.r][cmd.c] = cmd.color;
-            if (typeof cleanUserWalls === 'function') cleanUserWalls();
-            drawPuzzle();
-            await sleep(350);
-        } else if (cmd.type === 'L') {
-            userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-            drawPuzzle();
-            await sleep(350);
+
+            if (cmd.type === 'B') {
+                videoRenderState.blinkLine = cmd;
+                for (let k = 0; k < 4; k++) {
+                    videoRenderState.blinkVisible = (k % 2 === 0);
+                    drawPuzzle();
+                    await sleep(500);
+                }
+                videoRenderState.blinkLine = null;
+                drawPuzzle();
+            } else if (cmd.type === 'P') {
+                userGrid[cmd.r][cmd.c] = cmd.color;
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                drawPuzzle();
+                await sleep(350);
+            } else if (cmd.type === 'L') {
+                userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
+                drawPuzzle();
+                await sleep(350);
+            }
         }
     }
 
+    // 💡【重要・不具合完全根治】最末尾コマンド（E5マス等）の描画データをビデオトラックへ完全に流し込むための確定フラッシュウェイト
+    await sleep(500);
+    
+    // 最後の静止余韻（動画の終わりが唐突にならないよう1秒確保）
     await sleep(1000);
     recorder.stop();
 }
