@@ -381,7 +381,7 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（X最適化MP4出力・最終完成版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（初期ベース・MP4最小変更版）】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
@@ -448,22 +448,12 @@ async function startKomyakuVideoGeneration() {
     videoRenderState.blinkLine = null;
     videoRenderState.texts = [];
 
-    // 30FPS固定キャプチャストリームを起動
+    // 初期コードで大成功実績のある「30FPS固定キャプチャストリーム」を起動
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     
-    // 💡【X対応：MP4形式を最優先で最速ロックオンするセーフティ判定】
-    let options = { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2' }; // H.264 / AAC 完全準拠
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = { mimeType: 'video/mp4' };
-    }
-    // 万が一ブラウザ側がレガシーでMP4に非対応な場合のみ、代替としてWebMを立てる
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = { mimeType: 'video/webm;codecs=vp9' };
-    }
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = { mimeType: 'video/webm;codecs=vp8' };
-    }
+    // 💡【最小変更：X対応のために純粋な video/mp4 を指定】
+    const options = { mimeType: 'video/mp4' };
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
@@ -475,11 +465,9 @@ async function startKomyakuVideoGeneration() {
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
         
-        // 💡 拡張子をMimeTypeに応じて「mp4」か「webm」へ全自動で1発トグル
-        const extension = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-        
+        // 💡 拡張子を「mp4」に完全固定
         const link = document.createElement('a');
-        link.download = `Day${dayValue}解答解説.${extension}`;
+        link.download = `Day${dayValue}解答解説.mp4`;
         link.href = videoUrl;
         link.click();
 
@@ -493,6 +481,7 @@ async function startKomyakuVideoGeneration() {
         drawPuzzle();
     };
 
+    // 録画開始 ＆ 初コマ完全白紙の焼き付け
     recorder.start();
     drawPuzzle();
 
@@ -602,12 +591,8 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 最後のE5マス完了画面を、約30FPSで45回（＝1.5秒間分）連打してビデオトラックへ強制供給。
-    // これにより、Xプレイヤーのシークバグやループバックを完膚なきまでに撃破します。
-    for (let f = 0; f < 45; f++) {
-        drawPuzzle();
-        await sleep(33);
-    }
+    // 💡【末尾フレーム消失ガード】最後のマスを塗り終わった後、1000ms（1秒間）何もしないでじっと余韻時間を置いてから、停止命令を送ります。
+    await sleep(1000);
     
     recorder.stop();
 }
