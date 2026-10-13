@@ -688,6 +688,12 @@ async function startKomyakuVideoGeneration() {
 
     // ─── 🎬 タイムライン実行ループ ───
     for (let cmd of optimizedTimeline) {
+        // 💡【W命令：完全解決版】直前の状態（テロップやマス塗り）を1文字も消さず、指定ミリ秒数そのまま維持ホールド
+        if (cmd.type === 'W') {
+            await sleep(cmd.duration);
+            continue; // 💡 画面をクリアせず、今の絵のまま次のステップ（P命令など）へバトンを繋ぐ
+        }
+
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
         } else {
@@ -697,11 +703,6 @@ async function startKomyakuVideoGeneration() {
                 renderVideoOverlays();
             }
 
-            // 💡【W命令：完全解決版】直前の状態（テロップやマス塗り）を1文字も消さず、指定ミリ秒数そのまま維持ホールド
-            if (cmd.type === 'W') {
-                await sleep(cmd.duration);
-                continue; // 💡 画面をクリアせず、今の絵のまま次のステップ（P命令など）へバトンを繋ぐ
-            }
 
             if (cmd.type === 'B') {
                 // 💡【新B命令・点滅ホールド仕様】
