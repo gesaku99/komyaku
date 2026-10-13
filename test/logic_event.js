@@ -381,13 +381,13 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（デザイン完全統合・最終確定版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（新B命令・点滅ホールド完全結実版）】 ───
 // ─── 📦【パート1 / 2：ボタン自動ドッキング ＆ プロンプト解読パーサー】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
     active: false,
-    blinkLines: [],                // B命令用のオレンジ点滅配列
+    blinkLines: [],                // 新・B命令仕様：B[a1b5]でパチパチ明滅したのち常時点灯し、B[]で消灯するオレンジ線配列
     texts: [],
     showInitialProblemCircles: false // 動画開始時に大元の問題鉱脈に黒丸を出すためのフラグ
 };
@@ -427,12 +427,12 @@ let videoRenderState = {
     }
 })();
 
-// コアエンジン：プロンプトの完全パース ＆ タイムラインスケジューラー
+// コアエンジン：新パース文法対応 ＆ タイムラインスケジューラー
 async function startKomyakuVideoGeneration() {
     const promptInput = prompt(
         "【KOMYAKU 正解動画生成エンジン】\n" +
-        "前置パルスルールに従ったスクリプト文字列を入力してください。\n\n" +
-        "入力例：P[A1A2A3A4(2)A5B5C5D5]L[b1b2]B[a1b5]P[(1)B4]T[一旦]T[]T[]T[ここまで]"
+        "新・前置パルスルールに従ったスクリプト文字列を入力してください。\n\n" +
+        "入力例：P[A1A2A3A4(2)A5B5C5D5]L[b1b2]B[a1b5]T[一旦]T[]T[]T[ここまで]B[]P[(1)B4E5]"
     );
     if (!promptInput) return;
 
@@ -477,7 +477,7 @@ async function startKomyakuVideoGeneration() {
                     }
                 }
             });
-        } else if (type === 'L' || type === 'B') {
+        } else if (type === 'L') {
             const vertices = [];
             for (let i = 0; i < content.length; i += 2) {
                 const vStr = content.slice(i, i + 2);
@@ -488,11 +488,24 @@ async function startKomyakuVideoGeneration() {
                 }
             }
             for (let i = 0; i < vertices.length - 1; i++) {
-                timeline.push({
-                    type: type,
-                    r1: vertices[i].r, c1: vertices[i].c,
-                    r2: vertices[i + 1].r, c2: vertices[i + 1].c
-                });
+                timeline.push({ type: 'L', r1: vertices[i].r, c1: vertices[i].c, r2: vertices[i + 1].r, c2: vertices[i + 1].c });
+            }
+        } else if (type === 'B') {
+            if (content.length === 0) {
+                timeline.push({ type: 'B', clear: true });
+            } else {
+                const vertices = [];
+                for (let i = 0; i < content.length; i += 2) {
+                    const vStr = content.slice(i, i + 2);
+                    if (vStr.length === 2) {
+                        const c = vStr.charCodeAt(0) - 97; 
+                        const r = parseInt(vStr.charAt(1), 10) - 1; 
+                        vertices.push({ r, c });
+                    }
+                }
+                if (vertices.length >= 2) {
+                    timeline.push({ type: 'B', clear: false, r1: vertices[0].r, c1: vertices[0].c, r2: vertices[1].r, c2: vertices[1].c });
+                }
             }
         }
     }
@@ -516,13 +529,13 @@ async function startKomyakuVideoGeneration() {
     }
 
     // 💡【つなぎ目マーカー】これ以降の録画・描画ループ処理は「パート2」へ合流します
-    // ─── 📦【パート2 / 2：録画制御 ＆ タイムライン実行部（完全シンクロ解決版）】 ───
+    // ─── 📦【パート2 / 2：録画制御 ＆ タイムライン実行部】 ───
 
     // 動画生成フラグを点灯
     videoRenderState.active = true;
 
-    // 動画開始時に問題鉱脈の黒丸表示フラグを即時ON
-    videoRenderState.showInitialProblemCircles = true;
+    // 💡【1コマ目白紙の絶対保証】動画開始時は、まだ問題鉱脈の黒丸表示を「非表示（false）」のままにする
+    videoRenderState.showInitialProblemCircles = false;
 
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
@@ -571,10 +584,8 @@ async function startKomyakuVideoGeneration() {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // 💡【コア描画アドオン統合システム】
-    // どの命令の、どの瞬間の再描画であっても、字幕・黒丸数字・オレンジ点滅線を常に最前面へ完全同期して焼き付ける正義の一括関数
+    // コア描画アドオン統合システム
     function renderVideoOverlays() {
-        // ① 最初に出して最後消す、問題鉱脈の黒丸数字表示
         if (videoRenderState.showInitialProblemCircles && problemLines && problemLines.length > 0) {
             problemLines.forEach(line => {
                 ctx.save();
@@ -599,7 +610,6 @@ async function startKomyakuVideoGeneration() {
             });
         }
 
-        // ② 下部字幕テロップ（半透明黒帯仕様）
         if (videoRenderState.texts && videoRenderState.texts.length > 0) {
             ctx.save();
             const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
@@ -624,7 +634,6 @@ async function startKomyakuVideoGeneration() {
             ctx.restore();
         }
 
-        // ③ B命令用の鮮やかなオレンジ線 ＆ オレンジ丸表示
         if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
             videoRenderState.blinkLines.forEach(line => {
                 ctx.save();
@@ -658,6 +667,7 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
+    // 💡【1コマ目白紙の絶対保証】：白紙状態を描画して、400ms待つ（黒丸数字は出ません）
     recorder.start();
     drawPuzzle();
     renderVideoOverlays();
@@ -665,12 +675,15 @@ async function startKomyakuVideoGeneration() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     await sleep(400);
 
+    // 💡【2コマ目突入】：白紙の余韻が終わったこの瞬間に、満を持して問題の黒丸を一括出現させる！
+    videoRenderState.showInitialProblemCircles = true;
+    drawPuzzle();
+    renderVideoOverlays();
+
     // ─── 🎬 タイムライン実行ループ ───
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
-            drawPuzzle();
-            renderVideoOverlays();
         } else {
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
@@ -679,37 +692,28 @@ async function startKomyakuVideoGeneration() {
             }
 
             if (cmd.type === 'B') {
-                const p1 = { x: cmd.c1, y: cmd.r1 };
-                const p2 = { x: cmd.c2, y: cmd.r2 };
-                
-                // 💡【根治】：各明滅ステップ（k=0, 1, 2）の直後に、即座にアドオン一括関数をコール！
-                // これにより、1.5秒間のチカチカ中も、黒丸数字が消えることなく100%美しく維持され、オレンジ線も正確に3回（明・滅・明）明滅します。
-                for (let k = 0; k < 3; k++) {
-                    videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
-                    drawPuzzle();
-                    renderVideoOverlays(); // 💡 毎コマ強制焼き付け発火！
-                    await sleep(500); 
+                // 💡【新B命令・点滅ホールド仕様】
+                if (cmd.clear) {
+                    videoRenderState.blinkLines = [];
+                } else {
+                    const p1 = { x: cmd.c1, y: cmd.r1 };
+                    const p2 = { x: cmd.c2, y: cmd.r2 };
+                    
+                    // 💡【ディレクション合致】：読まれた瞬間にその場でパパパッと「点灯(0)➔消灯(1)➔点灯(2)」の3回点滅！
+                    for (let k = 0; k < 3; k++) {
+                        videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
+                        drawPuzzle();
+                        renderVideoOverlays();
+                        await sleep(500); // 500msずつ美しく明・滅・明
+                    }
+                    // 💡【重要】：3回目の「明(点灯)」状態を維持したままループを終了し、常時点灯ホールドさせて次へバトンタッチ！
                 }
-                // 💡【連携】：オレンジ線（3回目の明状態）をクリアせずに保持したまま次へ流します
-                continue;
+                // 💡 continue は入れずに直下の共通更新へ流します
             } else if (cmd.type === 'P') {
                 userGrid[cmd.r][cmd.c] = cmd.color;
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
-                
-                // 💡【連携】：マスを完全に塗りつぶし、画面更新（drawPuzzle）をかけた「まさにこの直後」にオレンジ線を消去！
-                // これにより、マス塗り（1個目）の着色とオレンジ線の消去が完璧に1コマで同時にオーバーラップ処理されます。
-                drawPuzzle();
-                renderVideoOverlays();
-                if (videoRenderState.blinkLines.length > 0) {
-                    videoRenderState.blinkLines = [];
-                }
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
-                drawPuzzle();
-                renderVideoOverlays();
-                if (videoRenderState.blinkLines.length > 0) {
-                    videoRenderState.blinkLines = [];
-                }
             }
         }
 
