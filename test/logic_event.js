@@ -381,14 +381,15 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム（純粋MP4出力・完全解決最終版）】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム（デザイン完全統合・最終確定版）】 ───
 // ─── 📦【パート1 / 2：ボタン自動ドッキング ＆ プロンプト解読パーサー】 ───
 
 // 動画生成時の描画制御用グローバルステート
 let videoRenderState = {
     active: false,
-    blinkLines: [], // 大元の問題鉱脈を絶対に汚染しない動画専用の点滅配列
-    texts: []
+    blinkLines: [],                // B命令用のオレンジ点滅配列
+    texts: [],
+    showInitialProblemCircles: false // 動画開始時に大元の問題鉱脈に黒丸を出すためのフラグ
 };
 
 // 開発者画面（&mode=make）が有効な場合、ご指定の位置（ダウンロードボタンの下、パレットの上）へ新設
@@ -435,13 +436,11 @@ async function startKomyakuVideoGeneration() {
     );
     if (!promptInput) return;
 
-    // 現在のユーザーデータを深く退避して保護（大元の problemLines も含む）
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
     const backupErrorShow = errorDisplayState.show;
     const backupProblemLines = problemLines.map(l => ({ ...l }));
 
-    // ─── ➔ P, L, B, T すべての命令を完璧に拾い上げるパース処理 ───
     const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
     let match;
     const timeline = [];
@@ -464,7 +463,6 @@ async function startKomyakuVideoGeneration() {
                 } else {
                     let i = 0;
                     while (i < tok.length) {
-                        // 💡 非推奨の substr を廃止し、標準の slice へ変更（i から i+2 までを正確に2文字切り出し）
                         const cellStr = tok.slice(i, i + 2);
                         if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
                             const c = cellStr.charCodeAt(0) - 65; 
@@ -482,10 +480,9 @@ async function startKomyakuVideoGeneration() {
         } else if (type === 'L' || type === 'B') {
             const vertices = [];
             for (let i = 0; i < content.length; i += 2) {
-                // 💡 こちらも同様に、レガシー機能を完全に排除して slice へ変更
                 const vStr = content.slice(i, i + 2);
                 if (vStr.length === 2) {
-                    const c = vStr.charCodeAt(0) - 97; // a=0, b=1...
+                    const c = vStr.charCodeAt(0) - 97; 
                     const r = parseInt(vStr.charAt(1), 10) - 1; 
                     vertices.push({ r, c });
                 }
@@ -524,21 +521,21 @@ async function startKomyakuVideoGeneration() {
     // 動画生成フラグを点灯
     videoRenderState.active = true;
 
-    // 画面状態の完全初期化リセット
+    // 💡【新機能】動画開始時に問題鉱脈の黒丸表示フラグを即時ON
+    videoRenderState.showInitialProblemCircles = true;
+
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = [];
     errorDisplayState.show = false;
     videoRenderState.blinkLines = [];
     videoRenderState.texts = [];
 
-    // 💡【解決：X最適化MP4の厳格なロック仕様】
-    // 音声なしのCanvasストリームから、H.264ベースの本物のMP4動画を100%確実に一発で出力させるパラメータ
     const stream = canvas.captureStream(30); 
     let recordedChunks = [];
     
-    let options = { mimeType: 'video/mp4;codecs=avc1.42E01E' }; // X投稿画面でのプレビュー再生に完全適合
+    let options = { mimeType: 'video/mp4;codecs=avc1.42E01E' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9' }; // セーフティフォールバック
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9' };
 
     const recorder = new MediaRecorder(stream, options);
     recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
@@ -550,138 +547,79 @@ async function startKomyakuVideoGeneration() {
         const urlParams = new URLSearchParams(window.location.search);
         const dayValue = urlParams.get('day') || "XXX";
         
-        // 正真正銘の本物のMP4ファイルとして保存
         const link = document.createElement('a');
         link.download = `Day${dayValue}解答解説.mp4`;
         link.href = videoUrl;
         link.click();
 
-        // データの完全復元（大元の鉱脈 problemLines も含む）
-        userGrid = backupUserGrid.map(row => [...row]);
-        if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
-        errorDisplayState.show = backupErrorShow;
-        problemLines = backupProblemLines.map(l => ({ ...l }));
-        videoRenderState.active = false;
-        videoRenderState.blinkLines = [];
-        videoRenderState.texts = [];
-        drawPuzzle();
+        setTimeout(() => {
+            userGrid = backupUserGrid.map(row => [...row]);
+            if (typeof userWalls !== 'undefined') userWalls = backupUserWalls.map(w => ({ ...w }));
+            errorDisplayState.show = backupErrorShow;
+            problemLines = backupProblemLines.map(l => ({ ...l }));
+            videoRenderState.active = false;
+            videoRenderState.blinkLines = [];
+            videoRenderState.texts = [];
+            videoRenderState.showInitialProblemCircles = false;
+            drawPuzzle();
+        }, 100);
     };
 
-    // 録画開始
+    const originalCheckAnswer = window.checkAnswer;
+    window.checkAnswer = function(isAutoCheck) {
+        if (videoRenderState.active) return;
+        if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
+    };
+
     recorder.start();
     drawPuzzle();
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(400); // 最初の白紙保持時間
+    await sleep(400);
 
-    // ─── 🎬 タイムラインの純粋実行ループ（既存グラフィックス拡張・完全同期仕様） ───
+    // ─── 🎬 タイムライン実行ループ ───
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
         } else {
-            // T命令以外のコマンドに入った瞬間、字幕データをクリア
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
             }
 
             if (cmd.type === 'B') {
+                // 💡【連携設計】：直後に必ずP命令が来るため、4回目の滅消去をスキップして終了。
+                // 3回目（k=2）の「明」のオレンジ状態を保持したままタイムラインを次へ進める
                 const p1 = { x: cmd.c1, y: cmd.r1 };
                 const p2 = { x: cmd.c2, y: cmd.r2 };
                 
-                for (let k = 0; k < 4; k++) {
+                for (let k = 0; k < 3; k++) {
                     videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
                     drawPuzzle();
-                    
-                    if (k % 2 === 0) {
-                        ctx.save();
-                        // 💡【大正解】：ctx.scale(3, 3) を完全撤去！
-                        // 3倍化された高画質世界（生データ）のまま、元の太さと美しい文字サイズで直接重ね描きします
-                        
-                        ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 5; // 3倍世界における本来の美しい太さ
-                        ctx.lineCap = 'round';
-                        ctx.beginPath();
-                        ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
-                        ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
-                        ctx.stroke();
-                        
-                        const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
-                        const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
-                        const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
-                        
-                        ctx.fillStyle = '#ffffff';
-                        ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(mx, my, 15, 0, Math.PI * 2); // 3倍世界における美しい半径 15
-                        ctx.fill();
-                        ctx.stroke();
-
-                        ctx.fillStyle = '#000000';
-                        ctx.font = 'bold 15px "Tenor Sans", sans-serif'; // ブラウザに潰されない大正解の 15px
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(distSq.toString(), mx, my + 0.5); // 💡 近似値ではなく大正解の 0.5
-                        ctx.restore();
-                    }
-                    await sleep(500);
+                    await sleep(500); // 明(500ms) -> 滅(500ms) -> 明(500ms) の計1.5秒
                 }
-                videoRenderState.blinkLines = [];
+                // 💡 あえて videoRenderState.blinkLines をクリアせず、オレンジ線を残して次へバトンタッチ！
+                continue;
             } else if (cmd.type === 'P') {
+                // 💡【新機能】：P命令で1マス目を塗る「まさにその直前」に、残っていたオレンジ点滅線を美しく消去
+                if (videoRenderState.blinkLines.length > 0) {
+                    videoRenderState.blinkLines = [];
+                }
                 userGrid[cmd.r][cmd.c] = cmd.color;
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
             } else if (cmd.type === 'L') {
+                if (videoRenderState.blinkLines.length > 0) {
+                    videoRenderState.blinkLines = [];
+                }
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             }
         }
 
-        // 💡【重要】全コマンド共通で、1ステップごとにキャンバスを綺麗に更新（大元の問題鉱脈 problemLines も無傷で維持描画）
         drawPuzzle();
 
-        // 💡【下部字幕テロップ・一括焼き付けアドオン（graphics.js無傷仕様）】
-        if (videoRenderState.texts && videoRenderState.texts.length > 0) {
-            ctx.save();
-            ctx.scale(3, 3); // 3倍高画質キャンバスのスケールに完全に同期
-
-            // 下部帯エリアの計算（OFFSET等の定数をミリ単位で完全ホールド）
-            const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
-            const logicalHeight = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30; // titleBarHeight = 30
-            const barW = logicalWidth;
-            const barH = videoRenderState.texts.length * 24 + 16;
-            const barX = 0;
-            const barY = logicalHeight - barH;
-
-            // 半透明の美しい黒帯を一番最前面に重ねる
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            ctx.fillRect(barX, barY, barW, barH);
-
-            // テロップ文字の描画（Tenor Sans完全統一）
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '16px "Tenor Sans", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            videoRenderState.texts.forEach((txt, idx) => {
-                const textY = barY + 16 + idx * 24 + 8;
-                ctx.fillText(txt, barW / 2, textY);
-            });
-            ctx.restore();
-        }
-
-        // 💡【NG鉱脈チカチカ表示・最前面重ね描きアドオン（graphics.js無傷仕様）】
-        if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
-            videoRenderState.blinkLines.forEach(line => {
+        // 💡【アドオン1：最初に出して最後消す、問題鉱脈の黒丸数字表示】
+        if (videoRenderState.showInitialProblemCircles && problemLines && problemLines.length > 0) {
+            problemLines.forEach(line => {
                 ctx.save();
-                // 💡 こちらも scale(3, 3) を撤去し、高画質実数世界のまま重ね描き
-                
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 5;
-                ctx.lineCap = 'round';
-                ctx.beginPath();
-                ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
-                ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
-                ctx.stroke();
-                
                 const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
                 const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
                 const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
@@ -702,7 +640,65 @@ async function startKomyakuVideoGeneration() {
                 ctx.restore();
             });
         }
-        // コマごとの適正な再生ウェイト（T命令なら600ms、それ以外なら350ms）
+
+        // 💡【アドオン2：下部字幕テロップ（半透明黒帯）】
+        if (videoRenderState.texts && videoRenderState.texts.length > 0) {
+            ctx.save();
+            const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+            const logicalHeight = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+            const barW = logicalWidth;
+            const barH = videoRenderState.texts.length * 24 + 16;
+            const barX = 0;
+            const barY = logicalHeight - barH;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(barX, barY, barW, barH);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px "Tenor Sans", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            videoRenderState.texts.forEach((txt, idx) => {
+                const textY = barY + 16 + idx * 24 + 8;
+                ctx.fillText(txt, barW / 2, textY);
+            });
+            ctx.restore();
+        }
+
+        // 💡【アドオン3：B命令用の鮮やかなオレンジ線 ＆ オレンジ丸表示】
+        if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
+            videoRenderState.blinkLines.forEach(line => {
+                ctx.save();
+                ctx.strokeStyle = '#ff9500';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
+                ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
+                ctx.stroke();
+                
+                const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
+                const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#ff9500'; 
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(mx, my, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ff9500'; 
+                ctx.font = 'bold 15px "Tenor Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(distSq.toString(), mx, my + 0.5);
+                ctx.restore();
+            });
+        }
+
         if (cmd.type === 'T') {
             await sleep(600);
         } else {
@@ -710,15 +706,15 @@ async function startKomyakuVideoGeneration() {
         }
     }
 
-    // 💡【最終コマ消失の完全根治】
-    // 最末尾コマンド（最後のE5マスの塗りなど）が終了したまさにその瞬間に停止命令が走り、
-    // ビデオトラックがブツ切りになるのを確実に防ぐため、ジャスト1000ms（1秒間）何もしないで
-    // 最終正解状態を綺麗にキープしてから、安全に録画をクローズします。
+    // 💡【新機能】最後の完成コマに移行する「まさにこの瞬間」に問題の黒丸数字を全自動消去！
+    videoRenderState.showInitialProblemCircles = false;
+    drawPuzzle();
+
+    // 最後の正解完成画面をキャプチャしきるためのクリーンな1秒ウェイト
     await sleep(1000);
     
     recorder.stop();
 
-    // 動画生成終了後に、ハックしていた自動正誤判定関数を元通り修復
     setTimeout(() => {
         window.checkAnswer = originalCheckAnswer;
     }, 200);
