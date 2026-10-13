@@ -577,31 +577,31 @@ async function startKomyakuVideoGeneration() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     await sleep(400);
 
-    // ─── 🎬 タイムライン実行ループ ───
+    // ─── 🎬 タイムライン実行ループ（B命令完全覚醒 ＆ テロップ完全クリア版） ───
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'T') {
             videoRenderState.texts = cmd.data;
         } else {
+            // 💡【ピンポイント修正1】T命令から通常命令に移った瞬間、字幕データをクリアして「即座に画面を最新化」
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
                 drawPuzzle();
             }
 
             if (cmd.type === 'B') {
-                // 💡【連携設計】：直後に必ずP命令が来るため、4回目の滅消去をスキップして終了。
-                // 3回目（k=2）の「明」のオレンジ状態を保持したままタイムラインを次へ進める
+                // 💡【ピンポイント修正2】4回目の滅消去をスキップし、3回目の「明」状態を100%保持
                 const p1 = { x: cmd.c1, y: cmd.r1 };
                 const p2 = { x: cmd.c2, y: cmd.r2 };
                 
                 for (let k = 0; k < 3; k++) {
                     videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
+                    // 💡【重要】不法なcontinueを徹底排除し、明滅の瞬間に合わせて確実に1コマずつ描画を確定させる
                     drawPuzzle();
-                    await sleep(500); // 明(500ms) -> 滅(500ms) -> 明(500ms) の計1.5秒
+                    await sleep(500); // 明(500ms) -> 滅(500ms) -> 明(500ms) 
                 }
-                // 💡 あえて videoRenderState.blinkLines をクリアせず、オレンジ線を残して次へバトンタッチ！
-                //continue;
+                // 💡 continue を完全消去！オレンジ線を保持したまま、直下の全体描画へと綺麗に流します
             } else if (cmd.type === 'P') {
-                // 💡【新機能】：P命令で1マス目を塗る「まさにその直前」に、残っていたオレンジ点滅線を美しく消去
+                // 💡 P命令で最初の1マス目を塗る「まさにその直前」に、残っていたオレンジ点滅線を美しく消去
                 if (videoRenderState.blinkLines.length > 0) {
                     videoRenderState.blinkLines = [];
                 }
@@ -615,6 +615,7 @@ async function startKomyakuVideoGeneration() {
             }
         }
 
+        // 💡 全コマンド共通で、1ステップごとにキャンバスを綺麗に更新（問題鉱脈も無傷で常時維持描画）
         drawPuzzle();
 
         // 💡【アドオン1：最初に出して最後消す、問題鉱脈の黒丸数字表示】
