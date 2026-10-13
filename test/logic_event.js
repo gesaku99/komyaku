@@ -602,12 +602,18 @@ async function startKomyakuVideoGeneration() {
                         ctx.lineWidth = 5;
                         ctx.lineCap = 'round';
                         ctx.beginPath();
-                        ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
-                        ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
+                        // 💡 3倍されている定数を 3 で割ることで、scale(3,3) の中で完璧な等倍座標（1マス60px）へ着地させる
+                        ctx.moveTo((OFFSET + p1.x * CELL_PIXEL) / 3, (OFFSET + p1.y * CELL_PIXEL) / 3 + 30);
+                        ctx.lineTo((OFFSET + p2.x * CELL_PIXEL) / 3, (OFFSET + p2.y * CELL_PIXEL) / 3 + 30);
+                        //ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
+                        //ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
                         ctx.stroke();
                         
-                        const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
-                        const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
+                        // 💡 中心点も全く同じように / 3 を施して、3倍宇宙の正しい格子点の真ん中へロックオン
+                        const mx = (OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL) / 3;
+                        const my = (OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL) / 3 + 30;
+                        //const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
+                        //const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
                         const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
                         
                         ctx.fillStyle = '#ffffff';
@@ -678,13 +684,17 @@ async function startKomyakuVideoGeneration() {
                 ctx.lineWidth = 5;
                 ctx.lineCap = 'round';
                 ctx.beginPath();
-                ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
-                ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
+                ctx.moveTo((OFFSET + line.start.x * CELL_PIXEL) / 3, (OFFSET + line.start.y * CELL_PIXEL) / 3 + 30);
+                ctx.lineTo((OFFSET + line.end.x * CELL_PIXEL) / 3, (OFFSET + line.end.y * CELL_PIXEL) / 3 + 30);
+                //ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
+                //ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
                 ctx.stroke();
                 
                 // 中央の数字丸表示（ distSq の逆算と描画 ）
-                const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
-                const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
+                const mx = (OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL) / 3;
+                const my = (OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL) / 3 + 30;
+                //const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                //const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
                 const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
                 
                 ctx.fillStyle = '#ffffff';
