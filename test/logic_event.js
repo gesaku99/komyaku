@@ -464,7 +464,8 @@ async function startKomyakuVideoGeneration() {
                 } else {
                     let i = 0;
                     while (i < tok.length) {
-                        const cellStr = tok.substr(i, 2);
+                        // 💡 非推奨の substr を廃止し、標準の slice へ変更（i から i+2 までを正確に2文字切り出し）
+                        const cellStr = tok.slice(i, i + 2);
                         if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
                             const c = cellStr.charCodeAt(0) - 65; 
                             const r = parseInt(cellStr.charAt(1), 10) - 1; 
@@ -481,7 +482,8 @@ async function startKomyakuVideoGeneration() {
         } else if (type === 'L' || type === 'B') {
             const vertices = [];
             for (let i = 0; i < content.length; i += 2) {
-                const vStr = content.substr(i, 2);
+                // 💡 こちらも同様に、レガシー機能を完全に排除して slice へ変更
+                const vStr = content.slice(i, i + 2);
                 if (vStr.length === 2) {
                     const c = vStr.charCodeAt(0) - 97; // a=0, b=1...
                     const r = parseInt(vStr.charAt(1), 10) - 1; 
@@ -583,15 +585,47 @@ async function startKomyakuVideoGeneration() {
             }
 
             if (cmd.type === 'B') {
-                // B[...] 仕様：理由となるNG鉱脈の2秒間チカチカ明滅。大元の problemLines を「完全破壊から保護」し、
-                // 最前面レイヤーに独立した配列として安全に点滅描画をエミュレート
+                // 💡【真の根治】大元の問題データを完全保護。
+                // 500msごとの明滅の瞬間に合わせて、最前面へ黒極太線と中央数字丸をダイレクトに重ね描きします
                 const p1 = { x: cmd.c1, y: cmd.r1 };
                 const p2 = { x: cmd.c2, y: cmd.r2 };
                 
                 for (let k = 0; k < 4; k++) {
                     videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
                     drawPuzzle();
-                    await sleep(500); // 0.5秒周期で計2秒
+                    
+                    // 💡 表示コマ（kが偶数）の時だけ、その場で最前面へ黒極太線と数字丸をリアルタイムに重ね描き
+                    if (k % 2 === 0) {
+                        ctx.save();
+                        ctx.scale(3, 3); // 3倍画質宇宙へ完全同期
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 5;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
+                        ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
+                        ctx.stroke();
+                        
+                        const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
+                        const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
+                        const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+                        
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(mx, my, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#000000';
+                        ctx.font = 'bold 15px "Tenor Sans", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(distSq.toString(), mx, my + 0.5);
+                        ctx.restore();
+                    }
+                    await sleep(500);
                 }
                 videoRenderState.blinkLines = [];
             } else if (cmd.type === 'P') {
