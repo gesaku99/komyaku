@@ -441,7 +441,7 @@ async function startKomyakuVideoGeneration() {
     const backupErrorShow = errorDisplayState.show;
     const backupProblemLines = problemLines.map(l => ({ ...l }));
 
-    const commandRegex = /(P|L|B|T)\[(.*?)\]/g;
+    const commandRegex = /(P|L|B|T|W)\[(.*?)\]/g;
     let match;
     const timeline = [];
 
@@ -506,6 +506,12 @@ async function startKomyakuVideoGeneration() {
                 if (vertices.length >= 2) {
                     timeline.push({ type: 'B', clear: false, r1: vertices[0].r, c1: vertices[0].c, r2: vertices[1].r, c2: vertices[1].c });
                 }
+            }
+        } else if (type === 'W') {
+            // 💡 カッコ内の文字列を整数（ミリ秒数）として実直にパースしてタイムラインへ格納
+            const msec = parseInt(content, 10);
+            if (!isNaN(msec)) {
+                timeline.push({ type: 'W', duration: msec });
             }
         }
     }
@@ -689,6 +695,12 @@ async function startKomyakuVideoGeneration() {
                 videoRenderState.texts = [];
                 drawPuzzle();
                 renderVideoOverlays();
+            }
+
+            // 💡【W命令：完全解決版】直前の状態（テロップやマス塗り）を1文字も消さず、指定ミリ秒数そのまま維持ホールド
+            if (cmd.type === 'W') {
+                await sleep(cmd.duration);
+                continue; // 💡 画面をクリアせず、今の絵のまま次のステップ（P命令など）へバトンを繋ぐ
             }
 
             if (cmd.type === 'B') {
