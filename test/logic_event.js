@@ -584,6 +584,7 @@ async function startKomyakuVideoGeneration() {
         } else {
             if (videoRenderState.texts.length > 0) {
                 videoRenderState.texts = [];
+                drawPuzzle();
             }
 
             if (cmd.type === 'B') {
@@ -598,7 +599,7 @@ async function startKomyakuVideoGeneration() {
                     await sleep(500); // 明(500ms) -> 滅(500ms) -> 明(500ms) の計1.5秒
                 }
                 // 💡 あえて videoRenderState.blinkLines をクリアせず、オレンジ線を残して次へバトンタッチ！
-                continue;
+                //continue;
             } else if (cmd.type === 'P') {
                 // 💡【新機能】：P命令で1マス目を塗る「まさにその直前」に、残っていたオレンジ点滅線を美しく消去
                 if (videoRenderState.blinkLines.length > 0) {
