@@ -585,8 +585,6 @@ async function startKomyakuVideoGeneration() {
             }
 
             if (cmd.type === 'B') {
-                // 💡【真の根治】大元の問題データを完全保護。
-                // 500msごとの明滅の瞬間に合わせて、最前面へ黒極太線と中央数字丸をダイレクトに重ね描きします
                 const p1 = { x: cmd.c1, y: cmd.r1 };
                 const p2 = { x: cmd.c2, y: cmd.r2 };
                 
@@ -594,41 +592,36 @@ async function startKomyakuVideoGeneration() {
                     videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
                     drawPuzzle();
                     
-                    // 💡 表示コマ（kが偶数）の時だけ、その場で最前面へ黒極太線と数字丸をリアルタイムに重ね描き
                     if (k % 2 === 0) {
                         ctx.save();
-                        ctx.scale(3, 3); // 3倍画質宇宙へ完全同期
+                        // 💡【大正解】：ctx.scale(3, 3) を完全撤去！
+                        // 3倍化された高画質世界（生データ）のまま、元の太さと美しい文字サイズで直接重ね描きします
+                        
                         ctx.strokeStyle = '#000000';
-                        ctx.lineWidth = 5;
+                        ctx.lineWidth = 5; // 3倍世界における本来の美しい太さ
                         ctx.lineCap = 'round';
                         ctx.beginPath();
-                        // 💡 3倍されている定数を 3 で割ることで、scale(3,3) の中で完璧な等倍座標（1マス60px）へ着地させる
-                        ctx.moveTo((OFFSET + p1.x * CELL_PIXEL) / 3, (OFFSET + p1.y * CELL_PIXEL) / 3 + 30);
-                        ctx.lineTo((OFFSET + p2.x * CELL_PIXEL) / 3, (OFFSET + p2.y * CELL_PIXEL) / 3 + 30);
-                        //ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
-                        //ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
+                        ctx.moveTo(OFFSET + p1.x * CELL_PIXEL, OFFSET + p1.y * CELL_PIXEL + 30);
+                        ctx.lineTo(OFFSET + p2.x * CELL_PIXEL, OFFSET + p2.y * CELL_PIXEL + 30);
                         ctx.stroke();
                         
-                        // 💡 中心点も全く同じように / 3 を施して、3倍宇宙の正しい格子点の真ん中へロックオン
-                        const mx = (OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL) / 3;
-                        const my = (OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL) / 3 + 30;
-                        //const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
-                        //const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
+                        const mx = OFFSET + (p1.x + p2.x) / 2 * CELL_PIXEL;
+                        const my = OFFSET + (p1.y + p2.y) / 2 * CELL_PIXEL + 30;
                         const distSq = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
                         
                         ctx.fillStyle = '#ffffff';
                         ctx.strokeStyle = '#000000';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
-                        ctx.arc(mx, my, 15, 0, Math.PI * 2);
+                        ctx.arc(mx, my, 15, 0, Math.PI * 2); // 3倍世界における美しい半径 15
                         ctx.fill();
                         ctx.stroke();
 
                         ctx.fillStyle = '#000000';
-                        ctx.font = 'bold 15px "Tenor Sans", sans-serif';
+                        ctx.font = 'bold 15px "Tenor Sans", sans-serif'; // ブラウザに潰されない大正解の 15px
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(distSq.toString(), mx, my + 0.5);
+                        ctx.fillText(distSq.toString(), mx, my + 0.5); // 💡 近似値ではなく大正解の 0.5
                         ctx.restore();
                     }
                     await sleep(500);
@@ -679,22 +672,18 @@ async function startKomyakuVideoGeneration() {
         if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
             videoRenderState.blinkLines.forEach(line => {
                 ctx.save();
-                ctx.scale(3, 3); // 3倍宇宙へ完全同期
+                // 💡 こちらも scale(3, 3) を撤去し、高画質実数世界のまま重ね描き
+                
                 ctx.strokeStyle = '#000000';
                 ctx.lineWidth = 5;
                 ctx.lineCap = 'round';
                 ctx.beginPath();
-                ctx.moveTo((OFFSET + line.start.x * CELL_PIXEL) / 3, (OFFSET + line.start.y * CELL_PIXEL) / 3 + 30);
-                ctx.lineTo((OFFSET + line.end.x * CELL_PIXEL) / 3, (OFFSET + line.end.y * CELL_PIXEL) / 3 + 30);
-                //ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
-                //ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
+                ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
+                ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30);
                 ctx.stroke();
                 
-                // 中央の数字丸表示（ distSq の逆算と描画 ）
-                const mx = (OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL) / 3;
-                const my = (OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL) / 3 + 30;
-                //const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
-                //const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
+                const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
                 const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
                 
                 ctx.fillStyle = '#ffffff';
@@ -713,7 +702,6 @@ async function startKomyakuVideoGeneration() {
                 ctx.restore();
             });
         }
-
         // コマごとの適正な再生ウェイト（T命令なら600ms、それ以外なら350ms）
         if (cmd.type === 'T') {
             await sleep(600);
