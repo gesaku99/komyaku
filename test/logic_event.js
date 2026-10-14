@@ -634,9 +634,9 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // ─── 📦【パート3 / 4：動画専用紙吹雪 ＆ タイムライン実行ループ部】 ───
+    // ─── 📦【パート3 / 4：動画専用紙吹雪 ＆ タイムライン実行ループ部（タイポ完全根治版）】 ───
 
-    // 💡【新設】動画専用の独立した紙吹雪オブジェクトを保持する配列
+    // 💡 動画専用の独立した紙吹雪オブジェクトを保持する配列
     let videoConfettiParticles = [];
 
     function renderVideoOverlays() {
@@ -681,7 +681,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 ctx.restore();
             });
         }
-        // 💡【新設】：大元と1文字違わず完全に同じ数理でCanvas上に直接描画される、動画専用3D紙吹雪エンジン！
+        // 💡【バグ完全根治】：不法な ctx.style. を跡形もなく撤廃し、正しい標準指定へ1発修正！
         if (videoConfettiParticles.length > 0) {
             videoConfettiParticles.forEach(p => {
                 ctx.save();
@@ -690,8 +690,8 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 const sinY = Math.sin(p.count * p.rotSpeedY);
                 ctx.scale(cosX, sinY);
                 ctx.rotate(p.count * 0.035);
-                if (cosX >= 0) { ctx.style.fillStyle = '#ffffff'; ctx.strokeStyle = '#dddddd'; } 
-                else { ctx.style.fillStyle = '#222222'; ctx.strokeStyle = '#000000'; }
+                if (cosX >= 0) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#dddddd'; } 
+                else { ctx.fillStyle = '#222222'; ctx.strokeStyle = '#000000'; }
                 ctx.lineWidth = 0.5;
                 ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
                 ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
@@ -732,7 +732,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             } else if (cmd.type === 'C') {
-                // 💡【大改革】：黒丸数字を消し去り、動画専用の紙吹雪を射出生成
                 videoRenderState.showInitialProblemCircles = false;
                 drawPuzzle(); renderVideoOverlays(); await sleep(100); 
 
@@ -760,9 +759,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    // 💡【動画専用・紙吹雪物理シミュレーションループ】：
-    // C[]命令が入っていた場合、ジャスト4秒間（16ms × 250回 = 4000ms）、外部環境に一切依存せず、
-    // 動画生成エンジンの内部だけで重力・超高速3D反転を1コマずつ完璧に物理計算して高画質MP4へと確実に焼き付けます！
+    // 動画専用・紙吹雪物理シミュレーションループ（エラー完全根治版）
     if (isConfettiPlaying) {
         for (let i = 0; i < 250; i++) {
             videoConfettiParticles.forEach(p => {
@@ -781,7 +778,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
-    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体、および完全復元処理は最後の「パート4」へ合流します
+    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体は、既存の「パート4」へと無傷で完璧に合流します
     // ─── 📦【パート4 / 4：スタジオUIダイアログ生成・クローズ処理部】 ───
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
