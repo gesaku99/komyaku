@@ -759,18 +759,38 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    // 動画専用・紙吹雪物理シミュレーションループ（エラー完全根治版）
+    // 💡【全画面外脱出ジャスト停止センサー】：
+    // C[]命令が入っていた場合、最大4秒間の枠の中で、100枚すべての紙吹雪が画面下部（canvasH + 20）へ
+    // 完全に落ちきったまさにその瞬間を16msごとに監視し、ジャストの瞬間に録画を自動停止させます！
     if (isConfettiPlaying) {
+        const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+        
         for (let i = 0; i < 250; i++) {
             videoConfettiParticles.forEach(p => {
-                p.x += p.vx; p.y += p.vy; p.vy += 0.55; 
-                p.vx *= 0.985; p.count++;
+                p.x += p.vx; p.y += p.vy; p.vy += 0.55; // 重力
+                p.vx *= 0.985; p.count++; // 空気抵抗
             });
-            drawPuzzle(); renderVideoOverlays();
-            await sleep(16); 
+
+            drawPuzzle(); 
+            renderVideoOverlays();
+
+            // 💡【センサー発火ライン】：100枚「全員(every)」が画面外（底辺+20px）へ脱出したかチェック
+            const isAllOut = videoConfettiParticles.every(p => p.y > canvasH + 20);
+            if (isAllOut) {
+                // 全員が落ちきったジャストの瞬間に、4秒の残りの待ち時間をすべて切り捨てて即座に脱出！
+                break;
+            }
+
+            await sleep(16); // 60fpsシンクロ撮影
         }
-        videoConfettiParticles = []; 
+        videoConfettiParticles = []; // 破片クリア
     }
+
+    videoRenderState.showInitialProblemCircles = false;
+    drawPuzzle(); renderVideoOverlays(); await sleep(400); 
+    
+    if (!isReplayOnly && recorder) { recorder.stop(); } 
+    else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
     videoRenderState.showInitialProblemCircles = false;
     drawPuzzle(); renderVideoOverlays(); await sleep(400); 
