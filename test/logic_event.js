@@ -381,22 +381,12 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム v2.2 デスクトップ可動ポップアップ完全結実版】 ───
-// ─── 📦【パート1 / 3：デスクトップ独立型エディタUI ＆ パース開始部】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム v2.3 同一ドメイン完全開通・最終完成版】 ───
+// ─── 📦【パート1 / 2：デスクトップ独立窓UI ＆ プロンプト解読パーサー部】 ───
 
-// 動画生成・再生時の描画制御用グローバルステート
-let videoRenderState = {
-    active: false,
-    blinkLines: [],                 // B[a1b5]で点灯ホールドするオレンジ線配列
-    blinkAlpha: 1.0,               // B[]で消灯するときのオレンジ線の不透明度
-    texts: [],
-    showInitialProblemCircles: false // 動画開始時に大元の問題鉱脈に黒丸数字を出すためのフラグ
-};
+let videoRenderState = { active: false, blinkLines: [], blinkAlpha: 1.0, texts: [], showInitialProblemCircles: false };
+let lastKomyakuScriptPrompt = ""; let currentKomyakuRecordedBlob = null; 
 
-let lastKomyakuScriptPrompt = ""; 
-let currentKomyakuRecordedBlob = null; 
-
-// 開発者画面（&mode=make）が有効な場合、ご指定の位置へ新設
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make' && !document.getElementById('komyakuVideoBtn')) {
@@ -408,72 +398,65 @@ let currentKomyakuRecordedBlob = null;
             const videoBtnWrapper = document.createElement('div');
             videoBtnWrapper.style.width = '100%'; videoBtnWrapper.style.display = 'flex';
             videoBtnWrapper.style.justifyContent = 'center'; videoBtnWrapper.style.marginTop = '12px'; videoBtnWrapper.style.marginBottom = '12px';
-            const videoBtn = document.createElement('button');
-            videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
+            const videoBtn = document.createElement('button'); videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
             videoBtn.style.backgroundColor = '#007aff'; videoBtn.style.width = '200px'; videoBtn.style.height = '40px'; videoBtn.style.fontSize = '12px';
             videoBtn.innerText = '正解動画生成';
             videoBtn.onclick = () => openKomyakuScriptInputDialog(false); 
-            videoBtnWrapper.appendChild(videoBtn);
-            refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
+            videoBtnWrapper.appendChild(videoBtn); refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
         }
     }
 })();
 
-// 💡【新開発：Chrome外へ完全に連れ出せる独立ポップアップ窓システム】
+// 💡【新開発：セキリティロックを完全突破する同一ドメイン中継型ポップアップエディタ】
 function openKomyakuScriptInputDialog(isReplayOnly = false) {
     if (isReplayOnly) { startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); return; }
 
-    const subWin = window.open("", "KomyakuEditor", "width=460,height=440,top=150,left=80,resizable=yes,scrollbars=yes");
+    // 💡【根治】：URLに同じドメイン（href）を指定して開くことでChromeの通信切断セキリティを永久解除！
+    const subWin = window.open(window.location.href, "KomyakuEditor", "width=460,height=450,top=150,left=80,resizable=yes,scrollbars=yes");
     if (!subWin) { alert("🚨 ポップアップブロックを許可してください"); return; }
 
-    subWin.document.body.innerHTML = `
-        <div style="font-family:sans-serif; padding:12px; background:#f8f9fa;">
-            <div style="font-size:11px; color:#444; line-height:1.4; border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:10px;">
-                <strong style="color:#007aff;">【各命令の記載例と効果の短文解説】</strong><br>
-                <strong>P[A1A2(2)B2]</strong> ：指定マスを塗る。(番号)でカラー変更。<br>
-                <strong>L[a1b2c3]</strong> ：指定した格子点に白い境界線を引く。<br>
-                <strong>B[a1b5]</strong> ：指定格子点にオレンジのNG鉱脈を3回点滅・点灯。<br>
-                <strong>B[]</strong> ：灯っていたオレンジのNG鉱脈を滑らかにフェード消去。<br>
-                <strong>T[解説字幕]</strong>：画面最下部に複数行対応の字幕テロップを表示。<br>
-                <strong>W</strong> ：今の画面状態（テロップ等）を指定秒そのまま維持。<br>
-                <strong>C[]</strong> ：正誤判定。黒丸消去の直後に紙吹雪、不正解なら赤枠出現。
+    // サブウィンドウが読み込まれた瞬間に、中身を動画エディタ専用のクリーンなHTMLへ上書きリライト
+    subWin.onload = function() {
+        subWin.document.title = "✍️ KOMYAKU スクリプトエディタ";
+        subWin.document.body.innerHTML = `
+            <div style="font-family:sans-serif; padding:12px; background:#f8f9fa; user-select:none;">
+                <div style="font-size:11px; color:#444; line-height:1.45; border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:10px;">
+                    <strong style="color:#007aff;">【各命令の記載例と効果の短文解説】</strong><br>
+                    <strong>P[A1A2(2)B2]</strong> ：指定マスを塗る。(番号)でカラー変更。<br>
+                    <strong>L[a1b2c3]</strong> ：指定した格子点に白い境界線を引く。<br>
+                    <strong>B[a1b5]</strong> ：指定格子点にオレンジのNG鉱脈を3回点滅・点灯。<br>
+                    <strong>B[]</strong> ：灯っていたオレンジのNG鉱脈を滑らかにフェード消去。<br>
+                    <strong>T[解説字幕]</strong>：画面最下部に複数行対応の字幕テロップを表示。<br>
+                    <strong>W</strong> ：今の画面状態（テロップ等）を指定ミリ秒そのまま維持。<br>
+                    <strong>C[]</strong> ：正誤判定。黒丸消去の直後に紙吹雪、不正解なら赤枠出現。
+                </div>
+                <textarea id="tx" rows="10" style="width:100%; box-sizing:border-box; padding:8px; font-family:monospace; font-size:13px; border:1px solid #bbb; border-radius:4px;" wrap="soft"></textarea>
+                <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                    <button id="run" style="padding:8px 20px; font-size:12px; background:#007aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🎥 動画を生成</button>
+                </div>
             </div>
-            <textarea id="tx" rows="10" style="width:100%; box-sizing:border-box; padding:6px; font-family:monospace; font-size:13px; border:1px solid #bbb; border-radius:4px;" wrap="soft"></textarea>
-            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                <button id="run" style="padding:6px 16px; font-size:12px; background:#007aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🎥 動画を生成</button>
-            </div>
-        </div>
-    `;
+        `;
 
-    const ta = subWin.document.getElementById("tx");
-    ta.value = lastKomyakuScriptPrompt; 
-    ta.focus();
+        const ta = subWin.document.getElementById("tx");
+        ta.value = window.lastKomyakuScriptPrompt; // 親画面の記憶データを完全に復元
+        ta.focus();
 
-    subWin.document.getElementById("run").onclick = () => {
-        const val = ta.value;
-        if (!val.trim()) return;
-        
-        console.log("🎬 [デバッグ] エディタ窓のボタンが押されました。親画面へスクリプトを安全に転送します。");
-        window.opener.lastKomyakuScriptPrompt = val; 
-        
-        // 💡【根治】：先に親画面の動画再生エンジンを力強くキック！
-        window.opener.startKomyakuVideoGeneration(false, val); 
-        
-        // 親の処理が無事に始まった「後」に、自分自身をクリーンに閉じる
-        subWin.close(); 
+        subWin.document.getElementById("run").onclick = function() {
+            const val = ta.value;
+            if (!val.trim()) return;
+            
+            // 💡【通信開通】：同じドメインなので、親画面（opener）の再生エンジンを爆速で直接キックできる！
+            window.opener.lastKomyakuScriptPrompt = val; 
+            window.opener.startKomyakuVideoGeneration(false, val); 
+            subWin.close(); // エディタを閉じる
+        };
     };
 }
 
-// 💡【つなぎ目マーカー】これ以降のプロンプト解読パーサー処理は「パート2」へ合流します
-// コアエンジン本体：タイムライン解析・実行（デバッグログ完全追跡版）
+// 💡 タイムライン解析・再生エンジン（配列パースバグ完全根治版）
 async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     const promptInput = targetScriptText;
-    if (!promptInput) {
-        console.error("❌ [デバッグエラー] スクリプト文字列が空っぽで届きました。");
-        return;
-    }
-
-    console.log("🚀 [デバッグ発火] 動画生成エンジンが正常に起動しました！入力内容:\n", promptInput);
+    if (!promptInput) return;
 
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
@@ -485,14 +468,10 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     let match; const timeline = [];
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
 
-    console.log("🔍 [デバッグ] 正規表現によるコマンド切り出し（パース）を開始します...");
-
     while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        // 💡【バグ完全根治】：配列オブジェクトをそのまま代入せず、インデックス [1] と [2] から文字と中身を正確に引っこ抜く！
+        // 💡【パースバグ完全根治】配列オブジェクトをそのまま代入せず、インデックスから文字と中身を正確に引っこ抜く！
         const type = match[1];
         const content = match[2].trim();
-
-        console.log(` ➔ 📦 コマンド検知: ${type}[${content}]`);
 
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
@@ -543,8 +522,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         }
     }
 
-    console.log(`📊 [デバッグ] パース完了。総コマンド数: ${timeline.length} 件。上映最適化を行います。`);
-
     const optimizedTimeline = []; let pendingTexts = [];
     for (let item of timeline) {
         if (item.type === 'T') { pendingTexts.push(item.text); } 
@@ -555,11 +532,10 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     }
     if (pendingTexts.length > 0) optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
 
-    console.log(`🎬 [デバッグ] 上映用タイムライン構築完了。最終ステップ数: ${optimizedTimeline.length} ステップ。これよりメインアニメーション・録画ループをキックします！`);
+    // 💡【つなぎ目マーカー】これ以降のビデオ描画ループ部、およびスタジオダイアログは「パート2」へ合流します
+    // ─── 📦【パート2 / 3：動画生成実行 ＆ タイムライン上映ループ部】 ───
 
-    videoRenderState.active = true;
-    videoRenderState.showInitialProblemCircles = false;
-
+    videoRenderState.active = true; videoRenderState.showInitialProblemCircles = false;
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = []; errorDisplayState.show = false;
     videoRenderState.blinkLines = []; videoRenderState.blinkAlpha = 1.0; videoRenderState.texts = [];
@@ -573,14 +549,13 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         recorder = new MediaRecorder(stream, options);
         recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
         recorder.onstop = () => {
-            console.log("💾 [デバッグ] MediaRecorder が正常にストップしました。チャンクを結合してモーダルを立ち上げます。");
             if (recordedChunks.length > 0) {
                 currentKomyakuRecordedBlob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/mp4' });
+                // 💡 録画停止後、スタジオ専用モーダルダイアログをポップアップ（パート3の関数を呼び出し）
                 showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
             }
         };
         recorder.start();
-        console.log("📹 [デバッグ] MediaRecorder によるMP4動画収録が正常にスタートしました。");
     }
 
     const originalCheckAnswer = window.checkAnswer;
@@ -588,9 +563,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (videoRenderState.active) return;
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
-
-    // 💡【つなぎ目マーカー】これ以降の上映ループの実体（renderVideoOverlays等）は、既存の「パート3」がそのまま無傷で待ち受けて合流します
-    // ─── 📦【パート3 / 3：動画生成実行 ＆ スタジオダイアログ部】 ───
 
     function renderVideoOverlays() {
         if (videoRenderState.showInitialProblemCircles && problemLines && problemLines.length > 0) {
@@ -666,13 +638,13 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             } else if (cmd.type === 'C') {
-                // 💡【調整1】：正解アニメーション発火前に、問題の黒丸数字を全自動で完全消去
+                // 💡 黒丸数字を先に完全消去
                 videoRenderState.showInitialProblemCircles = false;
                 drawPuzzle(); renderVideoOverlays(); await sleep(100); 
                 videoRenderState.active = false; 
                 if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
                 videoRenderState.active = true; 
-                // 💡【調整2】：紙吹雪が優雅に舞い散り大団円を迎えるまで、120フレーム（約4秒間）動画を拡張ホールド！
+                // 💡 紙吹雪を4秒間（120フレーム）拡張ホールド焼き付け！
                 for (let i = 0; i < 120; i++) { drawPuzzle(); renderVideoOverlays(); await sleep(33); }
             }
         }
@@ -681,11 +653,13 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     }
 
     videoRenderState.showInitialProblemCircles = false;
-    drawPuzzle(); renderVideoOverlays();
-    await sleep(400); 
+    drawPuzzle(); renderVideoOverlays(); await sleep(400); 
     
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+
+    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体、および完全復元処理は最後の「パート3」へ合流します
+    // ─── 📦【パート3 / 3：スタジオUIダイアログ生成・クローズ処理部】 ───
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
         const existingModal = document.getElementById('komyakuStudioModal');
@@ -713,6 +687,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                     const urlParams = new URLSearchParams(window.location.search);
                     const dayValue = urlParams.get('day') || "XXX";
                     const link = document.createElement('a');
+                    // 💡【改名】：ご指定通りのファイル名「DayXXX答え動画.mp4」で排出
                     link.download = `Day${dayValue}答え動画.mp4`; link.href = videoUrl; link.click();
                 }
             }},
