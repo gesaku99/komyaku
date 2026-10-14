@@ -711,14 +711,21 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             } else if (cmd.type === 'C') {
-                // 💡【調整1】：正解アニメーション発火前に、問題の黒丸数字を全自動で完全消去
+                // 💡【紙吹雪消失・完全根治】：紙吹雪発火前に、問題の黒丸数字を全自動で完全消去
                 videoRenderState.showInitialProblemCircles = false;
-                drawPuzzle(); renderVideoOverlays(); await sleep(100); 
+                drawPuzzle(); 
+                renderVideoOverlays(); 
+                await sleep(100); // 消去の1コマ余韻
+
+                // 一時的に自動判定ガードを外し、既存の紙吹雪演出を中継発火
                 videoRenderState.active = false; 
                 if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
                 videoRenderState.active = true; 
-                // 💡【調整2】：紙吹雪が優雅に舞い散り大団円を迎えるまで、120フレーム（約4秒間）動画を拡張ホールド！
-                for (let i = 0; i < 120; i++) { drawPuzzle(); renderVideoOverlays(); await sleep(33); }
+                
+                // 💡【大正解の数理】：動画エンジン側からの Canvas 上書き（自滅連打）を 200% 完全撤去！
+                // ゲーム本来の紙吹雪タイマーが Canvas を美しく躍動させるのを、
+                // 4000ms（ジャスト4秒間）何もしないでじっと見守ることで、大団円スプラッシュの全貌を完璧に動画へ焼き付けます。
+                await sleep(4000); 
             }
         }
         drawPuzzle(); renderVideoOverlays();
