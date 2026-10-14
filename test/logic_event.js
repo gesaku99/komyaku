@@ -423,11 +423,9 @@ let currentKomyakuRecordedBlob = null;
 function openKomyakuScriptInputDialog(isReplayOnly = false) {
     if (isReplayOnly) { startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); return; }
 
-    // PCデスクトップ上のどこにでも配置できる本物のサブウィンドウを開く
     const subWin = window.open("", "KomyakuEditor", "width=460,height=440,top=150,left=80,resizable=yes,scrollbars=yes");
     if (!subWin) { alert("🚨 ポップアップブロックを許可してください"); return; }
 
-    // サブウィンドウのHTML構造を実直に注入（10行マルチライン・右端折り返し・短文解説をすべて集約）
     subWin.document.body.innerHTML = `
         <div style="font-family:sans-serif; padding:12px; background:#f8f9fa;">
             <div style="font-size:11px; color:#444; line-height:1.4; border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:10px;">
@@ -448,25 +446,34 @@ function openKomyakuScriptInputDialog(isReplayOnly = false) {
     `;
 
     const ta = subWin.document.getElementById("tx");
-    ta.value = lastKomyakuScriptPrompt; // 前回値を完全保持
+    ta.value = lastKomyakuScriptPrompt; 
     ta.focus();
 
     subWin.document.getElementById("run").onclick = () => {
         const val = ta.value;
         if (!val.trim()) return;
-        window.opener.lastKomyakuScriptPrompt = val; // 大元の親画面の変数に記憶
-        subWin.close(); // エディタを閉じる
-        window.opener.startKomyakuVideoGeneration(false, val); // 親画面側で動画生成をキック！
+        
+        console.log("🎬 [デバッグ] エディタ窓のボタンが押されました。親画面へスクリプトを安全に転送します。");
+        window.opener.lastKomyakuScriptPrompt = val; 
+        
+        // 💡【根治】：先に親画面の動画再生エンジンを力強くキック！
+        window.opener.startKomyakuVideoGeneration(false, val); 
+        
+        // 親の処理が無事に始まった「後」に、自分自身をクリーンに閉じる
+        subWin.close(); 
     };
 }
 
 // 💡【つなぎ目マーカー】これ以降のプロンプト解読パーサー処理は「パート2」へ合流します
-    // ─── 📦【パート2 / 3：プロンプト文字分解パーサー ＆ 録画初期化部】 ───
-
-// コアエンジン本体：タイムライン解析・実行
+// コアエンジン本体：タイムライン解析・実行（デバッグログ完全追跡版）
 async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     const promptInput = targetScriptText;
-    if (!promptInput) return;
+    if (!promptInput) {
+        console.error("❌ [デバッグエラー] スクリプト文字列が空っぽで届きました。");
+        return;
+    }
+
+    console.log("🚀 [デバッグ発火] 動画生成エンジンが正常に起動しました！入力内容:\n", promptInput);
 
     const backupUserGrid = userGrid.map(row => [...row]);
     const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
@@ -478,10 +485,14 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     let match; const timeline = [];
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
 
+    console.log("🔍 [デバッグ] 正規表現によるコマンド切り出し（パース）を開始します...");
+
     while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        // 💡【パースバグ完全根治】：配列オブジェクトをそのまま突っ込まず、インデックスから文字を正確に引っこ抜く構造に修正！
+        // 💡【バグ完全根治】：配列オブジェクトをそのまま代入せず、インデックス [1] と [2] から文字と中身を正確に引っこ抜く！
         const type = match[1];
         const content = match[2].trim();
+
+        console.log(` ➔ 📦 コマンド検知: ${type}[${content}]`);
 
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
@@ -532,6 +543,8 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         }
     }
 
+    console.log(`📊 [デバッグ] パース完了。総コマンド数: ${timeline.length} 件。上映最適化を行います。`);
+
     const optimizedTimeline = []; let pendingTexts = [];
     for (let item of timeline) {
         if (item.type === 'T') { pendingTexts.push(item.text); } 
@@ -541,6 +554,8 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         }
     }
     if (pendingTexts.length > 0) optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
+
+    console.log(`🎬 [デバッグ] 上映用タイムライン構築完了。最終ステップ数: ${optimizedTimeline.length} ステップ。これよりメインアニメーション・録画ループをキックします！`);
 
     videoRenderState.active = true;
     videoRenderState.showInitialProblemCircles = false;
@@ -558,12 +573,14 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         recorder = new MediaRecorder(stream, options);
         recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
         recorder.onstop = () => {
+            console.log("💾 [デバッグ] MediaRecorder が正常にストップしました。チャンクを結合してモーダルを立ち上げます。");
             if (recordedChunks.length > 0) {
                 currentKomyakuRecordedBlob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/mp4' });
                 showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
             }
         };
         recorder.start();
+        console.log("📹 [デバッグ] MediaRecorder によるMP4動画収録が正常にスタートしました。");
     }
 
     const originalCheckAnswer = window.checkAnswer;
@@ -572,7 +589,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // 💡【つなぎ目マーカー】これ以降のタイムラインの上映ループおよびスタジオダイアログUIは最後の「パート3」へ合流します
+    // 💡【つなぎ目マーカー】これ以降の上映ループの実体（renderVideoOverlays等）は、既存の「パート3」がそのまま無傷で待ち受けて合流します
     // ─── 📦【パート3 / 3：動画生成実行 ＆ スタジオダイアログ部】 ───
 
     function renderVideoOverlays() {
