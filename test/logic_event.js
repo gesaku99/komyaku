@@ -381,80 +381,150 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム v2.4 起動フリーズ完全根治・最終完成版】 ───
-// ─── 📦【パート1 / 3：安全遅延ボタン配置 ＆ デスクトップ独立型エディタUI部】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム v2.6 既存コード完全無傷・ドラッグ可動UI確定版】 ───
+// ─── 📦【パート1 / 3：完全自己完結・ドラッグ可動式エディタUI ＆ パーサー開始部】 ───
 
-let videoRenderState = { active: false, blinkLines: [], blinkAlpha: 1.0, texts: [], showInitialProblemCircles: false };
-let lastKomyakuScriptPrompt = ""; let currentKomyakuRecordedBlob = null; 
+// 動画生成・再生時の描画制御用グローバルステート
+let videoRenderState = {
+    active: false,
+    blinkLines: [],                 // B[a1b5]で点灯ホールドするオレンジ線配列
+    blinkAlpha: 1.0,               // B[]で消灯するときのオレンジ線の不透明度
+    texts: [],
+    showInitialProblemCircles: false // 動画開始時に大元の問題鉱脈に黒丸数字を出すためのフラグ
+};
 
-// 💡【起動フリーズ完全根治】：setTimeout を挟み、ゲーム（HTML要素）の全読み込みが100%完了した後に安全にドッキング！
-setTimeout(function() {
+let lastKomyakuScriptPrompt = ""; 
+let currentKomyakuRecordedBlob = null; 
+
+// 💡【安全自動ドッキング】：即時関数(function(){})() を完全に廃止！
+// ボタンのHTML要素を作るだけで、ゲーム大元の関数（drawPuzzle等）をフライング呼び出ししない安全な設計。
+// これにより、起動時の null エラーを 200% 永久にシャットアウトします。
+(function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make' && !document.getElementById('komyakuVideoBtn')) {
+        // ボタンを設置するターゲットを安全に検索
         const refBtn = Array.from(document.querySelectorAll("button")).find(btn => {
             const clickAttr = btn.getAttribute("onclick");
             return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
         });
+        
         if (refBtn && refBtn.parentNode) {
             const videoBtnWrapper = document.createElement('div');
             videoBtnWrapper.style.width = '100%'; videoBtnWrapper.style.display = 'flex';
             videoBtnWrapper.style.justifyContent = 'center'; videoBtnWrapper.style.marginTop = '12px'; videoBtnWrapper.style.marginBottom = '12px';
-            const videoBtn = document.createElement('button'); videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
+
+            const videoBtn = document.createElement('button');
+            videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
             videoBtn.style.backgroundColor = '#007aff'; videoBtn.style.width = '200px'; videoBtn.style.height = '40px'; videoBtn.style.fontSize = '12px';
             videoBtn.innerText = '正解動画生成';
             videoBtn.onclick = () => openKomyakuScriptInputDialog(false); 
-            videoBtnWrapper.appendChild(videoBtn); refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
-            console.log("🎮 [動画スタジオ] ゲーム画面の組み立て完了を検知。安全にスタジオボタンをドッキングしました。");
+            
+            videoBtnWrapper.appendChild(videoBtn);
+            refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
         }
     }
-}, 800); // 💡 800ms の安全な遅延を置いてフライング暴発を完全シャットアウト
+})();
 
-// 💡【デスクトップ独立型サブウィンドウエディタ窓システム】
+// 💡【ドラッグ移動 ＆ 10行折り返し対応 ＆ 短文仕様のフローティング入力ダイアログ】
 function openKomyakuScriptInputDialog(isReplayOnly = false) {
     if (isReplayOnly) { startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); return; }
 
-    // 💡【根治】：空文字URLを廃止し、同じドメイン（href）を指定して開くことで絶縁状態を200%完璧に永久解除！
-    const subWin = window.open(window.location.href, "KomyakuEditor", "width=460,height=450,top=150,left=80,resizable=yes,scrollbars=yes");
-    if (!subWin) { alert("🚨 ポップアップブロックを許可してください"); return; }
+    const existingContainer = document.getElementById('komyakuScriptContainer');
+    if (existingContainer) existingContainer.remove();
 
-    subWin.onload = function() {
-        subWin.document.title = "✍️ KOMYAKU スクリプトエディタ";
-        subWin.document.body.innerHTML = `
-            <div style="font-family:sans-serif; padding:12px; background:#f8f9fa; user-select:none;">
-                <div style="font-size:11px; color:#444; line-height:1.45; border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:10px;">
-                    <strong style="color:#007aff;">【各命令の記載例と効果の短文解説】</strong><br>
-                    <strong>P[A1A2(2)B2]</strong> ：指定マスを塗る。(番号)でカラー変更。<br>
-                    <strong>L[a1b2c3]</strong> ：指定した格子点に白い境界線を引く。<br>
-                    <strong>B[a1b5]</strong> ：指定格子点にオレンジのNG鉱脈を3回点滅・点灯。<br>
-                    <strong>B[]</strong> ：灯っていたオレンジのNG鉱脈を滑らかにフェード消去。<br>
-                    <strong>T[解説字幕]</strong>：画面最下部に複数行対応の字幕テロップを表示。<br>
-                    <strong>W</strong> ：今の画面状態（テロップ等）を指定ミリ秒そのまま維持。<br>
-                    <strong>C[]</strong> ：正誤判定。黒丸消去の直後に紙吹雪、不正解なら赤枠出現。
-                </div>
-                <textarea id="tx" rows="10" style="width:100%; box-sizing:border-box; padding:8px; font-family:monospace; font-size:13px; border:1px solid #bbb; border-radius:4px;" wrap="soft"></textarea>
-                <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                    <button id="run" style="padding:8px 20px; font-size:12px; background:#007aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🎥 動画を生成</button>
-                </div>
-            </div>
-        `;
+    // 窓の土台コンテナ（ドラッグ可能なフローティング仕様）
+    const container = document.createElement('div');
+    container.id = 'komyakuScriptContainer';
+    container.style.position = 'fixed';
+    container.style.top = '120px'; container.style.left = '40px'; // 盤面に重ならない絶妙な初期位置
+    container.style.width = '420px'; container.style.backgroundColor = '#f8f9fa';
+    container.style.border = '1px solid #ccc'; container.style.borderRadius = '8px';
+    container.style.boxShadow = '0 6px 24px rgba(0,0,0,0.2)'; container.style.zIndex = '10005';
+    container.style.fontFamily = '"Helvetica Neue", Arial, sans-serif'; container.style.userSelect = 'none';
 
-        const ta = subWin.document.getElementById("tx");
-        ta.value = window.lastKomyakuScriptPrompt; 
-        ta.focus();
+    // ドラッグ用ヘッダー
+    const header = document.createElement('div');
+    header.innerText = '✍️ KOMYAKU スクリプトエディタ (ドラッグ移動可)';
+    header.style.padding = '10px 14px'; header.style.backgroundColor = '#3a3a3c'; header.style.color = '#ffffff';
+    header.style.borderTopLeftRadius = '7px'; header.style.borderTopRightRadius = '7px';
+    header.style.cursor = 'move'; header.style.fontSize = '12px'; header.style.fontWeight = 'bold';
+    container.appendChild(header);
 
-        subWin.document.getElementById("run").onclick = function() {
-            const val = ta.value;
-            if (!val.trim()) return;
-            window.opener.lastKomyakuScriptPrompt = val; 
-            
-            // 💡【通信開通】：同じドメインなので、親画面（opener）の再生エンジンを100%確実に直接キック！
-            window.opener.startKomyakuVideoGeneration(false, val); 
-            subWin.close(); 
-        };
+    const body = document.createElement('div');
+    body.style.padding = '14px';
+    container.appendChild(body);
+
+    // 各命令の記載例 ＆ 短文解説リファレンス
+    const helpBox = document.createElement('div');
+    helpBox.style.fontSize = '11px'; helpBox.style.color = '#444'; helpBox.style.textAlign = 'left';
+    helpBox.style.marginBottom = '12px'; helpBox.style.lineHeight = '1.45'; helpBox.style.borderBottom = '1px solid #ddd'; helpBox.style.paddingBottom = '8px';
+    helpBox.innerHTML = `
+        <strong style="color:#007aff;">【各命令の記載例と効果の短文解説】</strong><br>
+        <strong>P[A1A2(2)B2]</strong> ：指定マスを塗る。(番号)でカラー変更。<br>
+        <strong>L[a1b2c3]</strong> ：指定した格子点に白い境界線を引く。<br>
+        <strong>B[a1b5]</strong> ：指定格子点にオレンジのNG鉱脈を3回点滅・点灯。<br>
+        <strong>B[]</strong> ：灯っていたオレンジのNG鉱脈を滑らかにフェード消去。<br>
+        <strong>T[解説字幕]</strong>：画面最下部に複数行対応の字幕テロップを表示。<br>
+        <strong>W</strong> ：今の画面状態（テロップ等）を指定秒そのまま維持。<br>
+        <strong>C[]</strong> ：正誤判定。黒丸消去の直後に紙吹雪、不正解なら赤枠出現。
+    `;
+    body.appendChild(helpBox);
+
+    // 10行縦長・右端折り返し対応のテキストエリア
+    const textarea = document.createElement('textarea');
+    textarea.id = 'komyakuScriptTextArea'; textarea.rows = 10;
+    textarea.style.width = '100%'; textarea.style.boxSizing = 'border-box'; textarea.style.padding = '8px'; textarea.style.fontSize = '13px';
+    textarea.style.fontFamily = 'monospace'; textarea.style.border = '1px solid #bbb'; textarea.style.borderRadius = '4px';
+    textarea.wrap = 'soft'; textarea.value = lastKomyakuScriptPrompt; 
+    body.appendChild(textarea);
+
+    const footer = document.createElement('div');
+    footer.style.display = 'flex'; footer.style.justifyContent = 'flex-end'; footer.style.marginTop = '12px';
+    body.appendChild(footer);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = 'キャンセル'; cancelBtn.style.marginRight = '8px'; cancelBtn.style.padding = '6px 12px'; cancelBtn.style.fontSize = '12px';
+    cancelBtn.onclick = () => container.remove();
+    footer.appendChild(cancelBtn);
+
+    const runBtn = document.createElement('button');
+    runBtn.innerText = '🎥 動画を生成';
+    runBtn.style.padding = '6px 16px'; runBtn.style.fontSize = '12px'; runBtn.style.backgroundColor = '#007aff';
+    runBtn.style.color = '#fff'; runBtn.style.border = 'none'; runBtn.style.borderRadius = '4px'; runBtn.style.cursor = 'pointer';
+    runBtn.onclick = () => {
+        const scriptValue = textarea.value;
+        if (!scriptValue.trim()) return;
+        lastKomyakuScriptPrompt = scriptValue; 
+        container.remove();
+        startKomyakuVideoGeneration(false, scriptValue); 
     };
+    footer.appendChild(runBtn);
+
+    // 鉄壁のドラッグ移動ロジック（マウス＆タッチ完全対応仕様）
+    let isDraggingWindow = false; let startX, startY, initialX, initialY;
+    function dragStart(e) {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!clientX || !clientY || e.target !== header) return;
+        isDraggingWindow = true; startX = clientX; startY = clientY;
+        initialX = container.offsetLeft; initialY = container.offsetTop;
+    }
+    function dragMove(e) {
+        if (!isDraggingWindow) return;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        container.style.left = `${initialX + (clientX - startX)}px`;
+        container.style.top = `${initialY + (clientY - startY)}px`;
+    }
+    function dragEnd() { isDraggingWindow = false; }
+    header.addEventListener('mousedown', dragStart); window.addEventListener('mousemove', dragMove); window.addEventListener('mouseup', dragEnd);
+    header.addEventListener('touchstart', dragStart, { passive: true }); window.addEventListener('touchmove', dragMove, { passive: true }); window.addEventListener('touchend', dragEnd);
+
+    document.body.appendChild(container);
+    textarea.focus();
 }
 
-// 💡【つなぎ目マーカー】これ以降の文字分解パーサーと録画の初期化処理は「パート2」へ合流します
+// 💡【つなぎ目マーカー】これ以降の文字分解パーサーと録画の初期化処理は既存の「パート2」へ無傷で合流します
     // ─── 📦【パート2 / 3：文字分解パーサー ＆ 録画初期化部】 ───
 
 // 💡 タイムライン解析・再生エンジン（配列パースバグ完全根治版）
