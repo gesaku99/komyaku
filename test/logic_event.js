@@ -634,8 +634,10 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // 💡【つなぎ目マーカー】これ以降の上映実行ループ、およびモーダルUIの実体は最後の「パート3」へ合流します
-    // ─── 📦【パート3 / 3：動画生成実行 ＆ スタジオダイアログ部（紙吹雪 ＆ 閉じるデグレード完全根治版）】 ───
+    // ─── 📦【パート3 / 4：動画専用紙吹雪 ＆ タイムライン実行ループ部】 ───
+
+    // 💡【新設】動画専用の独立した紙吹雪オブジェクトを保持する配列
+    let videoConfettiParticles = [];
 
     function renderVideoOverlays() {
         if (videoRenderState.showInitialProblemCircles && problemLines && problemLines.length > 0) {
@@ -679,6 +681,23 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 ctx.restore();
             });
         }
+        // 💡【新設】：大元と1文字違わず完全に同じ数理でCanvas上に直接描画される、動画専用3D紙吹雪エンジン！
+        if (videoConfettiParticles.length > 0) {
+            videoConfettiParticles.forEach(p => {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                const cosX = Math.cos(p.count * p.rotSpeedX);
+                const sinY = Math.sin(p.count * p.rotSpeedY);
+                ctx.scale(cosX, sinY);
+                ctx.rotate(p.count * 0.035);
+                if (cosX >= 0) { ctx.style.fillStyle = '#ffffff'; ctx.strokeStyle = '#dddddd'; } 
+                else { ctx.style.fillStyle = '#222222'; ctx.strokeStyle = '#000000'; }
+                ctx.lineWidth = 0.5;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            });
+        }
     }
 
     drawPuzzle(); renderVideoOverlays();
@@ -688,8 +707,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     videoRenderState.showInitialProblemCircles = true;
     drawPuzzle(); renderVideoOverlays();
 
-    // 💡 フラグ新設：タイムライン中に C[] 命令が実行されたかどうかを記憶するセーフティ
-    let isConfettiTriggered = false;
+    let isConfettiPlaying = false;
 
     for (let cmd of optimizedTimeline) {
         if (cmd.type === 'W') { await sleep(cmd.duration); continue; }
@@ -714,34 +732,57 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             } else if (cmd.type === 'C') {
-                isConfettiTriggered = true; // 紙吹雪発火フラグをON
+                // 💡【大改革】：黒丸数字を消し去り、動画専用の紙吹雪を射出生成
                 videoRenderState.showInitialProblemCircles = false;
                 drawPuzzle(); renderVideoOverlays(); await sleep(100); 
-                videoRenderState.active = false; 
-                if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
-                videoRenderState.active = true; 
+
+                const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+                const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+                videoConfettiParticles = [];
+
+                for (let i = 0; i < 100; i++) {
+                    const angle = (Math.random() * 65 + 57) * (Math.PI / 180);
+                    const velocity = Math.random() * 16 + 15;
+                    videoConfettiParticles.push({
+                        x: canvasW / 2, y: canvasH - 10,
+                        w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
+                        vx: Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1),
+                        vy: -Math.sin(angle) * velocity,
+                        rotSpeedX: Math.random() * 0.14 + 0.10,
+                        rotSpeedY: Math.random() * 0.14 + 0.10,
+                        count: 0
+                    });
+                }
+                isConfettiPlaying = true;
             }
         }
         drawPuzzle(); renderVideoOverlays();
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    // 💡【重要根治ロジック】：C[]命令が実行されていた場合、MediaRecorder のカメラのシャッターを開けっ放しにしたまま、
-    // ゲーム本体の紙吹雪アニメーション（16ms周期）が Canvas 上をハラハラと舞い散る様子を、
-    // ジャスト4秒間（16ms × 250回）1コマ残さずアクティブに高速キャプチャして動画ファイルへ完全に焼き付けます！
-    if (isConfettiTriggered) {
+    // 💡【動画専用・紙吹雪物理シミュレーションループ】：
+    // C[]命令が入っていた場合、ジャスト4秒間（16ms × 250回 = 4000ms）、外部環境に一切依存せず、
+    // 動画生成エンジンの内部だけで重力・超高速3D反転を1コマずつ完璧に物理計算して高画質MP4へと確実に焼き付けます！
+    if (isConfettiPlaying) {
         for (let i = 0; i < 250; i++) {
-            renderVideoOverlays(); // 既存の drawPuzzle を呼ばずにアドオンだけを完全同期撮影
+            videoConfettiParticles.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.55; 
+                p.vx *= 0.985; p.count++;
+            });
+            drawPuzzle(); renderVideoOverlays();
             await sleep(16); 
         }
+        videoConfettiParticles = []; 
     }
 
     videoRenderState.showInitialProblemCircles = false;
-    drawPuzzle(); renderVideoOverlays();
-    await sleep(400); 
+    drawPuzzle(); renderVideoOverlays(); await sleep(400); 
     
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+
+    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体、および完全復元処理は最後の「パート4」へ合流します
+    // ─── 📦【パート4 / 4：スタジオUIダイアログ生成・クローズ処理部】 ───
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
         const existingModal = document.getElementById('komyakuStudioModal');
@@ -770,8 +811,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                     const dayValue = urlParams.get('day') || "XXX";
                     const link = document.createElement('a');
                     link.download = `Day${dayValue}答え動画.mp4`; link.href = videoUrl; link.click();
-                    // 💡【デグレード根治】：ダウンロード完了の瞬間に、ダイアログをクリーンに消去してロックを永久解除！
-                    modal.remove();
+                    modal.remove(); // 💡【デグレード解決】ダウンロード後にモーダルを美しく消去！
                 }
             }},
             { text: '🔄 再度プレビュー（再生のみ）', color: '#007aff', action: () => { modal.remove(); startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); }},
