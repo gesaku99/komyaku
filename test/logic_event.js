@@ -634,7 +634,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // ─── 📦【パート3 / 4：動画専用紙吹雪 ＆ タイムライン実行ループ部（タイポ完全根治版）】 ───
+    // ─── 📦【パート2 / 3：動画専用紙吹雪 ＆ タイムライン上映ループ部（正誤判定・連動確定版）】 ───
 
     // 💡 動画専用の独立した紙吹雪オブジェクトを保持する配列
     let videoConfettiParticles = [];
@@ -681,20 +681,14 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 ctx.restore();
             });
         }
-        // 💡【バグ完全根治】：不法な ctx.style. を跡形もなく撤廃し、正しい標準指定へ1発修正！
         if (videoConfettiParticles.length > 0) {
             videoConfettiParticles.forEach(p => {
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                const cosX = Math.cos(p.count * p.rotSpeedX);
-                const sinY = Math.sin(p.count * p.rotSpeedY);
-                ctx.scale(cosX, sinY);
-                ctx.rotate(p.count * 0.035);
+                ctx.save(); ctx.translate(p.x, p.y);
+                const cosX = Math.cos(p.count * p.rotSpeedX); const sinY = Math.sin(p.count * p.rotSpeedY);
+                ctx.scale(cosX, sinY); ctx.rotate(p.count * 0.035);
                 if (cosX >= 0) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#dddddd'; } 
                 else { ctx.fillStyle = '#222222'; ctx.strokeStyle = '#000000'; }
-                ctx.lineWidth = 0.5;
-                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.lineWidth = 0.5; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
                 ctx.restore();
             });
         }
@@ -735,55 +729,50 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 videoRenderState.showInitialProblemCircles = false;
                 drawPuzzle(); renderVideoOverlays(); await sleep(100); 
 
-                const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
-                const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
-                videoConfettiParticles = [];
+                // 💡【安全な採点連動】：一時的に自動判定ガードを外し、大元の正誤ジャッジを実行！
+                videoRenderState.active = false; 
+                if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
+                videoRenderState.active = true; 
 
-                for (let i = 0; i < 100; i++) {
-                    const angle = (Math.random() * 65 + 57) * (Math.PI / 180);
-                    const velocity = Math.random() * 16 + 15;
-                    videoConfettiParticles.push({
-                        x: canvasW / 2, y: canvasH - 10,
-                        w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
-                        vx: Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1),
-                        vy: -Math.sin(angle) * velocity,
-                        rotSpeedX: Math.random() * 0.14 + 0.10,
-                        rotSpeedY: Math.random() * 0.14 + 0.10,
-                        count: 0
-                    });
+                // 💡【過去の正義の数理を完全復活】：間違い（wrongLines）が 0 の「正真正銘の正解時」のみ紙吹雪を射出！
+                const isPerfectCorrect = (!errorDisplayState.wrongLines || errorDisplayState.wrongLines.length === 0);
+                
+                if (isPerfectCorrect) {
+                    const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+                    const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+                    videoConfettiParticles = [];
+
+                    for (let i = 0; i < 100; i++) {
+                        const angle = (Math.random() * 65 + 57) * (Math.PI / 180); const velocity = Math.random() * 16 + 15;
+                        videoConfettiParticles.push({
+                            x: canvasW / 2, y: canvasH - 10, w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
+                            vx: Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1), vy: -Math.sin(angle) * velocity,
+                            rotSpeedX: Math.random() * 0.14 + 0.10, rotSpeedY: Math.random() * 0.14 + 0.10, count: 0
+                        });
+                    }
+                    isConfettiPlaying = true;
+                } else {
+                    // 💡 不正解の時は紙吹雪フラグを強制OFF。ゲーム本来の赤ヒントが画面に点灯したまま終了へ流れます
+                    isConfettiPlaying = false;
+                    console.log("⚠️ [動画スタジオ] スクリプトの記述に間違い（不正解）を検知したため、紙吹雪をスキップしました。");
                 }
-                isConfettiPlaying = true;
             }
         }
         drawPuzzle(); renderVideoOverlays();
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    // 💡【全画面外脱出ジャスト停止センサー】：
-    // C[]命令が入っていた場合、最大4秒間の枠の中で、100枚すべての紙吹雪が画面下部（canvasH + 20）へ
-    // 完全に落ちきったまさにその瞬間を16msごとに監視し、ジャストの瞬間に録画を自動停止させます！
+    // 💡【ジャスト停止センサー】：大正解の時だけ物理シミュレーションを回して最高品質で録画！
     if (isConfettiPlaying) {
         const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
-        
         for (let i = 0; i < 250; i++) {
-            videoConfettiParticles.forEach(p => {
-                p.x += p.vx; p.y += p.vy; p.vy += 0.55; // 重力
-                p.vx *= 0.985; p.count++; // 空気抵抗
-            });
-
-            drawPuzzle(); 
-            renderVideoOverlays();
-
-            // 💡【センサー発火ライン】：100枚「全員(every)」が画面外（底辺+20px）へ脱出したかチェック
+            videoConfettiParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.55; p.vx *= 0.985; p.count++; });
+            drawPuzzle(); renderVideoOverlays();
             const isAllOut = videoConfettiParticles.every(p => p.y > canvasH + 20);
-            if (isAllOut) {
-                // 全員が落ちきったジャストの瞬間に、4秒の残りの待ち時間をすべて切り捨てて即座に脱出！
-                break;
-            }
-
-            await sleep(16); // 60fpsシンクロ撮影
+            if (isAllOut) break;
+            await sleep(16); 
         }
-        videoConfettiParticles = []; // 破片クリア
+        videoConfettiParticles = []; 
     }
 
     videoRenderState.showInitialProblemCircles = false;
@@ -792,13 +781,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
-    videoRenderState.showInitialProblemCircles = false;
-    drawPuzzle(); renderVideoOverlays(); await sleep(400); 
-    
-    if (!isReplayOnly && recorder) { recorder.stop(); } 
-    else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
-
-    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体は、既存の「パート4」へと無傷で完璧に合流します
+    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体は、手元の「パート3」へと無傷で完璧に合流します
     // ─── 📦【パート4 / 4：スタジオUIダイアログ生成・クローズ処理部】 ───
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
