@@ -704,6 +704,11 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         // 録画停止（recorder.stop）のシャッター関数へダイレクトに強制直行脱出させます！
                         if (isAllOut) {
                             videoConfettiParticles = [];
+
+                            // 💡【ここにこの2行を追加】：白紙の状態で「あと2コマ分（60ms）」だけ録画を回し続けます
+                            drawPuzzle(); renderVideoOverlays();
+                            await sleep(60); 
+
                             videoRenderState.showInitialProblemCircles = false;
                             if (!isReplayOnly && recorder) { recorder.stop(); } 
                             else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
