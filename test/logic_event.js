@@ -381,83 +381,50 @@ document.fonts.ready.then(function() {
     updateHistoryButtons(); 
 });
 
-// ─── 🎬【正解動画生成エンジン・コアシステム v2.6 既存コード完全無傷・ドラッグ可動UI確定版】 ───
-// ─── 📦【パート1 / 3：完全自己完結・ドラッグ可動式エディタUI ＆ パーサー開始部】 ───
+// ─── 🎬【正解動画生成エンジン・コアシステム v2.6.1 2重定義完全クリーン・最終大開通版】 ───
+// ─── 📦【パート1 / 2：安全自動ドッキング ＆ ドラッグ可動式マルチラインエディタUI部】 ───
 
-// 動画生成・再生時の描画制御用グローバルステート
-let videoRenderState = {
-    active: false,
-    blinkLines: [],                 // B[a1b5]で点灯ホールドするオレンジ線配列
-    blinkAlpha: 1.0,               // B[]で消灯するときのオレンジ線の不透明度
-    texts: [],
-    showInitialProblemCircles: false // 動画開始時に大元の問題鉱脈に黒丸数字を出すためのフラグ
-};
+let videoRenderState = { active: false, blinkLines: [], blinkAlpha: 1.0, texts: [], showInitialProblemCircles: false };
+let lastKomyakuScriptPrompt = ""; let currentKomyakuRecordedBlob = null; 
 
-let lastKomyakuScriptPrompt = ""; 
-let currentKomyakuRecordedBlob = null; 
-
-// 💡【安全自動ドッキング】：即時関数(function(){})() を完全に廃止！
-// ボタンのHTML要素を作るだけで、ゲーム大元の関数（drawPuzzle等）をフライング呼び出ししない安全な設計。
-// これにより、起動時の null エラーを 200% 永久にシャットアウトします。
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'make' && !document.getElementById('komyakuVideoBtn')) {
-        // ボタンを設置するターゲットを安全に検索
         const refBtn = Array.from(document.querySelectorAll("button")).find(btn => {
             const clickAttr = btn.getAttribute("onclick");
             return clickAttr && clickAttr.includes("downloadPuzzleImage") && clickAttr.includes("false");
         });
-        
         if (refBtn && refBtn.parentNode) {
             const videoBtnWrapper = document.createElement('div');
             videoBtnWrapper.style.width = '100%'; videoBtnWrapper.style.display = 'flex';
             videoBtnWrapper.style.justifyContent = 'center'; videoBtnWrapper.style.marginTop = '12px'; videoBtnWrapper.style.marginBottom = '12px';
-
-            const videoBtn = document.createElement('button');
-            videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
+            const videoBtn = document.createElement('button'); videoBtn.id = 'komyakuVideoBtn'; videoBtn.className = 'btn-common check-btn';
             videoBtn.style.backgroundColor = '#007aff'; videoBtn.style.width = '200px'; videoBtn.style.height = '40px'; videoBtn.style.fontSize = '12px';
-            videoBtn.innerText = '正解動画生成';
-            videoBtn.onclick = () => openKomyakuScriptInputDialog(false); 
-            
-            videoBtnWrapper.appendChild(videoBtn);
-            refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
+            videoBtn.innerText = '正解動画生成'; videoBtn.onclick = () => openKomyakuScriptInputDialog(false); 
+            videoBtnWrapper.appendChild(videoBtn); refBtn.parentNode.parentNode.insertBefore(videoBtnWrapper, refBtn.parentNode.nextSibling);
         }
     }
 })();
 
-// 💡【ドラッグ移動 ＆ 10行折り返し対応 ＆ 短文仕様のフローティング入力ダイアログ】
 function openKomyakuScriptInputDialog(isReplayOnly = false) {
     if (isReplayOnly) { startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); return; }
-
     const existingContainer = document.getElementById('komyakuScriptContainer');
     if (existingContainer) existingContainer.remove();
 
-    // 窓の土台コンテナ（ドラッグ可能なフローティング仕様）
-    const container = document.createElement('div');
-    container.id = 'komyakuScriptContainer';
-    container.style.position = 'fixed';
-    container.style.top = '120px'; container.style.left = '40px'; // 盤面に重ならない絶妙な初期位置
-    container.style.width = '420px'; container.style.backgroundColor = '#f8f9fa';
-    container.style.border = '1px solid #ccc'; container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 6px 24px rgba(0,0,0,0.2)'; container.style.zIndex = '10005';
-    container.style.fontFamily = '"Helvetica Neue", Arial, sans-serif'; container.style.userSelect = 'none';
+    const container = document.createElement('div'); container.id = 'komyakuScriptContainer';
+    container.style.position = 'fixed'; container.style.top = '120px'; container.style.left = '40px';
+    container.style.width = '420px'; container.style.backgroundColor = '#f8f9fa'; container.style.border = '1px solid #ccc'; container.style.borderRadius = '8px';
+    container.style.boxShadow = '0 6px 24px rgba(0,0,0,0.2)'; container.style.zIndex = '10005'; container.style.fontFamily = '"Helvetica Neue", Arial, sans-serif'; container.style.userSelect = 'none';
 
-    // ドラッグ用ヘッダー
-    const header = document.createElement('div');
-    header.innerText = '✍️ KOMYAKU スクリプトエディタ (ドラッグ移動可)';
+    const header = document.createElement('div'); header.innerText = '✍️ KOMYAKU スクリプトエディタ (ドラッグ移動可)';
     header.style.padding = '10px 14px'; header.style.backgroundColor = '#3a3a3c'; header.style.color = '#ffffff';
-    header.style.borderTopLeftRadius = '7px'; header.style.borderTopRightRadius = '7px';
-    header.style.cursor = 'move'; header.style.fontSize = '12px'; header.style.fontWeight = 'bold';
+    header.style.borderTopLeftRadius = '7px'; header.style.borderTopRightRadius = '7px'; header.style.cursor = 'move'; header.style.fontSize = '12px'; header.style.fontWeight = 'bold';
     container.appendChild(header);
 
-    const body = document.createElement('div');
-    body.style.padding = '14px';
-    container.appendChild(body);
+    const body = document.createElement('div'); body.style.padding = '14px'; container.appendChild(body);
 
-    // 各命令の記載例 ＆ 短文解説リファレンス
-    const helpBox = document.createElement('div');
-    helpBox.style.fontSize = '11px'; helpBox.style.color = '#444'; helpBox.style.textAlign = 'left';
-    helpBox.style.marginBottom = '12px'; helpBox.style.lineHeight = '1.45'; helpBox.style.borderBottom = '1px solid #ddd'; helpBox.style.paddingBottom = '8px';
+    const helpBox = document.createElement('div'); helpBox.style.fontSize = '11px'; helpBox.style.color = '#444'; helpBox.style.textAlign = 'left';
+    helpBox.style.removeAttribute = 'none'; helpBox.style.marginBottom = '12px'; helpBox.style.lineHeight = '1.45'; helpBox.style.borderBottom = '1px solid #ddd'; helpBox.style.paddingBottom = '8px';
     helpBox.innerHTML = `
         <strong style="color:#007aff;">【各命令の記載例と効果の短文解説】</strong><br>
         <strong>P[A1A2(2)B2]</strong> ：指定マスを塗る。(番号)でカラー変更。<br>
@@ -465,67 +432,45 @@ function openKomyakuScriptInputDialog(isReplayOnly = false) {
         <strong>B[a1b5]</strong> ：指定格子点にオレンジのNG鉱脈を3回点滅・点灯。<br>
         <strong>B[]</strong> ：灯っていたオレンジのNG鉱脈を滑らかにフェード消去。<br>
         <strong>T[解説字幕]</strong>：画面最下部に複数行対応の字幕テロップを表示。<br>
-        <strong>W</strong> ：今の画面状態（テロップ等）を指定秒そのまま維持。<br>
+        <strong>W</strong> ：今の画面状態（テロップ等）を指定ミリ秒そのまま維持。<br>
         <strong>C[]</strong> ：正誤判定。黒丸消去の直後に紙吹雪、不正解なら赤枠出現。
     `;
     body.appendChild(helpBox);
 
-    // 10行縦長・右端折り返し対応のテキストエリア
-    const textarea = document.createElement('textarea');
-    textarea.id = 'komyakuScriptTextArea'; textarea.rows = 10;
+    const textarea = document.createElement('textarea'); textarea.id = 'komyakuScriptTextArea'; textarea.rows = 10;
     textarea.style.width = '100%'; textarea.style.boxSizing = 'border-box'; textarea.style.padding = '8px'; textarea.style.fontSize = '13px';
     textarea.style.fontFamily = 'monospace'; textarea.style.border = '1px solid #bbb'; textarea.style.borderRadius = '4px';
-    textarea.wrap = 'soft'; textarea.value = lastKomyakuScriptPrompt; 
-    body.appendChild(textarea);
+    textarea.wrap = 'soft'; textarea.value = lastKomyakuScriptPrompt; body.appendChild(textarea);
 
-    const footer = document.createElement('div');
-    footer.style.display = 'flex'; footer.style.justifyContent = 'flex-end'; footer.style.marginTop = '12px';
-    body.appendChild(footer);
+    const footer = document.createElement('div'); footer.style.display = 'flex'; footer.style.justifyContent = 'flex-end'; footer.style.marginTop = '12px'; body.appendChild(footer);
+    const cancelBtn = document.createElement('button'); cancelBtn.innerText = 'キャンセル'; cancelBtn.style.marginRight = '8px'; cancelBtn.style.padding = '6px 12px'; cancelBtn.style.fontSize = '12px';
+    cancelBtn.onclick = () => container.remove(); footer.appendChild(cancelBtn);
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.innerText = 'キャンセル'; cancelBtn.style.marginRight = '8px'; cancelBtn.style.padding = '6px 12px'; cancelBtn.style.fontSize = '12px';
-    cancelBtn.onclick = () => container.remove();
-    footer.appendChild(cancelBtn);
-
-    const runBtn = document.createElement('button');
-    runBtn.innerText = '🎥 動画を生成';
-    runBtn.style.padding = '6px 16px'; runBtn.style.fontSize = '12px'; runBtn.style.backgroundColor = '#007aff';
-    runBtn.style.color = '#fff'; runBtn.style.border = 'none'; runBtn.style.borderRadius = '4px'; runBtn.style.cursor = 'pointer';
-    runBtn.onclick = () => {
-        const scriptValue = textarea.value;
-        if (!scriptValue.trim()) return;
-        lastKomyakuScriptPrompt = scriptValue; 
-        container.remove();
-        startKomyakuVideoGeneration(false, scriptValue); 
-    };
+    const runBtn = document.createElement('button'); runBtn.innerText = '🎥 動画を生成';
+    runBtn.style.padding = '6px 16px'; runBtn.style.fontSize = '12px'; runBtn.style.backgroundColor = '#007aff'; runBtn.style.color = '#fff'; runBtn.style.border = 'none'; runBtn.style.borderRadius = '4px'; runBtn.style.cursor = 'pointer';
+    runBtn.onclick = () => { const val = textarea.value; if (!val.trim()) return; lastKomyakuScriptPrompt = val; container.remove(); startKomyakuVideoGeneration(false, val); };
     footer.appendChild(runBtn);
 
-    // 鉄壁のドラッグ移動ロジック（マウス＆タッチ完全対応仕様）
     let isDraggingWindow = false; let startX, startY, initialX, initialY;
     function dragStart(e) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY);
         if (!clientX || !clientY || e.target !== header) return;
-        isDraggingWindow = true; startX = clientX; startY = clientY;
-        initialX = container.offsetLeft; initialY = container.offsetTop;
+        isDraggingWindow = true; startX = clientX; startY = clientY; initialX = container.offsetLeft; initialY = container.offsetTop;
     }
     function dragMove(e) {
         if (!isDraggingWindow) return;
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        container.style.left = `${initialX + (clientX - startX)}px`;
-        container.style.top = `${initialY + (clientY - startY)}px`;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        container.style.left = `${initialX + (clientX - startX)}px`; container.style.top = `${initialY + (clientY - startY)}px`;
     }
     function dragEnd() { isDraggingWindow = false; }
     header.addEventListener('mousedown', dragStart); window.addEventListener('mousemove', dragMove); window.addEventListener('mouseup', dragEnd);
     header.addEventListener('touchstart', dragStart, { passive: true }); window.addEventListener('touchmove', dragMove, { passive: true }); window.addEventListener('touchend', dragEnd);
 
-    document.body.appendChild(container);
-    textarea.focus();
+    document.body.appendChild(container); textarea.focus();
 }
 
-// 💡【つなぎ目マーカー】これ以降の文字分解パーサーと録画の初期化処理は既存の「パート2」へ無傷で合流します
-    // ─── 📦【パート2 / 3：文字分解パーサー ＆ 録画初期化部】 ───
+// 💡【つなぎ目マーカー】これ以降の純粋パーサー、動画専用3D紙吹雪、および上映ループの実体は「パート2」へ合流します
+    // ─── 📦【パート2 / 3：パースエンジン ＆ 3D紙吹雪描画アドオン部】 ───
 
 // 💡 タイムライン解析・再生エンジン（配列パースバグ完全根治版）
 async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
@@ -543,7 +488,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
 
     while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        // 💡【パースバグ完全根治】配列オブジェクトを代入せず、インデックスから文字と中身を正確に引っこ抜く！
         const type = match[1];
         const content = match[2].trim();
 
@@ -634,112 +578,152 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
     };
 
-    // ─── 📦【パート2 / 3：動画専用紙吹雪 ＆ タイムライン上映ループ部（2重衝突完全根治版）】 ───
+    // 💡【大復活】：重複のゴタゴタの中で消失していた、動画スタジオのコアアドオン描画システム
+    let videoConfettiParticles = [];
 
-// 💡 タイムライン解析・再生エンジン（配列パースバグ完全根治版）
-async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
-    const promptInput = targetScriptText;
-    if (!promptInput) return;
+    function renderVideoOverlays() {
+        if (videoRenderState.showInitialProblemCircles && problemLines && problemLines.length > 0) {
+            problemLines.forEach(line => {
+                ctx.save();
+                const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
+                const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(mx, my, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#000000'; ctx.font = 'bold 15px "Tenor Sans", sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(distSq.toString(), mx, my + 0.5);
+                ctx.restore();
+            });
+        }
+        if (videoRenderState.texts && videoRenderState.texts.length > 0) {
+            ctx.save();
+            const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+            const logicalHeight = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+            const barW = logicalWidth; const barH = videoRenderState.texts.length * 24 + 16;
+            const barX = 0; const barY = logicalHeight - barH;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = '#ffffff'; ctx.font = '16px "Tenor Sans", sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            videoRenderState.texts.forEach((txt, idx) => { ctx.fillText(txt, barW / 2, barY + 16 + idx * 24 + 8); });
+            ctx.restore();
+        }
+        if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
+            videoRenderState.blinkLines.forEach(line => {
+                ctx.save(); ctx.globalAlpha = videoRenderState.blinkAlpha;
+                ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(OFFSET + line.start.x * CELL_PIXEL, OFFSET + line.start.y * CELL_PIXEL + 30);
+                ctx.lineTo(OFFSET + line.end.x * CELL_PIXEL, OFFSET + line.end.y * CELL_PIXEL + 30); ctx.stroke();
+                const mx = OFFSET + (line.start.x + line.end.x) / 2 * CELL_PIXEL;
+                const my = OFFSET + (line.start.y + line.end.y) / 2 * CELL_PIXEL + 30;
+                const distSq = (line.end.x - line.start.x) ** 2 + (line.end.y - line.start.y) ** 2;
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(mx, my, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ff9500'; ctx.font = 'bold 15px "Tenor Sans", sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(distSq.toString(), mx, my + 0.5);
+                ctx.restore();
+            });
+        }
+        if (videoConfettiParticles.length > 0) {
+            videoConfettiParticles.forEach(p => {
+                ctx.save(); ctx.translate(p.x, p.y);
+                const cosX = Math.cos(p.count * p.rotSpeedX); const sinY = Math.sin(p.count * p.rotSpeedY);
+                ctx.scale(cosX, sinY); ctx.rotate(p.count * 0.035);
+                if (cosX >= 0) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#dddddd'; } 
+                else { ctx.fillStyle = '#222222'; ctx.strokeStyle = '#000000'; }
+                ctx.lineWidth = 0.5; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            });
+        }
+    }
 
-    const backupUserGrid = userGrid.map(row => [...row]);
-    const backupUserWalls = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
-    const backupErrorShow = errorDisplayState.show;
-    const backupProblemLines = problemLines.map(l => ({ ...l }));
-    const backupErrorDisplay = JSON.parse(JSON.stringify(errorDisplayState));
+    // 💡【つなぎ目マーカー】これ以降の上映実行ループ本体、およびモーダルUIの実体は最後の「パート3」へ合流します
+    // ─── 📦【パート3 / 3：タイムライン上映実行ループ ＆ スタジオモーダルUI部】 ───
 
-    const commandRegex = /(P|L|B|T|W|C)\[(.*?)\]/g;
-    let match; const timeline = [];
-    const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
+    drawPuzzle(); renderVideoOverlays();
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await sleep(400);
 
-    while ((match = commandRegex.exec(cleanedInput)) !== null) {
-        const type = match; const content = match.trim();
-        if (type === 'T') { timeline.push({ type: 'T', text: content }); } 
-        else if (type === 'P') {
-            const tokens = content.split(/(\(\d+\))/); let currentColorId = 1; 
-            tokens.forEach(tok => {
-                if (!tok) return;
-                if (tok.startsWith('(') && tok.endsWith(')')) { currentColorId = parseInt(tok.slice(1, -1), 10); } 
-                else {
-                    let i = 0;
-                    while (i < tok.length) {
-                        const cellStr = tok.slice(i, i + 2);
-                        if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
-                            const c = cellStr.charCodeAt(0) - 65; const r = parseInt(cellStr.charAt(1), 10) - 1; 
-                            if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-                                timeline.push({ type: 'P', r: r, c: c, color: currentColorId === 0 ? null : (currentColorId - 1) });
-                            }
-                            i += 2;
-                        } else { i++; }
+    videoRenderState.showInitialProblemCircles = true;
+    drawPuzzle(); renderVideoOverlays();
+
+    let isConfettiPlaying = false;
+
+    for (let cmd of optimizedTimeline) {
+        if (cmd.type === 'W') { await sleep(cmd.duration); continue; }
+        if (cmd.type === 'T') { videoRenderState.texts = cmd.data; drawPuzzle(); renderVideoOverlays(); } 
+        else {
+            if (videoRenderState.texts.length > 0) { videoRenderState.texts = []; drawPuzzle(); renderVideoOverlays(); }
+            if (cmd.type === 'B') {
+                if (cmd.clear) {
+                    for (let f = 10; f >= 0; f--) { videoRenderState.blinkAlpha = f / 10; drawPuzzle(); renderVideoOverlays(); await sleep(35); }
+                    videoRenderState.blinkLines = []; videoRenderState.blinkAlpha = 1.0; 
+                } else {
+                    const p1 = { x: cmd.c1, y: cmd.r1 }; const p2 = { x: cmd.c2, y: cmd.r2 };
+                    videoRenderState.blinkAlpha = 1.0;
+                    for (let k = 0; k < 3; k++) {
+                        videoRenderState.blinkLines = (k % 2 === 0) ? [{ start: p1, end: p2 }] : [];
+                        drawPuzzle(); renderVideoOverlays(); await sleep(500); 
                     }
                 }
-            });
-        } else if (type === 'L') {
-            const vertices = [];
-            for (let i = 0; i < content.length; i += 2) {
-                const vStr = content.slice(i, i + 2);
-                if (vStr.length === 2) { vertices.push({ c: vStr.charCodeAt(0) - 97, r: parseInt(vStr.charAt(1), 10) - 1 }); }
-            }
-            for (let i = 0; i < vertices.length - 1; i++) {
-                timeline.push({ type: 'L', r1: vertices[i].r, c1: vertices[i].c, r2: vertices[i+1].r, c2: vertices[i+1].c });
-            }
-        } else if (type === 'B') {
-            if (content.length === 0) { timeline.push({ type: 'B', clear: true }); } 
-            else {
-                const vertices = [];
-                for (let i = 0; i < content.length; i += 2) {
-                    const vStr = content.slice(i, i + 2);
-                    if (vStr.length === 2) { vertices.push({ c: vStr.charCodeAt(0) - 97, r: parseInt(vStr.charAt(1), 10) - 1 }); }
+            } else if (cmd.type === 'P') {
+                userGrid[cmd.r][cmd.c] = cmd.color;
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+            } else if (cmd.type === 'L') {
+                userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
+            } else if (cmd.type === 'C') {
+                videoRenderState.showInitialProblemCircles = false;
+                drawPuzzle(); renderVideoOverlays(); await sleep(100); 
+
+                // 一時的に自動判定ガードを外し、大元の正誤ジャッジを実行！
+                videoRenderState.active = false; 
+                if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
+                videoRenderState.active = true; 
+
+                // 間違い（wrongLines）が 0 の「正真正銘の正解時」のみ紙吹雪を射出
+                const isPerfectCorrect = (!errorDisplayState.wrongLines || errorDisplayState.wrongLines.length === 0);
+                
+                if (isPerfectCorrect) {
+                    const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+                    const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+                    videoConfettiParticles = [];
+
+                    for (let i = 0; i < 100; i++) {
+                        const angle = (Math.random() * 65 + 57) * (Math.PI / 180); const velocity = Math.random() * 16 + 15;
+                        videoConfettiParticles.push({
+                            x: canvasW / 2, y: canvasH - 10, w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
+                            vx: Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1), vy: -Math.sin(angle) * velocity,
+                            rotSpeedX: Math.random() * 0.14 + 0.10, rotSpeedY: Math.random() * 0.14 + 0.10, count: 0
+                        });
+                    }
+                    isConfettiPlaying = true;
+                } else {
+                    isConfettiPlaying = false;
+                    console.log("⚠️ [動画スタジオ] スクリプトの記述に間違い（不正解）を検知したため、紙吹雪をスキップしました。");
                 }
-                if (vertices.length >= 2) { timeline.push({ type: 'B', clear: false, r1: vertices.r, c1: vertices.c, r2: vertices.r, c2: vertices.c }); }
             }
-        } else if (type === 'W') {
-            const msec = parseInt(content, 10);
-            if (!isNaN(msec)) timeline.push({ type: 'W', duration: msec });
-        } else if (type === 'C') {
-            timeline.push({ type: 'C' });
         }
+        drawPuzzle(); renderVideoOverlays();
+        if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    const optimizedTimeline = []; let pendingTexts = [];
-    for (let item of timeline) {
-        if (item.type === 'T') { pendingTexts.push(item.text); } 
-        else {
-            if (pendingTexts.length > 0) { optimizedTimeline.push({ type: 'T', data: [...pendingTexts] }); pendingTexts = []; }
-            optimizedTimeline.push(item);
+    // 💡【ジャスト停止センサー】：2重衝突を完全に根治し、最後の1枚が消え去るまで滑らかに撮影
+    if (isConfettiPlaying) {
+        const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
+        for (let i = 0; i < 250; i++) {
+            videoConfettiParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.55; p.vx *= 0.985; p.count++; });
+            drawPuzzle(); renderVideoOverlays();
+            const isAllOut = videoConfettiParticles.every(p => p.y > canvasH + 20);
+            if (isAllOut) break;
+            await sleep(16); 
         }
-    }
-    if (pendingTexts.length > 0) optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
-
-    videoRenderState.active = true; videoRenderState.showInitialProblemCircles = false;
-    for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
-    userWalls = []; errorDisplayState.show = false;
-    videoRenderState.blinkLines = []; videoRenderState.blinkAlpha = 1.0; videoRenderState.texts = [];
-
-    let recorder = null; let recordedChunks = [];
-    if (!isReplayOnly) {
-        const stream = canvas.captureStream(30); 
-        let options = { mimeType: 'video/mp4;codecs=avc1.42E01E' }; 
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9' };
-        recorder = new MediaRecorder(stream, options);
-        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
-        recorder.onstop = () => {
-            if (recordedChunks.length > 0) {
-                currentKomyakuRecordedBlob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/mp4' });
-                showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
-            }
-        };
-        recorder.start();
+        videoConfettiParticles = []; 
     }
 
-    const originalCheckAnswer = window.checkAnswer;
-    window.checkAnswer = function(isAutoCheck) {
-        if (videoRenderState.active) return;
-        if (typeof originalCheckAnswer === 'function') originalCheckAnswer(isAutoCheck);
-    };
-
-    // 💡【つなぎ目マーカー】これ以降の上映実行ループ、およびモーダルUIの実体は最後の「パート3」へ合流します
-    // ─── 📦【パート4 / 4：スタジオUIダイアログ生成・クローズ処理部】 ───
+    videoRenderState.showInitialProblemCircles = false;
+    drawPuzzle(); renderVideoOverlays(); await sleep(400); 
+    
+    if (!isReplayOnly && recorder) { recorder.stop(); } 
+    else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
         const existingModal = document.getElementById('komyakuStudioModal');
