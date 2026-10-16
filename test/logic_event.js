@@ -638,7 +638,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     }
 
 // 💡【つなぎ目マーカー】これ以降の上映タイムライン実行ループ ＆ スタジオモーダルUI部は最後の「パート3」へ合流します
-    // ─── 📦【パート3 / 3：タイムライン上映実行ループ ＆ スタジオモーダルUI部】 ───
+    // ─── 📦【パート3 / 3：タイムライン上映実行ループ ───
 
     drawPuzzle(); renderVideoOverlays();
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -675,7 +675,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 videoRenderState.showInitialProblemCircles = false;
                 drawPuzzle(); renderVideoOverlays(); await sleep(100); 
 
-                // 一時的に自動判定ガードを外し、大元の正誤ジャッジを実行！
                 videoRenderState.active = false; 
                 if (typeof originalCheckAnswer === 'function') originalCheckAnswer(false); 
                 videoRenderState.active = true; 
@@ -696,13 +695,20 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         });
                     }
 
-                    // 💡【大根治】：C[]命令のタイムラインステップ「内部」に物理ループを完全融合！
-                    // これにより、プレビューでの連続暴発および動画内のカクつきウェイトが200%完璧に消滅します。
                     for (let i = 0; i < 250; i++) {
                         videoConfettiParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.55; p.vx *= 0.985; p.count++; });
                         drawPuzzle(); renderVideoOverlays();
                         const isAllOut = videoConfettiParticles.every(p => p.y > canvasH + 20);
-                        if (isAllOut) break; 
+                        
+                        // 💡【大改革】：紙吹雪が消え去ったジャストの瞬間に、おまけの400msや余計なウェイトをすべて踏み越えて、
+                        // 録画停止（recorder.stop）のシャッター関数へダイレクトに強制直行脱出させます！
+                        if (isAllOut) {
+                            videoConfettiParticles = [];
+                            videoRenderState.showInitialProblemCircles = false;
+                            if (!isReplayOnly && recorder) { recorder.stop(); } 
+                            else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+                            return; // ➔ 💡 ここで関数の処理を完全に終わらせ、大外の全ウェイトを完全消滅させます！
+                        }
                         await sleep(16); 
                     }
                     videoConfettiParticles = []; 
@@ -714,9 +720,9 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
+    // 💡 通常の正解アニメーション（C命令）を挟まない動画のときだけ動く、クリーンな終了処理
     videoRenderState.showInitialProblemCircles = false;
     drawPuzzle(); renderVideoOverlays(); await sleep(400); 
-    
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
@@ -747,7 +753,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                     const dayValue = urlParams.get('day') || "XXX";
                     const link = document.createElement('a');
                     link.download = `Day${dayValue}答え動画.mp4`; link.href = videoUrl; link.click();
-                    modal.remove(); // ダウンロード後にモーダルを美しく消去！
+                    modal.remove(); 
                 }
             }},
             { text: '🔄 再度プレビュー（再生のみ）', color: '#007aff', action: () => { modal.remove(); startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); }},
