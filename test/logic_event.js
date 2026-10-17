@@ -563,8 +563,11 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     if (!isReplayOnly) {
         const stream = canvas.captureStream(30); 
         let options = { mimeType: 'video/mp4;codecs=avc1.42E01E' }; 
-        if (!MediaRecorder.isTypeSupported(options.options)) options = { mimeType: 'video/mp4' };
-        if (!MediaRecorder.isTypeSupported(options.options)) options = { mimeType: 'video/webm;codecs=vp9' };
+
+        // 💡【大改革】：不法な .options プロパティのタイポを完全に叩き潰し、
+        // 正しい .mimeType に修正！これによりXが求める高互換H.264 MP4の撮影権限が200%完璧に覚醒します。
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9' };
         recorder = new MediaRecorder(stream, options);
         recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
         recorder.onstop = () => {
