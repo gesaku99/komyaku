@@ -706,19 +706,19 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30 + CELL_PIXEL);
                         
                         if (isAllOut) {
-                            videoConfettiParticles = [];
-                            drawPuzzle(); renderVideoOverlays();
-                            await sleep(60); // 2コマバッファ
+                            // 💡【完全消去パッチ】：センサーが完全脱出を検知したまさにその瞬間、
+                            // まず真っ先に録画を完全停止（stop）に叩き落としてブラウザのバッファへ強制コミット！
+                            if (!isReplayOnly && recorder) { recorder.stop(); }
 
-                            // 💡【根治】：動画モードのフラグをその場で最速で強制終了（false）に叩き落とします！
-                            // これによりブラウザの裏側の録画タイムラグが物理的に完全遮断され、無駄な余白が1コマも後ろに回り込まなくなります。
+                            videoConfettiParticles = [];
                             videoRenderState.active = false; 
                             videoRenderState.showInitialProblemCircles = false;
     
-                            if (!isReplayOnly && recorder) { 
-                                recorder.stop(); 
-                           } else { 
-                                showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); 
+                            // 大外の optimizedTimeline の残処理（350ms）や、最末尾の固定ウェイト（400ms）を
+                            // 「2度と実行させない」ために、スタジオモーダルを立ち上げた直後に、
+                            // この動画生成関数自体の実行を完全にブツ切りにして強制終了（return）させます！
+                            if (isReplayOnly || !recorder) {
+                                showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
                             }
                             return; 
                         }
