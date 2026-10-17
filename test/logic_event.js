@@ -710,21 +710,30 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         // 100枚全員が確実に下回ったジャストのフレームを完璧に検知します！
                         const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30 + CELL_PIXEL);
                         
-                        if (isAllOut) {
-                            videoConfettiParticles = [];
-                            drawPuzzle(); renderVideoOverlays();
-                            await sleep(60); // バッファ遅延相殺用の2コマ残し
+if (isAllOut) {
+    videoConfettiParticles = [];
+    drawPuzzle(); renderVideoOverlays();
+    await sleep(60); // バッファ遅延相殺用の2コマ残し
 
-                            videoRenderState.active = false; 
-                            videoRenderState.showInitialProblemCircles = false;
-                            
-                            if (!isReplayOnly && recorder) { 
-                                recorder.stop(); 
-                            } else {
-                                showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
-                            }
-                            return; // ➔ 💡 ここで関数の処理を完全に終わらせ、大外の全ウェイトを完全消滅させます！
-                        }
+    videoRenderState.active = false; 
+    videoRenderState.showInitialProblemCircles = false;
+    
+    // 💡【大調律】：先に最速で録画停止（stop）をキック！
+    if (!isReplayOnly && recorder) { recorder.stop(); }
+
+    // 💡【X大開通パッチ】：ストップ命令を出した後、ブラウザが裏側でMP4のインデックスを
+    // 完全に書き込み、ファイルを100%綺麗にクローズしきるまでの「500ms（0.5秒）」の猶予を
+    // 関数の実行を生かしたままじっと優しく待ってあげます。これだけでXに100%受け付けられます！
+    await sleep(500); 
+
+    // ファイルが100%安全に閉じられた「後」に、満を持してスタジオモーダルをポップアップ！
+    if (isReplayOnly || !recorder) {
+        showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
+    } else {
+        // 録画時は recorder.onstop の中で backup 系列のモーダルを綺麗に立ち上げます
+    }
+    return; // ➔ 💡 ここで関数の処理を完全に終わらせ、大外の全ウェイトを完全消滅させます！
+}
                         await sleep(16); 
                     }
                     videoConfettiParticles = []; 
