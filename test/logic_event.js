@@ -682,7 +682,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 const isPerfectCorrect = (!errorDisplayState.wrongLines || errorDisplayState.wrongLines.length === 0);
                 
                 if (isPerfectCorrect) {
-                    // 💡【動的底辺センサーへの進化】：その瞬間のパズル画面の真の底辺ラインを正確に逆算
                     const trueBottomLine = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
                     const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
                     videoConfettiParticles = [];
@@ -696,37 +695,30 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         });
                     }
 
-                    // 猶予上限を 500回（約8秒分）に広げ、大画面パズルでのタイムアウトを200%永久に阻止します
+                    // 💡 広い盤面（7x7, 8x8）でも絶対にタイムアウトしないよう上限500回をホールド
                     for (let i = 0; i < 500; i++) {
                         videoConfettiParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.55; p.vx *= 0.985; p.count++; });
                         drawPuzzle(); renderVideoOverlays();
                         
-                        // 💡【動的底辺ジャスト停止センサー】：
-                        // 6x6でも7x7でも8x8でも、その盤面の「真の底辺+30px」を100枚全員が確実に突き抜けたその一瞬を完璧に検知！
                         const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30 + CELL_PIXEL);
                         
-if (isAllOut) {
-    // 💡【大外の余白ウェイト完全消去パッチ】：
-    // センサーが完全脱出を検知したまさにその瞬間に、大外の居残りウェイト（sleep(400)）を完全に踏み越えて、
-    // 録画停止（recorder.stop）を最速でキックし、即座に動画スタジオモーダルを表示させます！
-    if (!isReplayOnly && recorder) { 
-        recorder.stop(); 
-    } else {
-        showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
-    }
-
-    videoConfettiParticles = [];
-    videoRenderState.active = false; 
-    videoRenderState.showInitialProblemCircles = false;
-    
-    // 💡 return することで、関数の残りの処理（大外の sleep(400) や余計なウェイト）を
-    // 文字通り『1文字残さず完全に消去・強制終了』させ、無駄な余白の回り込みを永久に封じ込めます！
-    return; 
-}
-                        await sleep(16); 
+                        // 💡【監督の究極ディレクション】：紙吹雪がすべて落ちきったまさにそのジャストの瞬間に、
+                        // 大外の sleep(350) も、最末尾の sleep(400) も、すべてのウエイトを『完全に無くす（消去）』ために、
+                        // ここで即座に録画停止を叩き込み、関数自体の実行を跡形もなく強制終了（return）させます！
+                        if (isAllOut) {
+                            if (!isReplayOnly && recorder) { recorder.stop(); } 
+                            else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+                            
+                            videoConfettiParticles = [];
+                            videoRenderState.active = false; 
+                            videoRenderState.showInitialProblemCircles = false;
+                            return; // ➔ 💡 ここですべての残りのウエイト処理を物理的に完全消去して脱出します！
+                        }
+                        await sleep(16); // 💡 紙吹雪を動かすために絶対に必要な16ms（60fps）のシャッター駆動だけを残す
                     }
                     videoConfettiParticles = []; 
                 }
+                // もし不正解（紙吹雪が舞わない時）は、大外の固定ウェイト（350ms）へバトンを繋ぐために continue
                 continue;
             }
         }
