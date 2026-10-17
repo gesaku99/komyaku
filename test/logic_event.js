@@ -486,7 +486,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     const backupProblemLines = problemLines.map(l => ({ ...l }));
     const backupErrorDisplay = JSON.parse(JSON.stringify(errorDisplayState));
 
-    const commandRegex = /(P|L|B|T|W|C)\[(.*?)\]/g;
+    const commandRegex = /(P|L|B|T|W|C|Q|X)\[(.*?)\]/g;
     let match; const timeline = [];
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
 
@@ -541,6 +541,12 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             if (!isNaN(msec)) timeline.push({ type: 'W', duration: msec });
         } else if (type === 'C') {
             timeline.push({ type: 'C' });
+        } else if (type === 'X') {
+            // 💡マス境界（例：b2c2）を引っこ抜いてタイムラインに積む
+            timeline.push({ type: 'X', content: content });
+        } else if (type === 'Q') {
+            // 💡Q[(1)A1] の中身をパース。構造はP命令と完全互換
+            timeline.push({ type: 'Q', content: content });
         }
     }
 
@@ -555,6 +561,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     if (pendingTexts.length > 0) optimizedTimeline.push({ type: 'T', data: [...pendingTexts] });
 
     videoRenderState.active = true; videoRenderState.showInitialProblemCircles = false;
+    window.videoQuestionMap = {}; window.videoCrossWalls = [];
     for (let r = 0; r < GRID_SIZE; r++) userGrid[r].fill(null);
     userWalls = []; errorDisplayState.show = false;
     videoRenderState.blinkLines = []; videoRenderState.blinkAlpha = 1.0; videoRenderState.texts = [];
@@ -629,6 +636,29 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 ctx.restore();
             });
         }
+        // 💡【新設】：Q命令およびP命令の上書きと連動する、動画専用「？」マーク＆「×印」描画システム
+        // （※videoQuestionMap と videoCrossWalls は、下の再生ループ側で全自動管理されます）
+        if (typeof videoQuestionMap !== 'undefined' && videoQuestionMap) {
+            ctx.save(); ctx.font = 'bold 22px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#222222';
+            for (let key in videoQuestionMap) {
+                const [r, c] = key.split(',').map(Number);
+                const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2;
+                const my = OFFSET + r * CELL_PIXEL + 30 + CELL_PIXEL / 2;
+                if (userGrid[r][c] !== null) ctx.fillText('？', mx, my + 1); // 色マスがある時だけ中央に描画
+            }
+            ctx.restore();
+        }
+        if (typeof videoCrossWalls !== 'undefined' && videoCrossWalls && videoCrossWalls.length > 0) {
+            ctx.save(); ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            videoCrossWalls.forEach(w => {
+                // 格子点2つ（a1b1など）の中点（境界の中心）を計算し、小さな×印（半径8px）を描画
+                const mx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL;
+                const my = OFFSET + (w.r1 + w.c1 ? w.r1 : w.r2) / 2 * CELL_PIXEL + 30; // 縦横に応じて自動最適化
+                const cx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL; const cy = OFFSET + (w.r1 + w.r2) / 2 * CELL_PIXEL + 30;
+                ctx.beginPath(); ctx.moveTo(cx - 7, cy - 7); ctx.lineTo(cx + 7, cy + 7); ctx.moveTo(cx + 7, cy - 7); ctx.lineTo(cx - 7, cy + 7); ctx.stroke();
+            });
+            ctx.restore();
+        }
         if (videoConfettiParticles.length > 0) {
             videoConfettiParticles.forEach(p => {
                 ctx.save(); ctx.translate(p.x, p.y);
@@ -672,6 +702,43 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             } else if (cmd.type === 'P') {
                 userGrid[cmd.r][cmd.c] = cmd.color;
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                
+                // 💡【大正解の自動消去】：P命令で同じマスが上書きされたら、Qのハテナ記憶を完全自動消去！
+                if (typeof videoQuestionMap !== 'undefined') delete videoQuestionMap[`${cmd.r},${cmd.c}`];
+            } else if (cmd.type === 'Q') {
+                // 💡 Q命令の実体処理（初期化は startKomyakuVideoGeneration 直後で自動実行）
+                if (typeof videoQuestionMap === 'undefined') window.videoQuestionMap = {};
+                const tokens = cmd.content.split(/(\(\d+\))/); let currentColorId = 1;
+                tokens.forEach(tok => {
+                    if (!tok) return;
+                    if (tok.startsWith('(') && tok.endsWith(')')) { currentColorId = parseInt(tok.slice(1, -1), 10); } 
+                    else {
+                        let i = 0; while (i < tok.length) {
+                            const cellStr = tok.slice(i, i + 2);
+                            if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
+                                const c = cellStr.charCodeAt(0) - 65; const r = parseInt(cellStr.charAt(1), 10) - 1;
+                                if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                                    userGrid[r][c] = currentColorId === 0 ? null : (currentColorId - 1);
+                                    window.videoQuestionMap[`${r},${c}`] = true; // ハテナターゲットに登録！
+                                }
+                                i += 2;
+                            } else { i++; }
+                        }
+                    }
+                });
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+            } else if (cmd.type === 'X') {
+                // 💡 X命令の実体処理：境界線a1b1などを引っこ抜き、あれば消去、なければ追加（トグル）
+                if (typeof window.videoCrossWalls === 'undefined') window.videoCrossWalls = [];
+                const content = cmd.content;
+                if (content.length === 4) {
+                    const w = {
+                        c1: content.charCodeAt(0) - 97, r1: parseInt(content.charAt(1), 10) - 1,
+                        c2: content.charCodeAt(2) - 97, r2: parseInt(content.charAt(3), 10) - 1
+                    };
+                    const idx = window.videoCrossWalls.findIndex(x => (x.r1===w.r1 && x.c1===w.c1 && x.r2===w.r2 && x.c2===w.c2) || (x.r1===w.r2 && x.c1===w.c2 && x.r2===w.r1 && x.c2===w.c1));
+                    if (idx !== -1) { window.videoCrossWalls.splice(idx, 1); } else { window.videoCrossWalls.push(w); }
+                }
             } else if (cmd.type === 'L') {
                 userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
             } else if (cmd.type === 'C') {
