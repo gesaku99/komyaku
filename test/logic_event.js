@@ -703,7 +703,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         
                         // 💡【動的底辺ジャスト停止センサー】：
                         // 6x6でも7x7でも8x8でも、その盤面の「真の底辺+30px」を100枚全員が確実に突き抜けたその一瞬を完璧に検知！
-                        const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30);
+                        const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30 + CELL_PIXEL);
                         
                         if (isAllOut) {
                             videoConfettiParticles = [];
