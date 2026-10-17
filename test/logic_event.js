@@ -649,7 +649,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             ctx.restore();
         }
         if (typeof videoCrossWalls !== 'undefined' && videoCrossWalls && videoCrossWalls.length > 0) {
-            ctx.save(); ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            ctx.save(); ctx.strokeStyle = '#222222'; ctx.lineWidth = 3; ctx.lineCap = 'round';
             videoCrossWalls.forEach(w => {
                 // 格子点2つ（a1b1など）の中点（境界の中心）を計算し、小さな×印（半径8px）を描画
                 const mx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL;
