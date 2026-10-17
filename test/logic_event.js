@@ -705,18 +705,20 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         // 6x6でも7x7でも8x8でも、その盤面の「真の底辺+30px」を100枚全員が確実に突き抜けたその一瞬を完璧に検知！
                         const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30 + CELL_PIXEL);
                         
+
                         if (isAllOut) {
-                            // 💡【完全消去パッチ】：センサーが完全脱出を検知したまさにその瞬間、
-                            // まず真っ先に録画を完全停止（stop）に叩き落としてブラウザのバッファへ強制コミット！
-                            if (!isReplayOnly && recorder) { recorder.stop(); }
+                            // 💡【物理トラック完全遮断パッチ】：
+                            // センサーが完全脱出を検知したまさにその瞬間、MediaRecorder の大元である
+                            // ビデオ録画トラックのストリーム（電気信号）を物理的にその場で一撃でパチンと切断します！
+                            if (!isReplayOnly && recorder && recorder.stream) {
+                                recorder.stream.getTracks().forEach(track => track.stop());
+                                recorder.stop(); 
+                            }
 
                             videoConfettiParticles = [];
                             videoRenderState.active = false; 
                             videoRenderState.showInitialProblemCircles = false;
     
-                            // 大外の optimizedTimeline の残処理（350ms）や、最末尾の固定ウェイト（400ms）を
-                            // 「2度と実行させない」ために、スタジオモーダルを立ち上げた直後に、
-                            // この動画生成関数自体の実行を完全にブツ切りにして強制終了（return）させます！
                             if (isReplayOnly || !recorder) {
                                 showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
                             }
