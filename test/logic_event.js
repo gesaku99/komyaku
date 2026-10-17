@@ -474,6 +474,10 @@ function openKomyakuScriptInputDialog(isReplayOnly = false) {
 
 // 💡 タイムライン解析・再生エンジン（配列パースバグ完全根治版）
 async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
+    // 💡【ゾンビウェイト完全根治パッチ】：すでに録画再生中の場合は、2個目の多重起動を初手で完全門前払い！
+    // これにより裏側での多重ループが物理的に完全遮断され、後ろへの余白の回り込みが永久に100%消滅します。
+    if (videoRenderState.active && !isReplayOnly) return;
+
     const promptInput = targetScriptText;
     if (!promptInput) return;
 
