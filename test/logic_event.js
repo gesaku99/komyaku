@@ -638,7 +638,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     }
 
 // 💡【つなぎ目マーカー】これ以降の上映タイムライン実行ループ ＆ スタジオモーダルUI部は最後の「パート3」へ合流します
-    // ─── 📦【パート3 / 3：タイムライン上映実行ループ ───
+    // ─── 📦【パート3 / 4：動的センサー ＆ タイムライン実行ループ部】 ───
 
     drawPuzzle(); renderVideoOverlays();
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -682,37 +682,38 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 const isPerfectCorrect = (!errorDisplayState.wrongLines || errorDisplayState.wrongLines.length === 0);
                 
                 if (isPerfectCorrect) {
+                    // 💡【動的底辺センサーへの進化】：その瞬間のパズル画面の真の底辺ラインを正確に逆算
+                    const trueBottomLine = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
                     const canvasW = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
-                    const canvasH = OFFSET * 2 + GRID_SIZE * CELL_PIXEL + 30;
                     videoConfettiParticles = [];
 
                     for (let i = 0; i < 100; i++) {
                         const angle = (Math.random() * 65 + 57) * (Math.PI / 180); const velocity = Math.random() * 16 + 15;
                         videoConfettiParticles.push({
-                            x: canvasW / 2, y: canvasH - 10, w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
+                            x: canvasW / 2, y: trueBottomLine - 10, w: Math.random() * 6 + 8, h: Math.random() * 10 + 14,
                             vx: Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1), vy: -Math.sin(angle) * velocity,
                             rotSpeedX: Math.random() * 0.14 + 0.10, rotSpeedY: Math.random() * 0.14 + 0.10, count: 0
                         });
                     }
 
-                    for (let i = 0; i < 250; i++) {
+                    // 猶予上限を 500回（約8秒分）に広げ、大画面パズルでのタイムアウトを200%永久に阻止します
+                    for (let i = 0; i < 500; i++) {
                         videoConfettiParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.55; p.vx *= 0.985; p.count++; });
                         drawPuzzle(); renderVideoOverlays();
-                        const isAllOut = videoConfettiParticles.every(p => p.y > canvasH + 20);
                         
-                        // 💡【大改革】：紙吹雪が消え去ったジャストの瞬間に、おまけの400msや余計なウェイトをすべて踏み越えて、
-                        // 録画停止（recorder.stop）のシャッター関数へダイレクトに強制直行脱出させます！
+                        // 💡【動的底辺ジャスト停止センサー】：
+                        // 6x6でも7x7でも8x8でも、その盤面の「真の底辺+30px」を100枚全員が確実に突き抜けたその一瞬を完璧に検知！
+                        const isAllOut = videoConfettiParticles.every(p => p.y > trueBottomLine + 30);
+                        
                         if (isAllOut) {
                             videoConfettiParticles = [];
-
-                            // 💡【ここにこの2行を追加】：白紙の状態で「あと2コマ分（60ms）」だけ録画を回し続けます
                             drawPuzzle(); renderVideoOverlays();
-                            await sleep(60); 
+                            await sleep(60); // バッファ遅延相殺
 
                             videoRenderState.showInitialProblemCircles = false;
                             if (!isReplayOnly && recorder) { recorder.stop(); } 
                             else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
-                            return; // ➔ 💡 ここで関数の処理を完全に終わらせ、大外の全ウェイトを完全消滅させます！
+                            return; 
                         }
                         await sleep(16); 
                     }
@@ -725,11 +726,13 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
         if (cmd.type === 'T') { await sleep(600); } else { await sleep(350); }
     }
 
-    // 💡 通常の正解アニメーション（C命令）を挟まない動画のときだけ動く、クリーンな終了処理
     videoRenderState.showInitialProblemCircles = false;
     drawPuzzle(); renderVideoOverlays(); await sleep(400); 
     if (!isReplayOnly && recorder) { recorder.stop(); } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+
+    // 💡【つなぎ目マーカー】これ以降のスタジオモーダルUIの実体、および完全復元処理は最後の「パート4」へ合流します
+    // ─── 📦【パート4 / 4：スタジオUIダイアログ生成・クローズ処理部】 ───
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
         const existingModal = document.getElementById('komyakuStudioModal');
@@ -758,7 +761,7 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                     const dayValue = urlParams.get('day') || "XXX";
                     const link = document.createElement('a');
                     link.download = `Day${dayValue}答え動画.mp4`; link.href = videoUrl; link.click();
-                    modal.remove(); 
+                    modal.remove(); // 💡【デグレード解決】ダウンロード後にモーダルを美しく消去してロック解除！
                 }
             }},
             { text: '🔄 再度プレビュー（再生のみ）', color: '#007aff', action: () => { modal.remove(); startKomyakuVideoGeneration(true, lastKomyakuScriptPrompt); }},
