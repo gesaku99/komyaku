@@ -708,11 +708,18 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         if (isAllOut) {
                             videoConfettiParticles = [];
                             drawPuzzle(); renderVideoOverlays();
-                            await sleep(60); // バッファ遅延相殺
+                            await sleep(60); // 2コマバッファ
 
+                            // 💡【根治】：動画モードのフラグをその場で最速で強制終了（false）に叩き落とします！
+                            // これによりブラウザの裏側の録画タイムラグが物理的に完全遮断され、無駄な余白が1コマも後ろに回り込まなくなります。
+                            videoRenderState.active = false; 
                             videoRenderState.showInitialProblemCircles = false;
-                            if (!isReplayOnly && recorder) { recorder.stop(); } 
-                            else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
+    
+                            if (!isReplayOnly && recorder) { 
+                                recorder.stop(); 
+                           } else { 
+                                showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); 
+                            }
                             return; 
                         }
                         await sleep(16); 
