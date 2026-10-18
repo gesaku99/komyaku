@@ -161,7 +161,7 @@ function handleActionMove(x, y) {
     }
 }
 
-// ─── 📦【パート1 / 2：通常プレイ ＆ v0.9.3 メモトグル仕分けエンジン拡張部】 ───
+// ─── 📦【パート1 / 2：通常プレイ ＆ v0.9.3 メモトグル仕分けエンジン正常化版】 ───
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
@@ -169,7 +169,6 @@ function handleActionEnd() {
         
         // 💡【v0.9.3完全根治版】：白ペンモードでのシングルクリック時の「×印」と「？」の動的仕分け配置
         if (startCell && !hasMovedInSession) {
-            // 直前のmousedown/touchstartリスナーが記憶した、正確な内部論理座標をダイレクトに参照
             const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
             const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
 
@@ -198,7 +197,6 @@ function handleActionEnd() {
                 redoStack.length = 0;
             } else {
                 let targetWall;
-                // 💡【バグ完全根治】：不法な引数バッティングを完全駆逐し、格子点座標ペアを100%特定！
                 if (minDistToEdge === distToLeft) {
                     targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
                 } else if (minDistToEdge === distToRight) {
@@ -243,13 +241,13 @@ function handleActionEnd() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡【引数バグ完全消滅】：PCとスマホの生イベントから、正確なタッチ論理内部座標をブレなく記憶するセーフティ
+// 💡【大正解のタッチ位置同期】：e.touches[0] から1本目の指の位置を1コマのブレもなく完璧にホールド！
 let lastMouseCoords = null;
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
-canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
+canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
 
-// 💡【つなぎ目マーカー】これ以降の現役拡張型歴史 Undo/Redo エンジン、およびパレット生成ロジックは「パート2」へ合流します
-    // ─── 📦【パート2 / 2：現役拡張型歴史 Undo/Redo ＆ 通常プレイ操作リスナー結合部】 ───
+// 💡【つなぎ目マーカー】これ以降の現役拡張型歴史 Undo/Redo エンジン、および操作リスナー結合部は最後の「パート2」へ合流します
+    // ─── 📦【パート2 / 2：現役拡張型歴史 Undo/Redo ＆ パレット結合部】 ───
 
 function undo() {
     if (undoStack.length === 0) return;
@@ -300,7 +298,7 @@ function getNearestVertex(x, y, customMaxDist = 25 * 3) {
 
 canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
-canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); if (e.touches && e.touches.length > 0) { const touch = e.touches; const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((touch[0].clientX - rect.left) * scaleX, (touch[0].top - rect.top) * scaleY); } }, { passive: false });
+canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY); } }, { passive: false });
 canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
 function createPalette() {
