@@ -310,29 +310,27 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
 
     // ─── 💡【v0.9.3新設】：通常プレイ中、プレイヤーの手動操作で配置された「？」マーク ＆ 「黒い×印」の最前面描画レイヤー ───
     if (!isSolutionImage && !isProblemImage) {
-        // 1. 通常プレイ用「？」マーク描画
-        if (typeof userQuestionMap !== 'undefined' && userQuestionMap) {
-            ctx.save(); ctx.font = 'bold 22px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#222222';
-            for (let key in userQuestionMap) {
-                const [r, c] = key.split(',').map(Number);
-                const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2;
-                const my = OFFSET + r * CELL_PIXEL + titleBarHeight + CELL_PIXEL / 2;
-                // 通常色塗りマス、あるいは未着色（白マス）の状態でも自由に「？」だけを独立して中央描画
-                ctx.fillText('？', mx, my + 1); 
-            }
-            ctx.restore();
-        }
-        
-        // 2. 通常プレイ用「黒い×印」描画
-        if (typeof userCrossWalls !== 'undefined' && userCrossWalls && userCrossWalls.length > 0) {
-            ctx.save(); ctx.strokeStyle = '#222222'; ctx.lineWidth = 3; ctx.lineCap = 'round'; // 動画スタジオと同じ美しい黒色指定
-            userCrossWalls.forEach(w => {
-                const cx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL; 
-                const cy = OFFSET + (w.r1 + w.r2) / 2 * CELL_PIXEL + titleBarHeight;
-                ctx.beginPath(); ctx.moveTo(cx - 7, cy - 7); ctx.lineTo(cx + 7, cy + 7); ctx.moveTo(cx + 7, cy - 7); ctx.lineTo(cx - 7, cy + 7); ctx.stroke();
-            });
-            ctx.restore();
-        }
+// 💡【v0.9.3完全根治パッチ】：window. を頭に明示することで、変数宣言の読み込み順のすれ違いによるクラッシュが物理的に200%永久に消滅します！
+// 1. 通常プレイ用「？」マーク描画
+if (typeof window.userQuestionMap !== 'undefined' && window.userQuestionMap) {
+    ctx.save(); ctx.font = 'bold 22px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#222222';
+    for (let key in window.userQuestionMap) {
+        const [r, c] = key.split(',').map(Number);
+        const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2; const my = OFFSET + r * CELL_PIXEL + titleBarHeight + CELL_PIXEL / 2;
+        ctx.fillText('？', mx, my + 1); 
+    }
+    ctx.restore();
+}
+
+// 2. 通常プレイ用「黒い×印」描画
+if (typeof window.userCrossWalls !== 'undefined' && window.userCrossWalls && window.userCrossWalls.length > 0) {
+    ctx.save(); ctx.strokeStyle = '#222222'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    window.userCrossWalls.forEach(w => {
+        const cx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL; const cy = OFFSET + (w.r1 + w.r2) / 2 * CELL_PIXEL + titleBarHeight;
+        ctx.beginPath(); ctx.moveTo(cx - 7, cy - 7); ctx.lineTo(cx + 7, cy + 7); ctx.moveTo(cx + 7, cy - 7); ctx.lineTo(cx - 7, cy + 7); ctx.stroke();
+    });
+    ctx.restore();
+}
     }
 
     // ─── 🎬【正解動画生成エンジン専用・最前面焼き付けフック（完全同期版）】 ───
