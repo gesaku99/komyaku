@@ -13,6 +13,9 @@ let answerGrid = [];
 let userGrid = [];
 // ★追加：手動で引いた壁のリスト。各壁は { r1, c1, r2, c2 } の形で格子点の座標を記憶します
 let userWalls = [];
+// 💡【v0.9.3新設】：プレイヤーが通常プレイ中にメモした「×印」と「？」を永久記憶する配列とマップ
+let userCrossWalls = [];
+let userQuestionMap = {};
 
 const COLOR_PALETTE = [
     '#b4fbc2', // 0番: 緑 (Light Green)
@@ -55,75 +58,42 @@ function recordChange(r, c, oldColor, newColor) {
     updateHistoryButtons();
 }
 
-// ─── 🧹【v0.9.1リセット履歴一括凝縮版】あなたのディレクション通り、色と壁の全過去を1つの操作履歴にして1発プッシュ！ ───
 function clearGrid() {
     if (typeof clearErrorDisplay === 'function') clearErrorDisplay();
     
-    // 1. Clearボタンが押される「直前」の、すべての色マスと手動壁の完璧な状態を深くコピーして1つの塊にする！
+    // 💡【v0.9.3拡張】Clear直前の「色マス・手動壁・手動×印・手動？」の4つすべてをディープコピーして1つの塊にする
     const gridSnapshotBeforeClear = userGrid.map(row => [...row]);
     const wallSnapshotBeforeClear = (typeof userWalls !== 'undefined' && userWalls) ? userWalls.map(w => ({ ...w })) : [];
+    const crossSnapshotBeforeClear = userCrossWalls.map(w => ({ ...w }));
+    const questionSnapshotBeforeClear = { ...userQuestionMap };
 
     let hasChange = false;
 
-    // 2. 画面上の色マスを真っ白(null)にする
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
-            if (userGrid[r][c] !== null) {
-                userGrid[r][c] = null;
-                hasChange = true;
-            }
+            if (userGrid[r][c] !== null) { userGrid[r][c] = null; hasChange = true; }
         }
     }
+    if (userWalls && userWalls.length > 0) { userWalls = []; hasChange = true; }
+    
+    // 💡【v0.9.3拡張】画面上の手動×印と？マークを空っぽにする
+    if (userCrossWalls.length > 0) { userCrossWalls = []; hasChange = true; }
+    if (Object.keys(userQuestionMap).length > 0) { userQuestionMap = {}; hasChange = true; }
 
-    // 3. 画面上の手動壁を空っぽ([])にする
-    if (typeof userWalls !== 'undefined' && userWalls && userWalls.length > 0) {
-        userWalls = [];
-        hasChange = true;
-    }
-
-    // 4. 💡【大正解の合流】変化が起きていたら、色と壁の「元の姿」を1つのセットにして、Undoスタックへポチッと1発だけプッシュ！
     if (hasChange) {
         undoStack.push({
             type: 'clear_all',
             oldGrid: gridSnapshotBeforeClear,
-            oldWalls: wallSnapshotBeforeClear
+            oldWalls: wallSnapshotBeforeClear,
+            oldCrosses: crossSnapshotBeforeClear,
+            oldQuestions: questionSnapshotBeforeClear
         });
-
         if (typeof redoStack !== 'undefined') redoStack.length = 0; 
         if (typeof drawPuzzle === 'function') drawPuzzle();
         if (typeof updateHistoryButtons === 'function') updateHistoryButtons();
     }
 }
 
-function undo() {
-    if (undoStack.length === 0) return;
-    clearErrorDisplay();
-    const change = undoStack.pop();
-    redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-    userGrid[change.r][change.c] = change.from;
-    while (undoStack.length > 0 && undoStack[undoStack.length - 1].to === 0 && change.to === 0) {
-        const nextChange = undoStack.pop();
-        redoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
-        userGrid[nextChange.r][nextChange.c] = nextChange.from;
-    }
-    drawPuzzle();
-    updateHistoryButtons();
-}
-
-function redo() {
-    if (redoStack.length === 0) return;
-    clearErrorDisplay();
-    const change = redoStack.pop();
-    undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-    userGrid[change.r][change.c] = change.from;
-    while (redoStack.length > 0 && redoStack[redoStack.length - 1].from === 0 && change.from === 0) {
-        const nextChange = redoStack.pop();
-        undoStack.push({ r: nextChange.r, c: nextChange.c, from: nextChange.to, to: nextChange.from });
-        userGrid[nextChange.r][nextChange.c] = nextChange.from;
-    }
-    drawPuzzle();
-    updateHistoryButtons();
-}
 
 function updateHistoryButtons() {
     undoBtn.disabled = (undoStack.length === 0);

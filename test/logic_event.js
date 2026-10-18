@@ -161,21 +161,112 @@ function handleActionMove(x, y) {
     }
 }
 
-// ─── 🛠️【完全確定版】1マスずつのUndoを100%維持し、シングルクリックも動く完成版 handleActionEnd ───
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
-        // 💡 解決策：ドラッグ終了時の「まとめて上書き保存する重複処理」を跡形もなく完全消去しました
+        
+        // 💡【v0.9.3新設】：白ペンモードでのシングルクリック（タップ）時の「×印」と「？」の自動仕分け配置システム
+        if (startCell && !hasMovedInSession) {
+            // ドラッグ中のマウス・タッチ移動が一切なかった場合（＝純粋なクリック）のみ発火
+            const rect = canvas.getBoundingClientRect();
+            // 現在のCanvasの実際の表示スケールから、論理上の正確な内部クリック座標を逆算
+            const scaleX = (canvas.width / rect.width) / 3;
+            const scaleY = (canvas.height / rect.height) / 3;
+            
+            // 直前のmousedown/touchstartイベントから、最後に離された純粋な座標をホールド
+            // （※引数未指定時は handleActionMove 等で記憶された最新の位置を安全に参照）
+            const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
+            const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
+
+            // 1. マスの中心座標（？ターゲット）を算出
+            const cellCenterX = OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2;
+            const cellCenterY = OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2;
+            const distToCenter = Math.sqrt((clickX - cellCenterX) ** 2 + (clickY - cellCenterY) ** 2);
+
+            // 2. マスの4辺の境界線（×ターゲット）のうち、最もクリック位置に近い境界線を算出
+            const leftX = OFFSET + startCell.c * CELL_PIXEL;
+            const rightX = OFFSET + (startCell.c + 1) * CELL_PIXEL;
+            const topY = OFFSET + startCell.r * CELL_PIXEL + 30;
+            const bottomY = OFFSET + (startCell.r + 1) * CELL_PIXEL + 30;
+
+            const distToLeft = Math.abs(clickX - leftX);
+            const distToRight = Math.abs(clickX - rightX);
+            const distToTop = Math.abs(clickY - topY);
+            const distToBottom = Math.abs(clickY - bottomY);
+            const minDistToEdge = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+
+            // 💡【数学的仕分け】：マスの中心（？の感知円）に近いか、それとも境界線（×の感知帯）に近いかを直撃比較！
+            if (distToCenter < minDistToEdge) {
+                // ❓【？マークモード判定】
+                const memoKey = `${startCell.r},${startCell.c}`;
+                const snapshotBeforeQuestion = { ...userQuestionMap };
+                
+                if (userQuestionMap[memoKey]) {
+                    delete userQuestionMap[memoKey]; // すでにあったら消す
+                } else {
+                    userQuestionMap[memoKey] = true; // なければ置く
+                }
+                
+                // 1操作として歴史スタックに完全単独プッシュ！
+                undoStack.push({
+                    type: 'memo_question',
+                    from: snapshotBeforeQuestion,
+                    to: { ...userQuestionMap }
+                });
+                redoStack.length = 0;
+            } else {
+                // ✖️【×印モード判定】：最も近かった辺の格子点ペアを特定
+                let targetWall;
+                if (minDistToEdge === distToLeft) {
+                    targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
+                } else if (minDistToEdge === distToRight) {
+                    targetWall = { r1: startCell.r, c1: startCell.c + 1, r2: startCell.r + 1, c2: startCell.c + 1 };
+                } else if (minDistToEdge === distToTop) {
+                    targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r, c2: startCell.c + 1 };
+                } else {
+                    targetWall = { r1: startCell.r + 1, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c + 1 };
+                }
+
+                // 画面外の最外枠の境界線は除外（パズル内部の境界線のみを対象化）
+                if (targetWall.r1 >= 0 && targetWall.r1 <= GRID_SIZE && targetWall.c1 >= 0 && targetWall.c1 <= GRID_SIZE &&
+                    targetWall.r2 >= 0 && targetWall.r2 <= GRID_SIZE && targetWall.c2 >= 0 && targetWall.c2 <= GRID_SIZE) {
+                    
+                    const snapshotBeforeCross = userCrossWalls.map(w => ({ ...w }));
+                    const existingIdx = userCrossWalls.findIndex(w => 
+                        (w.r1 === targetWall.r1 && w.c1 === targetWall.c1 && w.r2 === targetWall.r2 && w.c2 === targetWall.c2) ||
+                        (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === w.c1)
+                    );
+
+                    if (existingIdx !== -1) {
+                        userCrossWalls.splice(existingIdx, 1); // すでにあったら消す
+                    } else {
+                        userCrossWalls.push(targetWall); // なければ置く
+                    }
+
+                    // 1操作として歴史スタックに完全単独プッシュ！
+                    undoStack.push({
+                        type: 'memo_cross',
+                        from: snapshotBeforeCross,
+                        to: userCrossWalls.map(w => ({ ...w }))
+                    });
+                    redoStack.length = 0;
+                }
+            }
+        }
     } else if (startCell && !hasMovedInSession && !assistStartV) {
-        // シングルクリック（ポンと叩いた時）の着色・消去を正常に実行
+        // 🎨 通常の色塗りモード時のシングルクリック処理
         const oldColor = userGrid[startCell.r][startCell.c];
         let newColor = currentSelectedColor;
         if (oldColor !== null) newColor = null; 
         if (oldColor !== newColor) {
             userGrid[startCell.r][startCell.c] = newColor;
             recordChange(startCell.r, startCell.c, oldColor, newColor);
-            cleanUserWalls(); 
+            
+            // 💡【連動の自動消去】：通常の色ペンでマスがポンと上書き着色（または消去）された瞬間に、
+            // そのマスに載っていた「？」マークメモだけを、大元のP命令の権利を侵さずに全自動クリア！
+            delete userQuestionMap[`${startCell.r},${startCell.c}`];
+            if (typeof cleanUserWalls === 'function') cleanUserWalls(); 
         }
     }
     
@@ -183,39 +274,45 @@ function handleActionEnd() {
     startCell = null;
     hasMovedInSession = false;
     isErasingMode = false;
-    
     assistStartV = null;
     assistCurrentV = null;
 
-    drawPuzzle(); // これでシングルクリックの色も一瞬で画面に反映されます
-
-    setTimeout(() => {
-        if (typeof checkAnswer === 'function') checkAnswer(true);
-    }, 0);
+    drawPuzzle(); 
+    setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// ─── 🛠️【v0.9.1完全クローズ版】あなたの数理ロジックを100%具現化！1発で同時に完全連動するUndo/Redoシステム ───
+// 💡 マウス・タッチ座標を handleActionEnd 側で正確に拾うため、リスナー内の座標を記憶するお守り
+let lastMouseCoords = null;
+canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
+canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
+
 function undo() {
     if (undoStack.length === 0) return;
     clearErrorDisplay();
     const change = undoStack.pop();
     
     if (change.type === 'clear_all') {
-        // 💡【解決策：Undo】Clearされた歴史(型)を検知したら、保存されていた色と壁を「1発で同時に」元の姿へ完全大復活！
-        redoStack.push(change); // そのままの塊でRedoへ引き渡す
+        redoStack.push(change);
         userGrid = change.oldGrid.map(row => [...row]);
         userWalls = change.oldWalls.map(w => ({ ...w }));
+        userCrossWalls = change.oldCrosses.map(w => ({ ...w }));
+        userQuestionMap = { ...change.oldQuestions };
     } else if (change.type === 'wall_step') {
-        // ✏️ 通常プレイ時の、手動境界線1マスずつのUndo処理
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
+    } else if (change.type === 'memo_cross') {
+        // 💡【v0.9.3通常×操作Undo】
+        redoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
+        userCrossWalls = change.from.map(w => ({ ...w }));
+    } else if (change.type === 'memo_question') {
+        // 💡【v0.9.3通常？操作Undo】
+        redoStack.push({ type: 'memo_question', from: change.to, to: change.from });
+        userQuestionMap = { ...change.from };
     } else {
-        // 🎨 通常プレイ時の、色塗り1マスずつのUndo処理
         redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
         userGrid[change.r][change.c] = change.from;
     }
-    drawPuzzle(); 
-    updateHistoryButtons();
+    drawPuzzle(); updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
@@ -225,21 +322,25 @@ function redo() {
     const change = redoStack.pop();
     
     if (change.type === 'clear_all') {
-        // 💡【解決策：Redo】やり直す時も、難しいループを一切挟まず、色マスも手動壁も「1発で同時に」クリーンな完全消去状態へ直行！
         undoStack.push(change);
         userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-        userWalls = [];
+        userWalls = []; userCrossWalls = []; userQuestionMap = {};
     } else if (change.type === 'wall_step') {
-        // ✏️ 通常プレイ時の、手動境界線1マスずつのRedo処理
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
+    } else if (change.type === 'memo_cross') {
+        // 💡【v0.9.3通常×操作Redo】
+        undoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
+        userCrossWalls = change.from.map(w => ({ ...w }));
+    } else if (change.type === 'memo_question') {
+        // 💡【v0.9.3通常？操作Redo】
+        undoStack.push({ type: 'memo_question', from: change.to, to: change.from });
+        userQuestionMap = { ...change.from };
     } else {
-        // 🎨 通常プレイ時の、色塗り1マスずつのRedo処理
         undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
         userGrid[change.r][change.c] = change.from;
     }
-    drawPuzzle(); 
-    updateHistoryButtons();
+    drawPuzzle(); updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
@@ -261,18 +362,6 @@ function getNearestVertex(x, y, customMaxDist = 25 * 3) {
     return nearestV;
 }
 
-// ─── 🛠️【完全根治・3倍高画質ホールド版】3倍設定を1ミリも崩さず、1マスの縮みズレを数学的に完全消滅させるリスナー ───
-canvas.addEventListener('mousedown', function(e) { 
-    if (e.button !== 0) return; 
-    isDrawing = true; 
-    const rect = canvas.getBoundingClientRect(); 
-    
-    // 💡【解決策】大元のキャンバス倍率から、高画質分の「3倍」を割り算して純粋なウィンドウ縮小率だけを完璧に抽出！
-    const scaleX = (canvas.width / rect.width) / 3;
-    const scaleY = (canvas.height / rect.height) / 3;
-    
-    handleActionStart((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
-});
 
 canvas.addEventListener('mousemove', function(e) { 
     if (!isDrawing) return; 
@@ -290,23 +379,6 @@ window.addEventListener('mouseup', () => {
     } 
 });
 
-// ─── 🛠️【スマホ縮小全体表示・完全同期確定版】PCと100%同じ縮小比率をスマホへ適用し、大復活！ ───
-canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault(); 
-    isDrawing = true; 
-    const rect = canvas.getBoundingClientRect(); 
-    
-    if (e.touches && e.touches.length > 0) {
-        const touch = e.touches[0]; // 1本目の指のデータを正確にホールド
-        
-        // 💡【解決策】PC側で大成功した「内部サイズ / 画面上の実際の表示幅」の比率をスマホへ完全ドッキング！
-        // これにより、盤面がどれだけ小さく縮小全体表示されていようが、指の現在地とマス目の位置が100%完璧にシンクロします！
-        const scaleX = (canvas.width / rect.width) / 3;
-        const scaleY = (canvas.height / rect.height) / 3;
-        
-        handleActionStart((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
-    }
-});
 
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return; 
