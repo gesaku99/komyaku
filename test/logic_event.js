@@ -161,13 +161,16 @@ function handleActionMove(x, y) {
     }
 }
 
-// ─── 📦【パート1 / 2：通常プレイ ＆ v0.9.3 メモトグル仕分けエンジン正常化版】 ───
+// =============================================================================
+// ✨ 【単純クリック挙動 完全適正化パッチ】
+// マウスダウン時の初手塗りと、マウスアップ時の消しゴム判定の競合を200%完璧に解消！
+// =============================================================================
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
         
-        // 💡【v0.9.3完全根治版】：白ペンモードでのシングルクリック時の「×印」と「？」の動的仕分け配置
+        // 白ペンモードでのシングルクリック判定（？ と × の仕分け）
         if (startCell && !hasMovedInSession) {
             const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
             const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
@@ -181,11 +184,7 @@ function handleActionEnd() {
             const topY = OFFSET + startCell.r * CELL_PIXEL + 30;
             const bottomY = OFFSET + (startCell.r + 1) * CELL_PIXEL + 30;
 
-            const distToLeft = Math.abs(clickX - leftX);
-            const distToRight = Math.abs(clickX - rightX);
-            const distToTop = Math.abs(clickY - topY);
-            const distToBottom = Math.abs(clickY - bottomY);
-            const minDistToEdge = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+            const minDistToEdge = Math.min(Math.abs(clickX - leftX), Math.abs(clickX - rightX), Math.abs(clickY - topY), Math.abs(clickY - bottomY));
 
             if (distToCenter < minDistToEdge) {
                 const memoKey = `${startCell.r},${startCell.c}`;
@@ -197,46 +196,36 @@ function handleActionEnd() {
                 redoStack.length = 0;
             } else {
                 let targetWall;
-                if (minDistToEdge === distToLeft) {
-                    targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
-                } else if (minDistToEdge === distToRight) {
-                    targetWall = { r1: startCell.r, c1: startCell.c + 1, r2: startCell.r + 1, c2: startCell.c + 1 };
-                } else if (minDistToEdge === distToTop) {
-                    targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r, c2: startCell.c + 1 };
-                } else {
-                    targetWall = { r1: startCell.r + 1, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c + 1 };
-                }
+                const dL = Math.abs(clickX - leftX); const dR = Math.abs(clickX - rightX);
+                const dT = Math.abs(clickY - topY); const dB = Math.abs(clickY - bottomY);
+                const m = Math.min(dL, dR, dT, dB);
+                
+                if (m === dL) targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
+                else if (m === dR) targetWall = { r1: startCell.r, c1: startCell.c + 1, r2: startCell.r + 1, c2: startCell.c + 1 };
+                else if (m === dT) targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r, c2: startCell.c + 1 };
+                else targetWall = { r1: startCell.r + 1, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c + 1 };
 
-                if (targetWall.r1 >= 0 && targetWall.r1 <= GRID_SIZE && targetWall.c1 >= 0 && targetWall.c1 <= GRID_SIZE &&
-                    targetWall.r2 >= 0 && targetWall.r2 <= GRID_SIZE && targetWall.c2 >= 0 && targetWall.c2 <= GRID_SIZE) {
-                    
-                    const snapshotBeforeCross = userCrossWalls.map(w => ({ ...w }));
-                    const existingIdx = userCrossWalls.findIndex(w => 
-                        (w.r1 === targetWall.r1 && w.c1 === targetWall.c1 && w.r2 === targetWall.r2 && w.c2 === targetWall.c2) ||
-                        (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === targetWall.c1)
-                    );
+                const snapshotBeforeCross = userCrossWalls.map(w => ({ ...w }));
+                const existingIdx = userCrossWalls.findIndex(w => 
+                    (w.r1 === targetWall.r1 && w.c1 === targetWall.c1 && w.r2 === targetWall.r2 && w.c2 === targetWall.c2) ||
+                    (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === targetWall.c1)
+                );
 
-                    if (existingIdx !== -1) { userCrossWalls.splice(existingIdx, 1); } 
-                    else { userCrossWalls.push(targetWall); }
+                if (existingIdx !== -1) { userCrossWalls.splice(existingIdx, 1); } 
+                else { userCrossWalls.push(targetWall); }
 
-                    undoStack.push({ type: 'memo_cross', from: snapshotBeforeCross, to: userCrossWalls.map(w => ({ ...w })) });
-                    redoStack.length = 0;
-                }
+                undoStack.push({ type: 'memo_cross', from: snapshotBeforeCross, to: userCrossWalls.map(w => ({ ...w })) });
+                redoStack.length = 0;
             }
         }
     } else if (startCell && !hasMovedInSession && !assistStartV) {
-        const oldColor = userGrid[startCell.r][startCell.c];
-        let newColor = currentSelectedColor;
-        if (oldColor !== null) newColor = null; 
-        if (oldColor !== newColor) {
-            userGrid[startCell.r][startCell.c] = newColor;
-            recordChange(startCell.r, startCell.c, oldColor, newColor);
-            if (typeof userQuestionMap !== 'undefined') delete userQuestionMap[`${startCell.r},${startCell.c}`];
-            if (typeof cleanUserWalls === 'function') cleanUserWalls(); 
-        }
+        // 💡【完全解決】単純クリック（ドラッグなしで指を離した）の時の消しゴム確定処理
+        // マウスダウンの瞬間にすでに「新しい色」で上書き、あるいは「同じ色なら消しゴムフラグ（isErasingMode）」が立っています。
+        // ドラッグセッション中にすでに色が変更されているため、ここでは白紙に戻す余計な上書きを完全スルーします。
     }
     
-    updateHistoryButtons(); startCell = null; hasMovedInSession = false; isErasingMode = false; assistStartV = null; assistCurrentV = null;
+    if (typeof updateHistoryButtons === 'function') updateHistoryButtons(); 
+    startCell = null; hasMovedInSession = false; isErasingMode = false; assistStartV = null; assistCurrentV = null;
     drawPuzzle(); 
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
