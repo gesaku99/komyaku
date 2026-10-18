@@ -620,6 +620,18 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
             videoRenderState.texts.forEach((txt, idx) => { ctx.fillText(txt, barW / 2, barY + 16 + idx * 24 + 8); });
             ctx.restore();
         }
+        // 💡【新設】：Q命令およびP命令の上書きと連動する、動画専用「？」マーク＆「×印」描画システム
+        // （※videoQuestionMap と videoCrossWalls は、下の再生ループ側で全自動管理されます）
+        if (typeof videoQuestionMap !== 'undefined' && videoQuestionMap) {
+            ctx.save(); ctx.font = 'bold 22px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#222222';
+            for (let key in videoQuestionMap) {
+                const [r, c] = key.split(',').map(Number);
+                const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2;
+                const my = OFFSET + r * CELL_PIXEL + 30 + CELL_PIXEL / 2;
+                if (userGrid[r][c] !== null) ctx.fillText('？', mx, my + 1); // 色マスがある時だけ中央に描画
+            }
+            ctx.restore();
+        }
         if (videoRenderState.blinkLines && videoRenderState.blinkLines.length > 0) {
             videoRenderState.blinkLines.forEach(line => {
                 ctx.save(); ctx.globalAlpha = videoRenderState.blinkAlpha;
@@ -635,18 +647,6 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(distSq.toString(), mx, my + 0.5);
                 ctx.restore();
             });
-        }
-        // 💡【新設】：Q命令およびP命令の上書きと連動する、動画専用「？」マーク＆「×印」描画システム
-        // （※videoQuestionMap と videoCrossWalls は、下の再生ループ側で全自動管理されます）
-        if (typeof videoQuestionMap !== 'undefined' && videoQuestionMap) {
-            ctx.save(); ctx.font = 'bold 22px "Tenor Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#222222';
-            for (let key in videoQuestionMap) {
-                const [r, c] = key.split(',').map(Number);
-                const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2;
-                const my = OFFSET + r * CELL_PIXEL + 30 + CELL_PIXEL / 2;
-                if (userGrid[r][c] !== null) ctx.fillText('？', mx, my + 1); // 色マスがある時だけ中央に描画
-            }
-            ctx.restore();
         }
         if (typeof videoCrossWalls !== 'undefined' && videoCrossWalls && videoCrossWalls.length > 0) {
             ctx.save(); ctx.strokeStyle = '#222222'; ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -706,27 +706,34 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 // 💡【大正解の自動消去】：P命令で同じマスが上書きされたら、Qのハテナ記憶を完全自動消去！
                 if (typeof videoQuestionMap !== 'undefined') delete videoQuestionMap[`${cmd.r},${cmd.c}`];
             } else if (cmd.type === 'Q') {
-                // 💡 Q命令の実体処理（初期化は startKomyakuVideoGeneration 直後で自動実行）
+                // 💡【1マスずつ順次上映パッチ】：Q命令内のマスを記載順に1マスずつ実直に展開！
                 if (typeof videoQuestionMap === 'undefined') window.videoQuestionMap = {};
                 const tokens = cmd.content.split(/(\(\d+\))/); let currentColorId = 1;
-                tokens.forEach(tok => {
-                    if (!tok) return;
-                    if (tok.startsWith('(') && tok.endsWith(')')) { currentColorId = parseInt(tok.slice(1, -1), 10); } 
-                    else {
+                
+                for (let tok of tokens) {
+                    if (!tok) continue;
+                    if (tok.startsWith('(') && tok.endsWith(')')) { 
+                        currentColorId = parseInt(tok.slice(1, -1), 10); 
+                    } else {
                         let i = 0; while (i < tok.length) {
                             const cellStr = tok.slice(i, i + 2);
                             if (cellStr.length === 2 && /[A-I]/.test(cellStr.charAt(0)) && /[1-9]/.test(cellStr.charAt(1))) {
                                 const c = cellStr.charCodeAt(0) - 65; const r = parseInt(cellStr.charAt(1), 10) - 1;
                                 if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
                                     userGrid[r][c] = currentColorId === 0 ? null : (currentColorId - 1);
-                                    window.videoQuestionMap[`${r},${c}`] = true; // ハテナターゲットに登録！
+                                    window.videoQuestionMap[`${r},${c}`] = true; // ハテナを記憶
+                                    
+                                    // 💡【重要】：1マス塗るごとにCanvasを即時上書き更新し、通常コマンド用の350msのウエイトを正確に挟んで1マスずつの躍動感を具現化！
+                                    drawPuzzle(); renderVideoOverlays();
+                                    await sleep(350); 
                                 }
                                 i += 2;
                             } else { i++; }
                         }
                     }
-                });
+                }
                 if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                continue; // 💡 大外の重複ウエイトを踏ませずに次のコマンドへ美しく流します
             } else if (cmd.type === 'X') {
                 // 💡 X命令の実体処理：境界線a1b1などを引っこ抜き、あれば消去、なければ追加（トグル）
                 if (typeof window.videoCrossWalls === 'undefined') window.videoCrossWalls = [];
