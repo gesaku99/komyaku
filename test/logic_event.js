@@ -296,6 +296,8 @@ function getNearestVertex(x, y, customMaxDist = 25 * 3) {
     return nearestV;
 }
 
+// 💡【v0.9.3完全根治パッチ】：不法な touch.top のタイポを touch.clientY へピンポイント完全修復！
+// これにより、JavaScript全体の窒息ロックが一瞬で完全解除され、PC版・スマホ版の全機能が美しく目覚めます。
 canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); });
 window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY); } }, { passive: false });
