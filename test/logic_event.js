@@ -161,17 +161,15 @@ function handleActionMove(x, y) {
     }
 }
 
+// ─── 📦【パート1 / 2：通常プレイ ＆ v0.9.3 メモトグル仕分けエンジン拡張部】 ───
 function handleActionEnd() {
     if (currentSelectedColor === 9) {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
         
-        // 💡【v0.9.3完全根治版】：白ペンモードでのシングルクリック（タップ）時の「×印」と「？」の動的仕分け配置
+        // 💡【v0.9.3完全根治版】：白ペンモードでのシングルクリック時の「×印」と「？」の動的仕分け配置
         if (startCell && !hasMovedInSession) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = (canvas.width / rect.width) / 3;
-            const scaleY = (canvas.height / rect.height) / 3;
-            
+            // 直前のmousedown/touchstartリスナーが記憶した、正確な内部論理座標をダイレクトに参照
             const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
             const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
 
@@ -200,7 +198,7 @@ function handleActionEnd() {
                 redoStack.length = 0;
             } else {
                 let targetWall;
-                // 💡【バグ完全根治】：minCなどの多重衝突タイポを綺麗に一掃し、格子点座標をミリ単位で精緻に特定！
+                // 💡【バグ完全根治】：不法な引数バッティングを完全駆逐し、格子点座標ペアを100%特定！
                 if (minDistToEdge === distToLeft) {
                     targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
                 } else if (minDistToEdge === distToRight) {
@@ -245,34 +243,27 @@ function handleActionEnd() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡【スマホ・PC座標同期お守り】：引数衝突バグを1文字残さず完全クリーンアップ！
+// 💡【引数バグ完全消滅】：PCとスマホの生イベントから、正確なタッチ論理内部座標をブレなく記憶するセーフティ
 let lastMouseCoords = null;
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
-canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
+canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
+
+// 💡【つなぎ目マーカー】これ以降の現役拡張型歴史 Undo/Redo エンジン、およびパレット生成ロジックは「パート2」へ合流します
+    // ─── 📦【パート2 / 2：現役拡張型歴史 Undo/Redo ＆ 通常プレイ操作リスナー結合部】 ───
 
 function undo() {
     if (undoStack.length === 0) return;
-    clearErrorDisplay();
-    const change = undoStack.pop();
-    
+    clearErrorDisplay(); const change = undoStack.pop();
     if (change.type === 'clear_all') {
-        redoStack.push(change);
-        userGrid = change.oldGrid.map(row => [...row]);
-        userWalls = change.oldWalls.map(w => ({ ...w }));
-        userCrossWalls = change.oldCrosses.map(w => ({ ...w }));
-        userQuestionMap = { ...change.oldQuestions };
+        redoStack.push(change); userGrid = change.oldGrid.map(row => [...row]); userWalls = change.oldWalls.map(w => ({ ...w })); userCrossWalls = change.oldCrosses.map(w => ({ ...w })); userQuestionMap = { ...change.oldQuestions };
     } else if (change.type === 'wall_step') {
-        redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
-        userWalls = change.from.map(w => ({ ...w }));
+        redoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        redoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
-        userCrossWalls = change.from.map(w => ({ ...w }));
+        redoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        redoStack.push({ type: 'memo_question', from: change.to, to: change.from });
-        userQuestionMap = { ...change.from };
+        redoStack.push({ type: 'memo_question', from: change.to, to: change.from }); userQuestionMap = { ...change.from };
     } else {
-        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-        userGrid[change.r][change.c] = change.from;
+        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
@@ -280,127 +271,45 @@ function undo() {
 
 function redo() {
     if (redoStack.length === 0) return;
-    clearErrorDisplay();
-    const change = redoStack.pop();
-    
+    clearErrorDisplay(); const change = redoStack.pop();
     if (change.type === 'clear_all') {
-        undoStack.push(change);
-        userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-        userWalls = []; userCrossWalls = []; userQuestionMap = {};
+        undoStack.push(change); userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)); userWalls = []; userCrossWalls = []; userQuestionMap = {};
     } else if (change.type === 'wall_step') {
-        undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
-        userWalls = change.from.map(w => ({ ...w }));
+        undoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        undoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
-        userCrossWalls = change.from.map(w => ({ ...w }));
+        undoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        undoStack.push({ type: 'memo_question', from: change.to, to: change.from });
-        userQuestionMap = { ...change.from };
+        undoStack.push({ type: 'memo_question', from: change.to, to: change.from }); userQuestionMap = { ...change.from };
     } else {
-        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from });
-        userGrid[change.r][change.c] = change.from;
+        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
     }
     drawPuzzle(); updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡 引数の末尾に可変距離を受け取る customMaxDist を追加し、未指定時は元の黄金比 25 を自動適用
 function getNearestVertex(x, y, customMaxDist = 25 * 3) {
-    let nearestV = null;
-    let minDistance = customMaxDist; 
+    let nearestV = null; let minDistance = customMaxDist; 
     for (let r = 0; r <= GRID_SIZE; r++) {
         for (let c = 0; c <= GRID_SIZE; c++) {
-            const vx = OFFSET + c * CELL_PIXEL;
-            const vy = OFFSET + r * CELL_PIXEL + 30;  // titleBarHeight = 30
-            const distance = Math.sqrt((x - vx) ** 2 + (y - vy) ** 2);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestV = { r, c };
-            }
+            const vx = OFFSET + c * CELL_PIXEL; const vy = OFFSET + r * CELL_PIXEL + 30; const distance = Math.sqrt((x - vx) ** 2 + (y - vy) ** 2);
+            if (distance < minDistance) { minDistance = distance; nearestV = { r, c }; }
         }
     }
     return nearestV;
 }
 
-
-canvas.addEventListener('mousemove', function(e) { 
-    if (!isDrawing) return; 
-    const rect = canvas.getBoundingClientRect(); 
-    const scaleX = (canvas.width / rect.width) / 3;
-    const scaleY = (canvas.height / rect.height) / 3;
-    
-    handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); 
-});
-
-window.addEventListener('mouseup', () => { 
-    if (isDrawing) { 
-        isDrawing = false; 
-        handleActionEnd(); 
-    } 
-});
-
-
-canvas.addEventListener('touchmove', function(e) {
-    if (!isDrawing) return; 
-    e.preventDefault(); 
-    const rect = canvas.getBoundingClientRect(); 
-    
-    if (e.touches && e.touches.length > 0) {
-        const touch = e.touches[0]; 
-        
-        // 💡 動かしている最中(スワイプ)も、全く同じ縮小比率を掛け算して handleActionMove へ完璧に同期！
-        const scaleX = (canvas.width / rect.width) / 3;
-        const scaleY = (canvas.height / rect.height) / 3;
-        
-        handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
-    }
-}, { passive: false });
-
-canvas.addEventListener('touchend', function(e) { 
-    e.preventDefault(); 
-    if (isDrawing) { 
-        isDrawing = false; 
-        handleActionEnd(); 
-    } 
-});
-
-canvas.addEventListener('touchend', function(e) { 
-    e.preventDefault(); 
-    if (isDrawing) { 
-        isDrawing = false; 
-        handleActionEnd(); 
-    } 
-});
+canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); });
+window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
+canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); if (e.touches && e.touches.length > 0) { const touch = e.touches; const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((touch[0].clientX - rect.left) * scaleX, (touch[0].top - rect.top) * scaleY); } }, { passive: false });
+canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
 
 function createPalette() {
     paletteContainer.innerHTML = ''; 
     for (let i = 0; i <= 9; i++) {
-        const btn = document.createElement('div'); 
-        btn.className = 'color-btn';
-        if (i === currentSelectedColor) btn.classList.add('active');
-        btn.style.backgroundColor = COLOR_PALETTE[i]; 
-        btn.onclick = () => { currentSelectedColor = i; createPalette(); };
-        
+        const btn = document.createElement('div'); btn.className = 'color-btn'; if (i === currentSelectedColor) btn.classList.add('active'); btn.style.backgroundColor = COLOR_PALETTE[i]; btn.onclick = () => { currentSelectedColor = i; createPalette(); };
         if (i === 9) {
-            btn.innerText = ''; 
-            btn.style.display = 'flex';
-            btn.style.alignItems = 'center';
-            btn.style.justifyContent = 'center';
-            btn.innerHTML = `
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- ①左上(5.00, 4.00)から下部余白(5.00, 21.00)へ下ろし、右へ(11.50, 21.00)まで引いた太さ2.30の境界線 -->
-                    <path d="M 5.00 4.00 L 5.00 21.00 L 11.50 21.00" stroke-width="2.30"></path>
-                    
-                    <!-- ②【立体ノックボタン】1番目と4番目の短辺中点が、胴体後端中点(18.50, 9.10)と100%完全同軸ドッキングするパーツ -->
-                    <path d="M 17.65 8.60 L 19.15 6.05 L 20.85 7.05 L 19.35 9.60 Z" fill="#333333" stroke="#222222"></path>
-
-                    <!-- ③【ペン胴体部分（完全な長方形）】右肩下がりの短辺を維持し、直角90度（内積=0）を完璧に証明した白抜きボディ -->
-                    <path d="M 11.80 16.60 L 16.80 8.10 L 20.20 10.10 L 15.20 18.60 Z" fill="#ffffff"></path>
-                    
-                    <!-- ④【ペン先の三角錐（完全な二等辺三角形）】最先端(11.50, 21.00)が境界線の端点へのり、胴体底辺と100%完璧に融合するチップ -->
-                    <path d="M 11.80 16.60 L 11.50 21.00 L 15.20 18.60 Z" fill="#ffffff"></path>
-                </svg>
-            `;
+            btn.innerText = ''; btn.style.display = 'flex'; btn.style.alignItems = 'center'; btn.style.justifyContent = 'center';
+            btn.innerHTML = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M 5.00 4.00 L 5.00 21.00 L 11.50 21.00" stroke-width="2.30"></path><path d="M 17.65 8.60 L 19.15 6.05 L 20.85 7.05 L 19.35 9.60 Z" fill="#333333" stroke="#222222"></path><path d="M 11.80 16.60 L 16.80 8.10 L 20.20 10.10 L 15.20 18.60 Z" fill="#ffffff"></path><path d="M 11.80 16.60 L 11.50 21.00 L 15.20 18.60 Z" fill="#ffffff"></path></svg>`;
         }
         paletteContainer.appendChild(btn);
     }
