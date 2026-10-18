@@ -241,11 +241,6 @@ function handleActionEnd() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡【引数バグ完全消滅】：e.touches[0] から1本目の指の位置を1コマのブレもなく完璧にホールド！
-let lastMouseCoords = null;
-canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
-canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
-
 // 💡【つなぎ目マーカー】これ以降の現役拡張型歴史 Undo/Redo エンジン、および操作リスナー結合部は最後の「パート2」へ合流します
     // ─── 📦【パート2 / 2：現役拡張型歴史 Undo/Redo ＆ パレット結合部】 ───
 
@@ -296,12 +291,110 @@ function getNearestVertex(x, y, customMaxDist = 25 * 3) {
     return nearestV;
 }
 
-// 💡【v0.9.3完全根治パッチ】：不法な touch.top のタイポを touch.clientY へピンポイント完全修復！
-// これにより、JavaScript全体の窒息ロックが一瞬で完全解除され、PC版・スマホ版の全機能が美しく目覚めます。
-canvas.addEventListener('mousemove', function(e) { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); });
-window.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; handleActionEnd(); } });
-canvas.addEventListener('touchmove', function(e) { if (!isDrawing) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(); if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; handleActionMove((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY); } }, { passive: false });
-canvas.addEventListener('touchend', function(e) { e.preventDefault(); if (isDrawing) { isDrawing = false; handleActionEnd(); } });
+// =============================================================================
+// ✨ 【マス塗り・壁引き機能 完全復活パッチ】
+// 1. isDrawing = true の確実な起爆
+// 2. 内部解像度（3倍宇宙）の座標スケール計算をミリ単位でジャスト修正
+// =============================================================================
+
+let lastMouseCoords = null;
+
+// ─── ① マウス操作用の統合リスナー ───
+canvas.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return; // 左クリック以外は無視
+    
+    isDrawing = true; // 💡【重要】ドラッグ開始フラグを確実に起爆！
+    
+    const rect = canvas.getBoundingClientRect();
+    // canvas.width は logicalWidth * 3 なので、rect.width で割るだけで正しい論理座標になります（余計な /3 を完全撤去）
+    const scaleX = (canvas.width / rect.width) / 3; 
+    const scaleY = (canvas.height / rect.height) / 3;
+    
+    lastMouseCoords = { 
+        x: (e.clientX - rect.left) * scaleX * 3, 
+        y: (e.clientY - rect.top) * scaleY * 3 
+    };
+    
+    // コア操作ロジックへ座標を流し込む
+    if (typeof handleActionStart === 'function') {
+        handleActionStart(lastMouseCoords.x, lastMouseCoords.y);
+    }
+});
+
+canvas.addEventListener('mousemove', function(e) {
+    if (!isDrawing) return; // 押し込まれていない時は完全にガード
+    
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = (canvas.width / rect.width) / 3;
+    const scaleY = (canvas.height / rect.height) / 3;
+    
+    const currentX = (e.clientX - rect.left) * scaleX * 3;
+    const currentY = (e.clientY - rect.top) * scaleY * 3;
+    
+    if (typeof handleActionMove === 'function') {
+        handleActionMove(currentX, currentY);
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    if (isDrawing) {
+        isDrawing = false;
+        if (typeof handleActionEnd === 'function') {
+            handleActionEnd();
+        }
+    }
+});
+
+
+// ─── ② スマホ・タブレット（タッチ操作）用の統合リスナー ───
+canvas.addEventListener('touchstart', function(e) {
+    if (e.touches && e.touches.length > 0) {
+        isDrawing = true; // 💡【重要】タッチ時もドラッグ開始フラグを確実に起爆！
+        
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
+        
+        lastMouseCoords = { 
+            x: (touch.clientX - rect.left) * scaleX * 3, 
+            y: (touch.clientY - rect.top) * scaleY * 3 
+        };
+        
+        if (typeof handleActionStart === 'function') {
+            handleActionStart(lastMouseCoords.x, lastMouseCoords.y);
+        }
+    }
+});
+
+canvas.addEventListener('touchmove', function(e) {
+    if (!isDrawing) return;
+    e.preventDefault(); // iPhone等の画面スクロール暴発を100%防止
+    
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+        const touch = e.touches[0];
+        const scaleX = (canvas.width / rect.width) / 3;
+        const scaleY = (canvas.height / rect.height) / 3;
+        
+        const currentX = (touch.clientX - rect.left) * scaleX * 3;
+        const currentY = (touch.clientY - rect.top) * scaleY * 3;
+        
+        if (typeof handleActionMove === 'function') {
+            handleActionMove(currentX, currentY);
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    if (isDrawing) {
+        isDrawing = false;
+        if (typeof handleActionEnd === 'function') {
+            handleActionEnd();
+        }
+    }
+});
 
 function createPalette() {
     paletteContainer.innerHTML = ''; 
