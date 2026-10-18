@@ -241,7 +241,7 @@ function handleActionEnd() {
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡【大正解のタッチ位置同期】：e.touches[0] から1本目の指の位置を1コマのブレもなく完璧にホールド！
+// 💡【引数バグ完全消滅】：e.touches[0] から1本目の指の位置を1コマのブレもなく完璧にホールド！
 let lastMouseCoords = null;
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
 canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
