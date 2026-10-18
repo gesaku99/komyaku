@@ -292,96 +292,291 @@ function getNearestVertex(x, y, customMaxDist = 25 * 3) {
 }
 
 // =============================================================================
-// ✨ 【マス塗り・壁引き機能 完全復活パッチ】
-// 1. isDrawing = true の確実な起爆
-// 2. 内部解像度（3倍宇宙）の座標スケール計算をミリ単位でジャスト修正
+// ✨ KOMYAKU 操作システム完全開通パッチ (v0.9.3 決定版) - PART 1
+// 1. セーフティ版頂点センサーのドッキング
+// 2. 3倍宇宙の論理座標スケール計算の完全適合
 // =============================================================================
 
+// ★追加: 引数の不足を200%防御するセーフティ版の頂点検出関数
+function getNearestVertexSafe(x, y, customMaxDist) {
+    // 引数がない場合は、3倍宇宙のデフォルト値 (25 * 3 = 75) を自動適用
+    let maxD = (customMaxDist !== undefined) ? customMaxDist : 75;
+    let nearestV = null; 
+    let minDistance = maxD; 
+    
+    for (let r = 0; r <= GRID_SIZE; r++) {
+        for (let c = 0; c <= GRID_SIZE; c++) {
+            const vx = OFFSET + c * CELL_PIXEL; 
+            const vy = OFFSET + r * CELL_PIXEL + 30; 
+            const distance = Math.sqrt((x - vx) ** 2 + (y - vy) ** 2);
+            if (distance < minDistance) { 
+                minDistance = distance; 
+                nearestV = { r, c }; 
+            }
+        }
+    }
+    return nearestV;
+}
+
+// ─── ⬛ マウス操作用イベントリスナー群（ブラウザ表示サイズから論理座標への100%完全適合版） ───
 let lastMouseCoords = null;
 
-// ─── ① マウス操作用の統合リスナー ───
 canvas.addEventListener('mousedown', function(e) {
     if (e.button !== 0) return; // 左クリック以外は無視
-    
     isDrawing = true; // 💡【重要】ドラッグ開始フラグを確実に起爆！
     
     const rect = canvas.getBoundingClientRect();
-    // canvas.width は logicalWidth * 3 なので、rect.width で割るだけで正しい論理座標になります（余計な /3 を完全撤去）
-    const scaleX = (canvas.width / rect.width) / 3; 
-    const scaleY = (canvas.height / rect.height) / 3;
+    // ブラウザ上の表示幅 (rect.width) に対する、元のパズルの論理幅の比率を正確に算出
+    const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+    const scaleX = logicalWidth / rect.width;
+    const scaleY = (logicalWidth + 30) / rect.height; // タイトルバーの30pxを含む高さに対応
     
     lastMouseCoords = { 
-        x: (e.clientX - rect.left) * scaleX * 3, 
-        y: (e.clientY - rect.top) * scaleY * 3 
+        x: (e.clientX - rect.left) * scaleX, 
+        y: (e.clientY - rect.top) * scaleY 
     };
     
-    // コア操作ロジックへ座標を流し込む
-    if (typeof handleActionStart === 'function') {
-        handleActionStart(lastMouseCoords.x, lastMouseCoords.y);
+    // getNearestVertex を安全版へ差し替えてアクションを開始
+    const cell = getCellFromCoords(lastMouseCoords.x, lastMouseCoords.y);
+    const nearestV = getNearestVertexSafe(lastMouseCoords.x, lastMouseCoords.y);
+
+    if (currentSelectedColor === 9) {
+        // ✏️【壁引きモード】
+        wallSnapshotBeforeDrag = userWalls.map(w => ({ ...w }));
+        lastIntersectedV = nearestV;
+        startCell = cell;
+        hasMovedInSession = false;
+    } else {
+        // 🎨【通常の色塗りモード】
+        if (nearestV) {
+            const currentScale = rect.width / (OFFSET * 2 + GRID_SIZE * CELL_PIXEL);
+            const adjustedNearestV = getNearestVertexSafe(lastMouseCoords.x, lastMouseCoords.y, 25 * currentScale);
+            
+            if (adjustedNearestV) {
+                assistStartV = adjustedNearestV;
+                assistCurrentV = adjustedNearestV;
+                if (typeof drawPuzzle === 'function') drawPuzzle();
+            }
+        }
+        startCell = cell;
+        hasMovedInSession = false;
+        if (cell) {
+            // 同じ色なら消しゴム、違う色ならダイレクト上書き
+            isErasingMode = (userGrid[cell.r][cell.c] === currentSelectedColor);
+            
+            // 💡【操作性大改善】クリックしたまさにその瞬間に、1マス目を即座に着色する！
+            const oldColor = userGrid[cell.r][cell.c];
+            const newColor = isErasingMode ? null : currentSelectedColor;
+            if (oldColor !== newColor && !assistStartV) {
+                userGrid[cell.r][cell.c] = newColor;
+                recordChange(cell.r, cell.c, oldColor, newColor);
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                drawPuzzle();
+            }
+        }
     }
 });
 
 canvas.addEventListener('mousemove', function(e) {
-    if (!isDrawing) return; // 押し込まれていない時は完全にガード
+    if (!isDrawing) return;
     
     const rect = canvas.getBoundingClientRect();
-    const scaleX = (canvas.width / rect.width) / 3;
-    const scaleY = (canvas.height / rect.height) / 3;
+    const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+    const scaleX = logicalWidth / rect.width;
+    const scaleY = (logicalWidth + 30) / rect.height;
     
-    const currentX = (e.clientX - rect.left) * scaleX * 3;
-    const currentY = (e.clientY - rect.top) * scaleY * 3;
+    const currentX = (e.clientX - rect.left) * scaleX;
+    const currentY = (e.clientY - rect.top) * scaleY;
     
-    if (typeof handleActionMove === 'function') {
-        handleActionMove(currentX, currentY);
+    if (currentSelectedColor === 9) {
+        // ✏️【壁引きモード】
+        const currentV = getNearestVertexSafe(currentX, currentY);
+        if (currentV && lastIntersectedV) {
+            const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
+            if (dist === 1) {
+                const newWall = { r1: lastIntersectedV.r, c1: lastIntersectedV.c, r2: currentV.r, c2: currentV.c };
+                if (isWallEditable(newWall)) {
+                    const snapshotBeforeSingleStep = userWalls.map(w => ({ ...w }));
+                    const existingIdx = userWalls.findIndex(w => 
+                        (w.r1 === newWall.r1 && w.c1 === newWall.c1 && w.r2 === newWall.r2 && w.c2 === newWall.c2) ||
+                        (w.r1 === newWall.r2 && w.c1 === newWall.c2 && w.r2 === newWall.r1 && w.c2 === newWall.c1)
+                    );
+                    
+                    if (existingIdx !== -1) { 
+                        userWalls.splice(existingIdx, 1); 
+                    } else { 
+                        userWalls.push(newWall); 
+                    }
+                    
+                    clearErrorDisplay();
+                    undoStack.push({
+                        type: 'wall_step',
+                        from: snapshotBeforeSingleStep,
+                        to: userWalls.map(w => ({ ...w }))
+                    });
+                    redoStack.length = 0;
+                    hasMovedInSession = true;
+                    drawPuzzle();
+                }
+                lastIntersectedV = currentV; 
+            }
+        }
+    } else {
+        // 🎨【通常の色塗りモード】
+        if (assistStartV) {
+            const currentV = getNearestVertexSafe(currentX, currentY);
+            if (currentV) assistCurrentV = currentV;
+            drawPuzzle(); 
+        }
+        const cell = getCellFromCoords(currentX, currentY);
+        if (cell && startCell && !assistStartV) {
+            if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
+            const oldColor = userGrid[cell.r][cell.c];
+            const newColor = isErasingMode ? null : currentSelectedColor;
+            if (oldColor !== newColor) {
+                userGrid[cell.r][cell.c] = newColor;
+                recordChange(cell.r, cell.c, oldColor, newColor);
+                if (typeof cleanUserWalls === 'function') cleanUserWalls(); 
+                drawPuzzle();
+            }
+        }
     }
 });
 
 window.addEventListener('mouseup', () => {
     if (isDrawing) {
         isDrawing = false;
-        if (typeof handleActionEnd === 'function') {
-            handleActionEnd();
-        }
+        handleActionEnd();
     }
 });
 
+// =============================================================================
+// ✨ KOMYAKU 操作システム完全開通パッチ (v0.9.3 決定版) - PART 2
+// 1. スマホ・タブレット用タッチイベントリスナーの100%適合
+// 2. パレット生成および初期化処理の結合
+// =============================================================================
 
-// ─── ② スマホ・タブレット（タッチ操作）用の統合リスナー ───
+// ─── 📱 スマホ・タブレット（タッチ操作）用の統合リスナー ───
 canvas.addEventListener('touchstart', function(e) {
     if (e.touches && e.touches.length > 0) {
         isDrawing = true; // 💡【重要】タッチ時もドラッグ開始フラグを確実に起爆！
+        const touch = e.touches[0]; // 💡[0]番目の指の情報を100%確実に捕捉しNaNを完全撃退！
         
-        const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        const scaleX = (canvas.width / rect.width) / 3;
-        const scaleY = (canvas.height / rect.height) / 3;
+        const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+        const scaleX = logicalWidth / rect.width;
+        const scaleY = (logicalWidth + 30) / rect.height;
         
         lastMouseCoords = { 
-            x: (touch.clientX - rect.left) * scaleX * 3, 
-            y: (touch.clientY - rect.top) * scaleY * 3 
+            x: (touch.clientX - rect.left) * scaleX, 
+            y: (touch.clientY - rect.top) * scaleY 
         };
         
-        if (typeof handleActionStart === 'function') {
-            handleActionStart(lastMouseCoords.x, lastMouseCoords.y);
+        // タッチ開始時アクションの展開
+        const cell = getCellFromCoords(lastMouseCoords.x, lastMouseCoords.y);
+        const nearestV = getNearestVertexSafe(lastMouseCoords.x, lastMouseCoords.y);
+
+        if (currentSelectedColor === 9) {
+            wallSnapshotBeforeDrag = userWalls.map(w => ({ ...w }));
+            lastIntersectedV = nearestV;
+            startCell = cell;
+            hasMovedInSession = false;
+        } else {
+            if (nearestV) {
+                const currentScale = rect.width / (OFFSET * 2 + GRID_SIZE * CELL_PIXEL);
+                const adjustedNearestV = getNearestVertexSafe(lastMouseCoords.x, lastMouseCoords.y, 25 * currentScale);
+                
+                if (adjustedNearestV) {
+                    assistStartV = adjustedNearestV;
+                    assistCurrentV = adjustedNearestV;
+                    if (typeof drawPuzzle === 'function') drawPuzzle();
+                }
+            }
+            startCell = cell;
+            hasMovedInSession = false;
+            if (cell) {
+                isErasingMode = (userGrid[cell.r][cell.c] === currentSelectedColor);
+                
+                // 💡スマホでのファーストタッチ時も即座に着色するロジックをドッキング！
+                const oldColor = userGrid[cell.r][cell.c];
+                const newColor = isErasingMode ? null : currentSelectedColor;
+                if (oldColor !== newColor && !assistStartV) {
+                    userGrid[cell.r][cell.c] = newColor;
+                    recordChange(cell.r, cell.c, oldColor, newColor);
+                    if (typeof cleanUserWalls === 'function') cleanUserWalls();
+                    drawPuzzle();
+                }
+            }
         }
     }
 });
 
 canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing) return;
-    e.preventDefault(); // iPhone等の画面スクロール暴発を100%防止
+    e.preventDefault(); // iPhoneやAndroidの勝手なバウンス・スクロールを100%シャットアウト
     
     const rect = canvas.getBoundingClientRect();
     if (e.touches && e.touches.length > 0) {
-        const touch = e.touches[0];
-        const scaleX = (canvas.width / rect.width) / 3;
-        const scaleY = (canvas.height / rect.height) / 3;
+        const touch = e.touches[0]; // 💡[0]番目の指の情報を正確に追跡
+        const logicalWidth = OFFSET * 2 + GRID_SIZE * CELL_PIXEL;
+        const scaleX = logicalWidth / rect.width;
+        const scaleY = (logicalWidth + 30) / rect.height;
         
-        const currentX = (touch.clientX - rect.left) * scaleX * 3;
-        const currentY = (touch.clientY - rect.top) * scaleY * 3;
+        const currentX = (touch.clientX - rect.left) * scaleX;
+        const currentY = (touch.clientY - rect.top) * scaleY;
         
-        if (typeof handleActionMove === 'function') {
-            handleActionMove(currentX, currentY);
+        if (currentSelectedColor === 9) {
+            // 壁引きドラッグ追従
+            const currentV = getNearestVertexSafe(currentX, currentY);
+            if (currentV && lastIntersectedV) {
+                const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
+                if (dist === 1) {
+                    const newWall = { r1: lastIntersectedV.r, c1: lastIntersectedV.c, r2: currentV.r, c2: currentV.c };
+                    if (isWallEditable(newWall)) {
+                        const snapshotBeforeSingleStep = userWalls.map(w => ({ ...w }));
+                        const existingIdx = userWalls.findIndex(w => 
+                            (w.r1 === newWall.r1 && w.c1 === newWall.c1 && w.r2 === newWall.r2 && w.c2 === newWall.c2) ||
+                            (w.r1 === newWall.r2 && w.c1 === newWall.c2 && w.r2 === newWall.r1 && w.c2 === newWall.c1)
+                        );
+                        
+                        if (existingIdx !== -1) { 
+                            userWalls.splice(existingIdx, 1); 
+                        } else { 
+                            userWalls.push(newWall); 
+                        }
+                        
+                        clearErrorDisplay();
+                        undoStack.push({
+                            type: 'wall_step',
+                            from: snapshotBeforeSingleStep,
+                            to: userWalls.map(w => ({ ...w }))
+                        });
+                        redoStack.length = 0;
+                        hasMovedInSession = true;
+                        drawPuzzle();
+                    }
+                    lastIntersectedV = currentV; 
+                }
+            }
+        } else {
+            // 通常カラー塗りドラッグ追従
+            if (assistStartV) {
+                const currentV = getNearestVertexSafe(currentX, currentY);
+                if (currentV) assistCurrentV = currentV;
+                drawPuzzle(); 
+            }
+            const cell = getCellFromCoords(currentX, currentY);
+            if (cell && startCell && !assistStartV) {
+                if (cell.r !== startCell.r || cell.c !== startCell.c) hasMovedInSession = true;
+                const oldColor = userGrid[cell.r][cell.c];
+                const newColor = isErasingMode ? null : currentSelectedColor;
+                if (oldColor !== newColor) {
+                    userGrid[cell.r][cell.c] = newColor;
+                    recordChange(cell.r, cell.c, oldColor, newColor);
+                    if (typeof cleanUserWalls === 'function') cleanUserWalls(); 
+                    drawPuzzle();
+                }
+            }
         }
     }
 }, { passive: false });
@@ -390,16 +585,20 @@ canvas.addEventListener('touchend', function(e) {
     e.preventDefault();
     if (isDrawing) {
         isDrawing = false;
-        if (typeof handleActionEnd === 'function') {
-            handleActionEnd();
-        }
+        handleActionEnd();
     }
 });
 
+// ─── 🎨 パレット生成およびボタン初期化処理 ───
 function createPalette() {
     paletteContainer.innerHTML = ''; 
     for (let i = 0; i <= 9; i++) {
-        const btn = document.createElement('div'); btn.className = 'color-btn'; if (i === currentSelectedColor) btn.classList.add('active'); btn.style.backgroundColor = COLOR_PALETTE[i]; btn.onclick = () => { currentSelectedColor = i; createPalette(); };
+        const btn = document.createElement('div'); 
+        btn.className = 'color-btn'; 
+        if (i === currentSelectedColor) btn.classList.add('active'); 
+        btn.style.backgroundColor = COLOR_PALETTE[i]; 
+        btn.onclick = () => { currentSelectedColor = i; createPalette(); };
+        
         if (i === 9) {
             btn.innerText = ''; btn.style.display = 'flex'; btn.style.alignItems = 'center'; btn.style.justifyContent = 'center';
             btn.innerHTML = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#222222" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M 5.00 4.00 L 5.00 21.00 L 11.50 21.00" stroke-width="2.30"></path><path d="M 17.65 8.60 L 19.15 6.05 L 20.85 7.05 L 19.35 9.60 Z" fill="#333333" stroke="#222222"></path><path d="M 11.80 16.60 L 16.80 8.10 L 20.20 10.10 L 15.20 18.60 Z" fill="#ffffff"></path><path d="M 11.80 16.60 L 11.50 21.00 L 15.20 18.60 Z" fill="#ffffff"></path></svg>`;
@@ -407,8 +606,13 @@ function createPalette() {
         paletteContainer.appendChild(btn);
     }
 }
-function selectColor(colorId) { currentSelectedColor = colorId; createPalette(); }
 
+function selectColor(colorId) { 
+    currentSelectedColor = colorId; 
+    createPalette(); 
+}
+
+// ─── 🌐 起動時初期化エントリーポイント ───
 document.fonts.ready.then(function() {
     loadPuzzleFromUrlOrId("E2A8313C20");
     createPalette(); 
