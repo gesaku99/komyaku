@@ -166,25 +166,19 @@ function handleActionEnd() {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
         
-        // 💡【v0.9.3新設】：白ペンモードでのシングルクリック（タップ）時の「×印」と「？」の自動仕分け配置システム
+        // 💡【v0.9.3完全根治版】：白ペンモードでのシングルクリック（タップ）時の「×印」と「？」の動的仕分け配置
         if (startCell && !hasMovedInSession) {
-            // ドラッグ中のマウス・タッチ移動が一切なかった場合（＝純粋なクリック）のみ発火
             const rect = canvas.getBoundingClientRect();
-            // 現在のCanvasの実際の表示スケールから、論理上の正確な内部クリック座標を逆算
             const scaleX = (canvas.width / rect.width) / 3;
             const scaleY = (canvas.height / rect.height) / 3;
             
-            // 直前のmousedown/touchstartイベントから、最後に離された純粋な座標をホールド
-            // （※引数未指定時は handleActionMove 等で記憶された最新の位置を安全に参照）
             const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
             const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
 
-            // 1. マスの中心座標（？ターゲット）を算出
             const cellCenterX = OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2;
             const cellCenterY = OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2;
             const distToCenter = Math.sqrt((clickX - cellCenterX) ** 2 + (clickY - cellCenterY) ** 2);
 
-            // 2. マスの4辺の境界線（×ターゲット）のうち、最もクリック位置に近い境界線を算出
             const leftX = OFFSET + startCell.c * CELL_PIXEL;
             const rightX = OFFSET + (startCell.c + 1) * CELL_PIXEL;
             const topY = OFFSET + startCell.r * CELL_PIXEL + 30;
@@ -196,28 +190,17 @@ function handleActionEnd() {
             const distToBottom = Math.abs(clickY - bottomY);
             const minDistToEdge = Math.min(distToLeft, distToRight, distToTop, distToBottom);
 
-            // 💡【数学的仕分け】：マスの中心（？の感知円）に近いか、それとも境界線（×の感知帯）に近いかを直撃比較！
             if (distToCenter < minDistToEdge) {
-                // ❓【？マークモード判定】
                 const memoKey = `${startCell.r},${startCell.c}`;
                 const snapshotBeforeQuestion = { ...userQuestionMap };
+                if (userQuestionMap[memoKey]) { delete userQuestionMap[memoKey]; } 
+                else { userQuestionMap[memoKey] = true; }
                 
-                if (userQuestionMap[memoKey]) {
-                    delete userQuestionMap[memoKey]; // すでにあったら消す
-                } else {
-                    userQuestionMap[memoKey] = true; // なければ置く
-                }
-                
-                // 1操作として歴史スタックに完全単独プッシュ！
-                undoStack.push({
-                    type: 'memo_question',
-                    from: snapshotBeforeQuestion,
-                    to: { ...userQuestionMap }
-                });
+                undoStack.push({ type: 'memo_question', from: snapshotBeforeQuestion, to: { ...userQuestionMap } });
                 redoStack.length = 0;
             } else {
-                // ✖️【×印モード判定】：最も近かった辺の格子点ペアを特定
                 let targetWall;
+                // 💡【バグ完全根治】：minCなどの多重衝突タイポを綺麗に一掃し、格子点座標をミリ単位で精緻に特定！
                 if (minDistToEdge === distToLeft) {
                     targetWall = { r1: startCell.r, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c };
                 } else if (minDistToEdge === distToRight) {
@@ -228,60 +211,41 @@ function handleActionEnd() {
                     targetWall = { r1: startCell.r + 1, c1: startCell.c, r2: startCell.r + 1, c2: startCell.c + 1 };
                 }
 
-                // 画面外の最外枠の境界線は除外（パズル内部の境界線のみを対象化）
                 if (targetWall.r1 >= 0 && targetWall.r1 <= GRID_SIZE && targetWall.c1 >= 0 && targetWall.c1 <= GRID_SIZE &&
                     targetWall.r2 >= 0 && targetWall.r2 <= GRID_SIZE && targetWall.c2 >= 0 && targetWall.c2 <= GRID_SIZE) {
                     
                     const snapshotBeforeCross = userCrossWalls.map(w => ({ ...w }));
                     const existingIdx = userCrossWalls.findIndex(w => 
                         (w.r1 === targetWall.r1 && w.c1 === targetWall.c1 && w.r2 === targetWall.r2 && w.c2 === targetWall.c2) ||
-                        (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === w.c1)
+                        (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === targetWall.c1)
                     );
 
-                    if (existingIdx !== -1) {
-                        userCrossWalls.splice(existingIdx, 1); // すでにあったら消す
-                    } else {
-                        userCrossWalls.push(targetWall); // なければ置く
-                    }
+                    if (existingIdx !== -1) { userCrossWalls.splice(existingIdx, 1); } 
+                    else { userCrossWalls.push(targetWall); }
 
-                    // 1操作として歴史スタックに完全単独プッシュ！
-                    undoStack.push({
-                        type: 'memo_cross',
-                        from: snapshotBeforeCross,
-                        to: userCrossWalls.map(w => ({ ...w }))
-                    });
+                    undoStack.push({ type: 'memo_cross', from: snapshotBeforeCross, to: userCrossWalls.map(w => ({ ...w })) });
                     redoStack.length = 0;
                 }
             }
         }
     } else if (startCell && !hasMovedInSession && !assistStartV) {
-        // 🎨 通常の色塗りモード時のシングルクリック処理
         const oldColor = userGrid[startCell.r][startCell.c];
         let newColor = currentSelectedColor;
         if (oldColor !== null) newColor = null; 
         if (oldColor !== newColor) {
             userGrid[startCell.r][startCell.c] = newColor;
             recordChange(startCell.r, startCell.c, oldColor, newColor);
-            
-            // 💡【連動の自動消去】：通常の色ペンでマスがポンと上書き着色（または消去）された瞬間に、
-            // そのマスに載っていた「？」マークメモだけを、大元のP命令の権利を侵さずに全自動クリア！
-            delete userQuestionMap[`${startCell.r},${startCell.c}`];
+            if (typeof userQuestionMap !== 'undefined') delete userQuestionMap[`${startCell.r},${startCell.c}`];
             if (typeof cleanUserWalls === 'function') cleanUserWalls(); 
         }
     }
     
-    updateHistoryButtons();
-    startCell = null;
-    hasMovedInSession = false;
-    isErasingMode = false;
-    assistStartV = null;
-    assistCurrentV = null;
-
+    updateHistoryButtons(); startCell = null; hasMovedInSession = false; isErasingMode = false; assistStartV = null; assistCurrentV = null;
     drawPuzzle(); 
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
-// 💡 マウス・タッチ座標を handleActionEnd 側で正確に拾うため、リスナー内の座標を記憶するお守り
+// 💡【スマホ・PC座標同期お守り】：引数衝突バグを1文字残さず完全クリーンアップ！
 let lastMouseCoords = null;
 canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }; });
 canvas.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 0) { const touch = e.touches[0]; const rect = canvas.getBoundingClientRect(); const scaleX = (canvas.width / rect.width) / 3; const scaleY = (canvas.height / rect.height) / 3; lastMouseCoords = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY }; } });
@@ -301,11 +265,9 @@ function undo() {
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        // 💡【v0.9.3通常×操作Undo】
         redoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
         userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        // 💡【v0.9.3通常？操作Undo】
         redoStack.push({ type: 'memo_question', from: change.to, to: change.from });
         userQuestionMap = { ...change.from };
     } else {
@@ -329,11 +291,9 @@ function redo() {
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from });
         userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        // 💡【v0.9.3通常×操作Redo】
         undoStack.push({ type: 'memo_cross', from: change.to, to: change.from });
         userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        // 💡【v0.9.3通常？操作Redo】
         undoStack.push({ type: 'memo_question', from: change.to, to: change.from });
         userQuestionMap = { ...change.from };
     } else {
