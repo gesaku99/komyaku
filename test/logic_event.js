@@ -106,6 +106,7 @@ function handleActionMove(x, y) {
         if (currentV && lastIntersectedV) {
             const dist = Math.abs(currentV.c - lastIntersectedV.c) + Math.abs(currentV.r - lastIntersectedV.r);
             if (dist === 1) {
+                hasMovedInSession = true; // 💡【追記】動いたフラグを確定させ、クリックメモをスルーさせる
                 const newWall = { r1: lastIntersectedV.r, c1: lastIntersectedV.c, r2: currentV.r, c2: currentV.c };
                 if (isWallEditable(newWall)) {
                     // 操作直前の壁の状態をスナップショットとしてディープコピー
@@ -170,7 +171,7 @@ function handleActionEnd() {
         lastIntersectedV = null;
         if (typeof cleanUserWalls === 'function') cleanUserWalls();
         
-        // 白ペンモードでのシングルクリック判定（？ と × の仕分け）
+        // 💡【v0.9.3核心】白ペンモードでのシングルクリック時の「×印」と「？」のトグル配置・消去
         if (startCell && !hasMovedInSession) {
             const clickX = lastMouseCoords ? lastMouseCoords.x : (OFFSET + startCell.c * CELL_PIXEL + CELL_PIXEL / 2);
             const clickY = lastMouseCoords ? lastMouseCoords.y : (OFFSET + startCell.r * CELL_PIXEL + 30 + CELL_PIXEL / 2);
@@ -187,14 +188,21 @@ function handleActionEnd() {
             const minDistToEdge = Math.min(Math.abs(clickX - leftX), Math.abs(clickX - rightX), Math.abs(clickY - topY), Math.abs(clickY - bottomY));
 
             if (distToCenter < minDistToEdge) {
+                // ➔ 【中心をクリック：？マークのトグル処理】
                 const memoKey = `${startCell.r},${startCell.c}`;
                 const snapshotBeforeQuestion = { ...userQuestionMap };
-                if (userQuestionMap[memoKey]) { delete userQuestionMap[memoKey]; } 
-                else { userQuestionMap[memoKey] = true; }
                 
+                if (userQuestionMap[memoKey]) { 
+                    delete userQuestionMap[memoKey]; // すでに記載されている状態ならば消す
+                } else { 
+                    userQuestionMap[memoKey] = true; // なければ書く
+                }
+                
+                // 1操作としてUndo/Redoに記録
                 undoStack.push({ type: 'memo_question', from: snapshotBeforeQuestion, to: { ...userQuestionMap } });
                 redoStack.length = 0;
             } else {
+                // ➔ 【境界線上をクリック：×印マークのトグル処理】
                 let targetWall;
                 const dL = Math.abs(clickX - leftX); const dR = Math.abs(clickX - rightX);
                 const dT = Math.abs(clickY - topY); const dB = Math.abs(clickY - bottomY);
@@ -211,17 +219,19 @@ function handleActionEnd() {
                     (w.r1 === targetWall.r2 && w.c1 === targetWall.c2 && w.r2 === targetWall.r1 && w.c2 === targetWall.c1)
                 );
 
-                if (existingIdx !== -1) { userCrossWalls.splice(existingIdx, 1); } 
-                else { userCrossWalls.push(targetWall); }
+                if (existingIdx !== -1) { 
+                    userCrossWalls.splice(existingIdx, 1); // すでに記載されている状態ならば消す
+                } else { 
+                    userCrossWalls.push(targetWall); // なければ書く
+                }
 
+                // 1操作としてUndo/Redoに記録
                 undoStack.push({ type: 'memo_cross', from: snapshotBeforeCross, to: userCrossWalls.map(w => ({ ...w })) });
                 redoStack.length = 0;
             }
         }
     } else if (startCell && !hasMovedInSession && !assistStartV) {
-        // 💡【完全解決】単純クリック（ドラッグなしで指を離した）の時の消しゴム確定処理
-        // マウスダウンの瞬間にすでに「新しい色」で上書き、あるいは「同じ色なら消しゴムフラグ（isErasingMode）」が立っています。
-        // ドラッグセッション中にすでに色が変更されているため、ここでは白紙に戻す余計な上書きを完全スルーします。
+        // 通常プレイ時の単純クリック終了。Mousedown（Start）側で処理が完結しているため安全にスルー
     }
     
     if (typeof updateHistoryButtons === 'function') updateHistoryButtons(); 
@@ -241,9 +251,13 @@ function undo() {
     } else if (change.type === 'wall_step') {
         redoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        redoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); userCrossWalls = change.from.map(w => ({ ...w }));
+        // 💡「×印」メモの完全なUndo巻き戻し
+        redoStack.push({ type: 'memo_cross', from: modificated = change.to, to: change.from }); 
+        userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        redoStack.push({ type: 'memo_question', from: change.to, to: change.from }); userQuestionMap = { ...change.from };
+        // 💡「？」メモの完全なUndo巻き戻し
+        redoStack.push({ type: 'memo_question', from: change.to, to: change.from }); 
+        userQuestionMap = { ...change.from };
     } else {
         redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
     }
@@ -259,9 +273,13 @@ function redo() {
     } else if (change.type === 'wall_step') {
         undoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        undoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); userCrossWalls = change.from.map(w => ({ ...w }));
+        // 💡「×印」メモの完全なRedoやり直し
+        undoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); 
+        userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
-        undoStack.push({ type: 'memo_question', from: change.to, to: change.from }); userQuestionMap = { ...change.from };
+        // 💡「？」メモの完全なRedoやり直し
+        undoStack.push({ type: 'memo_question', from: change.to, to: change.from }); 
+        userQuestionMap = { ...change.from };
     } else {
         undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
     }
