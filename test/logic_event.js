@@ -243,35 +243,56 @@ function handleActionEnd() {
 // 💡【つなぎ目マーカー】これ以降の現役拡張型歴史 Undo/Redo エンジン、および操作リスナー結合部は最後の「パート2」へ合流します
     // ─── 📦【パート2 / 2：現役拡張型歴史 Undo/Redo ＆ パレット結合部】 ───
 
+// =============================================================================
+// ✨ 【v0.9.3 履歴エンジン完全正常化パッチ】
+// 紛れ込んでいたタイポ（modificated）を完全消滅させ、JavaScriptの窒息を200%永久解除！
+// =============================================================================
+
 function undo() {
     if (undoStack.length === 0) return;
-    clearErrorDisplay(); const change = undoStack.pop();
+    clearErrorDisplay(); 
+    const change = undoStack.pop();
+    
     if (change.type === 'clear_all') {
-        redoStack.push(change); userGrid = change.oldGrid.map(row => [...row]); userWalls = change.oldWalls.map(w => ({ ...w })); userCrossWalls = change.oldCrosses.map(w => ({ ...w })); userQuestionMap = { ...change.oldQuestions };
+        redoStack.push(change); 
+        userGrid = change.oldGrid.map(row => [...row]); 
+        userWalls = change.oldWalls.map(w => ({ ...w })); 
+        userCrossWalls = change.oldCrosses.map(w => ({ ...w })); 
+        userQuestionMap = { ...change.oldQuestions };
     } else if (change.type === 'wall_step') {
-        redoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
+        redoStack.push({ type: 'wall_step', from: change.to, to: change.from }); 
+        userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
-        // 💡「×印」メモの完全なUndo巻き戻し
-        redoStack.push({ type: 'memo_cross', from: modificated = change.to, to: change.from }); 
+        // 💡【タイポ修復完了】「×印」メモの完全なUndo巻き戻し
+        redoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); 
         userCrossWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_question') {
         // 💡「？」メモの完全なUndo巻き戻し
         redoStack.push({ type: 'memo_question', from: change.to, to: change.from }); 
         userQuestionMap = { ...change.from };
     } else {
-        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
+        redoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); 
+        userGrid[change.r][change.c] = change.from;
     }
-    drawPuzzle(); updateHistoryButtons();
+    drawPuzzle(); 
+    updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
 function redo() {
     if (redoStack.length === 0) return;
-    clearErrorDisplay(); const change = redoStack.pop();
+    clearErrorDisplay(); 
+    const change = redoStack.pop();
+    
     if (change.type === 'clear_all') {
-        undoStack.push(change); userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)); userWalls = []; userCrossWalls = []; userQuestionMap = {};
+        undoStack.push(change); 
+        userGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null)); 
+        userWalls = []; 
+        userCrossWalls = []; 
+        userQuestionMap = {};
     } else if (change.type === 'wall_step') {
-        undoStack.push({ type: 'wall_step', from: change.to, to: change.from }); userWalls = change.from.map(w => ({ ...w }));
+        undoStack.push({ type: 'wall_step', from: change.to, to: change.from }); 
+        userWalls = change.from.map(w => ({ ...w }));
     } else if (change.type === 'memo_cross') {
         // 💡「×印」メモの完全なRedoやり直し
         undoStack.push({ type: 'memo_cross', from: change.to, to: change.from }); 
@@ -281,9 +302,11 @@ function redo() {
         undoStack.push({ type: 'memo_question', from: change.to, to: change.from }); 
         userQuestionMap = { ...change.from };
     } else {
-        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); userGrid[change.r][change.c] = change.from;
+        undoStack.push({ r: change.r, c: change.c, from: change.to, to: change.from }); 
+        userGrid[change.r][change.c] = change.from;
     }
-    drawPuzzle(); updateHistoryButtons();
+    drawPuzzle(); 
+    updateHistoryButtons();
     setTimeout(() => { if (typeof checkAnswer === 'function') checkAnswer(true); }, 0);
 }
 
