@@ -53,7 +53,7 @@
 <div id="rulesModal" class="overlay-modal" onclick="closeModal('rulesModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>ルール・例題</h2>
+            <h2>🗺️ ルール・例題</h2>
             <button class="modal-close-x" onclick="closeModal('rulesModal')">&times;</button>
         </div>
         <div class="modal-body">
@@ -62,6 +62,7 @@
                 <span style="font-size: 18px; font-weight: bold; color: #000; letter-spacing: 0.5px;">鉱脈地図</span>
                 <span style="font-size: 15px; color: #444; margin-left: 10px;">作●GESAKU</span>
             </div>
+            <hr style="border: none; border-top: 3px solid #1a1a1a; margin: 14px 0 18px 0; opacity: 1;">
 
             <!-- 💡 (6) 【例題】セクションの新設（ルールのヘッダーと同じスタイル） -->
 
@@ -130,7 +131,7 @@
 <div id="howtoModal" class="overlay-modal" onclick="closeModal('howtoModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>🎮 鉱脈地図 操作方法</h2>
+            <h2>🎮 KOMYAKU Player 操作方法</h2>
             <button class="modal-close-x" onclick="closeModal('howtoModal')">&times;</button>
         </div>
         <div class="modal-body">
@@ -144,7 +145,7 @@
 
             <hr class="modal-divider">
 
-            <h3>✏️ 2. 境界線＆メモモード（パレット10番・白ペン）</h3>
+            <h3>✏️ 2. 境界線＆メモモード（カラーパレット 10番・白ペン）</h3>
             <p>部屋を区切る境界線を引き、さらに思考を助ける2種類の便利な「メモ記号」を配置できます。</p>
             
             <div class="mode-split">
@@ -164,8 +165,25 @@
 
             <hr class="modal-divider">
 
-            <h3>🔄 3. 歴史のコントロール（Undo / Redo）</h3>
+            <h3>🔄 3. 手戻し/やり直し（Undo / Redo）</h3>
             <p>画面下部の矢印ボタンで、色塗り・線引き・「？」や「×」のメモ配置のあらゆる操作を、ジャスト1手ずつ完全に巻き戻し（Undo）ややり直し（Redo）が可能です。安心して試行錯誤してください！</p>
+
+            <!-- 💡 (2) 「Clear」と「Check」ボタンの説明を新規追記 -->
+            <hr class="modal-divider">
+
+            <h3>🗑️ 4. 盤面初期化（Clear）</h3>
+            <p>パズルの状態をリセットしたり、完成した部屋の正誤をジャストのタイミングで採点・確認できます。</p>
+            <ul>
+                <li><strong>Clear（赤ボタン）</strong>：これまでに塗ったすべてのマスの色、手動で引いた壁、および画面上の「？」や「×」のメモ情報を一括で全消去し、初期状態の白紙に戻します。<br><small>※誤って押してしまった場合でも、手戻し（Undo）ボタンで直前の状態に復元可能です。</small></li>
+            </ul>
+
+            <hr class="modal-divider">
+
+            <h3>💯 5. 正誤判定（Check）</h3>
+            <p>パズルの状態をリセットしたり、完成した部屋の正誤をジャストのタイミングで採点・確認できます。</p>
+            <ul>
+                <li><strong>Check（緑ボタン）</strong>：現在の盤面の部屋の区切り方が、裏側の正解データと「完全一致」しているかを厳密にジャッジします。見事正解していれば、画面中央に美しい3D紙吹雪の演出が舞い上がります！</li>
+            </ul>
         </div>
     </div>
 </div>
