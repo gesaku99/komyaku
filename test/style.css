@@ -176,8 +176,14 @@ canvas {
    ============================================================================= */
 
 /* タイトル右側のボタン群へのホバー・アクティブ効果 */
+/*.doc-toggle-btn {
+//    transition: background-color 0.15s, transform 0.05s !important;
+}*/
+/* ボタンの極小化に伴う微調整 */
 .doc-toggle-btn {
-    transition: background-color 0.15s, transform 0.05s !important;
+    font-family: 'Tenor Sans', sans-serif;
+    border-radius: 4px !important;
+    letter-spacing: 0.3px;
 }
 .doc-toggle-btn:active {
     transform: scale(0.96);

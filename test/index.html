@@ -15,12 +15,12 @@
 </head>
 <body>
 
-<!-- ─── 🪐 v1.0.0 タイトル＆解説トグルボタンエリア ─── -->
-<div class="header-container" style="display: flex; align-items: center; justify-content: center; gap: 20px; margin: 10px 0;">
-    <h1 style="margin: 0; font-size: 24px; font-weight: normal;">KOMYAKU Playerv v1.0.0</h1>
-    <div class="doc-btn-group" style="display: flex; flex-direction: column; gap: 6px;">
-        <button class="btn-common doc-toggle-btn" onclick="openModal('rulesModal')" style="width: 110px; height: 26px; font-size: 11px; padding: 0; background-color: #333;">ルール、例題</button>
-        <button class="btn-common doc-toggle-btn" onclick="openModal('howtoModal')" style="width: 110px; height: 26px; font-size: 11px; padding: 0; background-color: #333;">操作説明</button>
+<!-- ─── 🪐 v1.0.0 タイトル＆解説トグルボタンエリア（縦幅完全維持仕様） ─── -->
+<div class="header-container" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 4px 0; height: 32px;">
+    <h1 style="margin: 0; font-size: 22px; font-weight: normal; line-height: 1;">KOMYAKU Player</h1>
+    <div class="doc-btn-group" style="display: flex; flex-direction: row; gap: 4px;">
+        <button class="btn-common doc-toggle-btn" onclick="openModal('rulesModal')" style="width: 80px; height: 18px; font-size: 10px; padding: 0; line-height: 18px; background-color: #333;">ルール、例題</button>
+        <button class="btn-common doc-toggle-btn" onclick="openModal('howtoModal')" style="width: 80px; height: 18px; font-size: 10px; padding: 0; line-height: 18px; background-color: #333;">操作方法</button>
     </div>
 </div>
     <canvas id="puzzleCanvas"></canvas>
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <!-- ─── 📑 v1.0.0 オーバーレイ解説モーダル一式 ─── -->
+<!-- ─── 📑 v1.0.0 オーバーレイ解説モーダル（画像・動画シンクロ配置版） ─── -->
 
 <!-- ① ルール、例題モーダル -->
 <div id="rulesModal" class="overlay-modal" onclick="closeModal('rulesModal')">
@@ -59,12 +59,16 @@
             <p class="rule-txt">① 点線上に境界線を引き、盤面をいくつかのブロックに分割します。<br>境界線を挟むマスどうしが同じブロックになることはありません。また、使わないマスはありません。</p>
             <p class="rule-txt">② 初めから出ている斜線は各ブロックの一番長い対角線（複数ある場合はすべて）です。<br>ただし、対角線はその両端以外がブロック内部を通過するものだけを対象とし、ブロックの他の頂点やブロックの外部を通過するものは除外します。</p>
             
+            <!-- 💡 読んでいる時にすぐ見える位置にルール②の解説図をドッキング -->
             <div class="rule-supplement">
-                <h4>ルール②の補足</h4>
-                <p>以下のような対角線は除外。これら以外の対角線の中で最長のものが表示されます。</p>
+                <h4>ルール②の補足（除外されるNG対角線の例）</h4>
+                <p>以下のような対角線は除外され、これら以外の対角線の中で最長のものが「鉱脈」として表示されます。</p>
+                <div style="text-align: center; margin: 8px 0;">
+                    <img src="rules_error.png" alt="ルールNG例の図面" style="width: 100%; max-width: 240px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                </div>
                 <ul>
-                    <li><strong>ブロックの他の頂点を通過するもの。</strong>（途中でカドに触れてしまう線）</li>
-                    <li><strong>ブロックの外部を通過するもの。</strong>（部屋が凹型にへこんでおり、線が外にはみ出るケース）</li>
+                    <li><strong>ブロックの他の頂点を通過するもの。</strong>（赤丸箇所：途中でカドに触れてしまう線）</li>
+                    <li><strong>ブロックの外部を通過するもの。</strong>（赤楕円箇所：部屋が凹型にへこみ、線が外にはみ出る線）</li>
                 </ul>
             </div>
 
@@ -72,11 +76,25 @@
 
             <h3>💡 デフォルト問題（Example）の例題解説</h3>
             <p>初期状態で配置されている黒い太斜線（鉱脈）の長さに注目して、部屋の壁を逆算していきます。</p>
+            
+            <!-- 💡 導入部に初期状態の盤面図を配置 -->
+            <div style="text-align: center; margin: 10px 0;">
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #666;">【初期状態：デフォルト問題】</p>
+                <img src="example_init.png" alt="デフォルト問題初期状態" style="width: 100%; max-width: 220px; border-radius: 4px; border: 1px solid #ddd;">
+            </div>
+
             <div class="walkthrough-steps">
                 <div class="step-card">
                     <h5>ステップ1：長さ「2」と「1」の鉱脈に注目</h5>
                     <p>盤面右手前にある短い斜線（長さ1）や、中央の斜線（長さ2）は、その長さがそのまま「部屋の最大サイズ」を縛る強力なヒントになります。斜線が部屋からはみ出したり、逆に部屋が広がりすぎて「もっと長い対角線」が引けてしまわないように、白ペンモードで境界線を引いて部屋を閉じましょう。</p>
                 </div>
+                
+                <!-- 💡 手順のイメージが最も湧く中間地点に「解答動画」を配置 -->
+                <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 解答手順のノーカットアニメーション</p>
+                    <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px;"></video>
+                </div>
+
                 <div class="step-card">
                     <h5>ステップ2：行き止まりの自動センサーを回避する</h5>
                     <p>境界線を引いていく途中で、格子点（交差点）から線が1本だけポツンと伸びて止まる「行き止まり」ができた場合、画面に赤丸のエラーが表示されます。これはルール違反の形状を警告してくれているため、壁をさらに伸ばすか、引き直して美しい「完全に閉じた部屋」を作っていきます。</p>
@@ -90,11 +108,11 @@
     </div>
 </div>
 
-<!-- ② 操作説明モーダル -->
+<!-- ② 操作方法モーダル -->
 <div id="howtoModal" class="overlay-modal" onclick="closeModal('howtoModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>🎮 KOMYAKU Player 操作説明</h2>
+            <h2>🎮 鉱脈地図 操作方法</h2>
             <button class="modal-close-x" onclick="closeModal('howtoModal')">&times;</button>
         </div>
         <div class="modal-body">
@@ -134,21 +152,14 @@
     </div>
 </div>
 
-<!-- 💡 モーダル開閉制御用軽量スクリプト -->
 <script>
 function openModal(id) {
     const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden'; // 背面のスクロールを一時ロック
-    }
+    if (modal) { modal.classList.add('active'); document.body.style.overflow = 'hidden'; }
 }
 function closeModal(id) {
     const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.remove('active');
-        document.body.style.overflow = ''; // ロック解除
-    }
+    if (modal) { modal.classList.remove('active'); document.body.style.overflow = ''; }
 }
 </script>
 
