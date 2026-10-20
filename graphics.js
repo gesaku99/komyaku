@@ -307,6 +307,84 @@ function drawPuzzle(isSolutionImage = false, isProblemImage = false) {
             downloadBtn.removeAttribute("data-mode");
         }
     }
+
+    // ─── 💡【v0.9.3新設】：通常プレイ中、プレイヤーの手動操作で配置された「？」マーク ＆ 「黒い×印」の最前面描画レイヤー ───
+    if (!isSolutionImage && !isProblemImage) {
+        // 1. 通常プレイ用「？」マーク描画
+        if (typeof userQuestionMap !== 'undefined' && userQuestionMap) {
+            ctx.save(); 
+            ctx.font = 'bold 22px "Tenor Sans", sans-serif'; 
+            ctx.textAlign = 'center'; 
+            ctx.textBaseline = 'middle'; 
+            ctx.fillStyle = '#222222';
+            
+            for (let key in userQuestionMap) {
+                const [r, c] = key.split(',').map(Number);
+                const mx = OFFSET + c * CELL_PIXEL + CELL_PIXEL / 2; 
+                const my = OFFSET + r * CELL_PIXEL + titleBarHeight + CELL_PIXEL / 2;
+                ctx.fillText('？', mx, my + 1); 
+            }
+            ctx.restore();
+        }
+
+        // 2. 通常プレイ用「黒い×印」描画
+        if (typeof userCrossWalls !== 'undefined' && userCrossWalls && userCrossWalls.length > 0) {
+            ctx.save(); 
+            ctx.strokeStyle = '#222222'; 
+            ctx.lineWidth = 3; 
+            ctx.lineCap = 'round';
+            
+            userCrossWalls.forEach(w => {
+                // 格子点の中点を計算し、ジャスト境界線上に×印（半径7px）を焼き付ける
+                const cx = OFFSET + (w.c1 + w.c2) / 2 * CELL_PIXEL; 
+                const cy = OFFSET + (w.r1 + w.r2) / 2 * CELL_PIXEL + titleBarHeight;
+                ctx.beginPath(); 
+                ctx.moveTo(cx - 7, cy - 7); ctx.lineTo(cx + 7, cy + 7); 
+                ctx.moveTo(cx + 7, cy - 7); ctx.lineTo(cx - 7, cy + 7); 
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+    }
+
+    // ─── 🎬【正解動画生成エンジン専用・最前面焼き付けフック（完全同期版）】 ───
+    if (typeof videoRenderState !== 'undefined' && videoRenderState.active) {
+        // ① B[...] 仕様：理由となるNG鉱脈の2秒間チカチカ明滅描画（c1, r1, c2, r2 で完全ホールド）
+        if (videoRenderState.blinkLine && videoRenderState.blinkVisible) {
+            ctx.save();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(OFFSET + videoRenderState.blinkLine.c1 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.r1 * CELL_PIXEL + titleBarHeight);
+            ctx.lineTo(OFFSET + videoRenderState.blinkLine.c2 * CELL_PIXEL, OFFSET + videoRenderState.blinkLine.r2 * CELL_PIXEL + titleBarHeight);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ② T[...] 仕様：複数行同時焼き付け対応の解説字幕テロップ表示
+        if (videoRenderState.texts && videoRenderState.texts.length > 0) {
+            ctx.save();
+            const barW = logicalWidth;
+            const barH = videoRenderState.texts.length * 24 + 16;
+            const barX = 0;
+            const barY = logicalHeight - barH;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(barX, barY, barW, barH);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px "Tenor Sans", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            videoRenderState.texts.forEach((txt, idx) => {
+                const textY = barY + 16 + idx * 24 + 8;
+                ctx.fillText(txt, barW / 2, textY);
+            });
+            ctx.restore();
+        }
+    }
 }
 
 // ─── 📸【v0.9.1新機能：問題・答え出力100%完全ホールド ＆ 途中画像完全適合ダウンロードシステム】 ───
