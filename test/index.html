@@ -15,7 +15,14 @@
 </head>
 <body>
 
-    <h1>KOMYAKU Player v0.9.3</h1>
+<!-- ─── 🪐 v1.0.0 タイトル＆解説トグルボタンエリア ─── -->
+<div class="header-container" style="display: flex; align-items: center; justify-content: center; gap: 20px; margin: 10px 0;">
+    <h1 style="margin: 0; font-size: 24px; font-weight: normal;">KOMYAKU Playerv v1.0.0</h1>
+    <div class="doc-btn-group" style="display: flex; flex-direction: column; gap: 6px;">
+        <button class="btn-common doc-toggle-btn" onclick="openModal('rulesModal')" style="width: 110px; height: 26px; font-size: 11px; padding: 0; background-color: #333;">ルール、例題</button>
+        <button class="btn-common doc-toggle-btn" onclick="openModal('howtoModal')" style="width: 110px; height: 26px; font-size: 11px; padding: 0; background-color: #333;">操作説明</button>
+    </div>
+</div>
     <canvas id="puzzleCanvas"></canvas>
     
     <!-- スタジオモード専用のボタン置き場 -->
@@ -37,6 +44,113 @@
             </div>
         </div>
     </div>
+
+    <!-- ─── 📑 v1.0.0 オーバーレイ解説モーダル一式 ─── -->
+
+<!-- ① ルール、例題モーダル -->
+<div id="rulesModal" class="overlay-modal" onclick="closeModal('rulesModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🗺️ 鉱脈地図 ルール＆例題解説</h2>
+            <button class="modal-close-x" onclick="closeModal('rulesModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h3>【ルール】</h3>
+            <p class="rule-txt">① 点線上に境界線を引き、盤面をいくつかのブロックに分割します。<br>境界線を挟むマスどうしが同じブロックになることはありません。また、使わないマスはありません。</p>
+            <p class="rule-txt">② 初めから出ている斜線は各ブロックの一番長い対角線（複数ある場合はすべて）です。<br>ただし、対角線はその両端以外がブロック内部を通過するものだけを対象とし、ブロックの他の頂点やブロックの外部を通過するものは除外します。</p>
+            
+            <div class="rule-supplement">
+                <h4>ルール②の補足</h4>
+                <p>以下のような対角線は除外。これら以外の対角線の中で最長のものが表示されます。</p>
+                <ul>
+                    <li><strong>ブロックの他の頂点を通過するもの。</strong>（途中でカドに触れてしまう線）</li>
+                    <li><strong>ブロックの外部を通過するもの。</strong>（部屋が凹型にへこんでおり、線が外にはみ出るケース）</li>
+                </ul>
+            </div>
+
+            <hr class="modal-divider">
+
+            <h3>💡 デフォルト問題（Example）の例題解説</h3>
+            <p>初期状態で配置されている黒い太斜線（鉱脈）の長さに注目して、部屋の壁を逆算していきます。</p>
+            <div class="walkthrough-steps">
+                <div class="step-card">
+                    <h5>ステップ1：長さ「2」と「1」の鉱脈に注目</h5>
+                    <p>盤面右手前にある短い斜線（長さ1）や、中央の斜線（長さ2）は、その長さがそのまま「部屋の最大サイズ」を縛る強力なヒントになります。斜線が部屋からはみ出したり、逆に部屋が広がりすぎて「もっと長い対角線」が引けてしまわないように、白ペンモードで境界線を引いて部屋を閉じましょう。</p>
+                </div>
+                <div class="step-card">
+                    <h5>ステップ2：行き止まりの自動センサーを回避する</h5>
+                    <p>境界線を引いていく途中で、格子点（交差点）から線が1本だけポツンと伸びて止まる「行き止まり」ができた場合、画面に赤丸のエラーが表示されます。これはルール違反の形状を警告してくれているため、壁をさらに伸ばすか、引き直して美しい「完全に閉じた部屋」を作っていきます。</p>
+                </div>
+                <div class="step-card">
+                    <h5>ステップ3：鉱脈なしの空っぽな部屋を作らない</h5>
+                    <p>すべてのマスはいずれかの部屋に属する必要がありますが、斜線（鉱脈）が1本も含まれない「空っぽの部屋」が独立して存在することはできません。すべての部屋に、ジャストその部屋の最長対角線となる鉱脈が1本ずつ収まるようにマスを塗り分けていくと、大正解の紙吹雪が舞い上がります！</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ② 操作説明モーダル -->
+<div id="howtoModal" class="overlay-modal" onclick="closeModal('howtoModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🎮 KOMYAKU Player 操作説明</h2>
+            <button class="modal-close-x" onclick="closeModal('howtoModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h3>🎨 1. 通常の色塗りモード（カラーパレット 1〜9番）</h3>
+            <p>同じ部屋（ブロック）として認識させたいマスを同じ色で塗り分けることができます。</p>
+            <ul>
+                <li><strong>着色</strong>：マスをタップ（クリック）、またはそのままなぞるようにドラッグすると色が塗れます。</li>
+                <li><strong>ダイレクト塗り替え</strong>：色が付いているマスに、別の色を選んで触ると一発で新しい色に上書きされます。</li>
+                <li><strong>消しゴム</strong>：現在マスに塗られている色と「まったく同じ色」をパレットから選択して触ると、未着色の白に戻ります。</li>
+            </ul>
+
+            <hr class="modal-divider">
+
+            <h3>✏️ 2. 境界線＆メモモード（パレット10番・白ペン）</h3>
+            <p>部屋を区切る境界線を引き、さらに思考を助ける2種類の便利な「メモ記号」を配置できます。</p>
+            
+            <div class="mode-split">
+                <div class="mode-card">
+                    <h5>📏 境界線を引く（ドラッグ操作）</h5>
+                    <p>格子の交差点（頂点）から別の頂点へ向かって指やマウスをスワイプ（ドラッグ）すると、手動の白い境界線が引けます。もう一度同じ場所をなぞると消去できます。<br><small>※両脇のマスがすでに両方とも着色されている境界線は操作できません。</small></p>
+                </div>
+                <div class="mode-card">
+                    <h5>❓ 「？」マーク（マス中心クリック）</h5>
+                    <p>マスの真ん中（中心から15px以内）をポンと単純タップすると、「？」マークが配置されます。まだ部屋の色が確定していないマスの目印に最適です。すでに配置されているマスをもう一度押すと消去されます。また、通常カラーで上書き着色された際にも自動で消去されます。</p>
+                </div>
+                <div class="mode-card">
+                    <h5>❌ 「×印」マーク（マス境界クリック）</h5>
+                    <p>マスの四辺（境界線の近く）をポンと単純タップすると、その境界の上に小さな「×印」が配置されます。「ここは絶対に壁が通らない」という確定箇所のメモに役立ちます。すでに配置されている境界をもう一度押すと消去されます。</p>
+                </div>
+            </div>
+
+            <hr class="modal-divider">
+
+            <h3>🔄 3. 歴史のコントロール（Undo / Redo）</h3>
+            <p>画面下部の矢印ボタンで、色塗り・線引き・「？」や「×」のメモ配置のあらゆる操作を、ジャスト1手ずつ完全に巻き戻し（Undo）ややり直し（Redo）が可能です。安心して試行錯誤してください！</p>
+        </div>
+    </div>
+</div>
+
+<!-- 💡 モーダル開閉制御用軽量スクリプト -->
+<script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // 背面のスクロールを一時ロック
+    }
+}
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // ロック解除
+    }
+}
+</script>
 
     <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！ -->
     <!--
