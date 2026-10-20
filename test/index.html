@@ -18,7 +18,7 @@
 <!-- ─── 🪐 v1.0.0 タイトル＆解説トグルボタンエリア（縦並び・バージョン表記仕様） ─── -->
 <div class="header-container" style="display: flex; align-items: center; justify-content: center; gap: 16px; margin: 8px 0;">
     <h1 style="margin: 0; font-size: 24px; font-weight: normal; line-height: 1.2;">
-        KOMYAKU Player <span style="font-size: 14px; color: #666; vertical-align: bottom; margin-left: 2px;">v1.0.0</span>
+        KOMYAKU Player <span style="font-size: 20px; color: #666; vertical-align: bottom; margin-left: 2px;">v1.0.0</span>
     </h1>
     <div class="doc-btn-group" style="display: flex; flex-direction: column; gap: 4px;">
         <button class="btn-common doc-toggle-btn" onclick="openModal('rulesModal')" style="width: 100px; height: 22px; font-size: 11px; padding: 0; line-height: 22px; background-color: #333;">ルール・例題</button>
@@ -53,30 +53,28 @@
 <div id="rulesModal" class="overlay-modal" onclick="closeModal('rulesModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>[鉱脈地図] ルール・例題</h2>
+            <h2>ルール・例題</h2>
             <button class="modal-close-x" onclick="closeModal('rulesModal')">&times;</button>
         </div>
         <div class="modal-body">
             <!-- 💡 (5) 冒頭の作者表記：タイトル部分を1,2段階大きく装飾 -->
             <div style="margin-bottom: 16px; border-bottom: 1px dashed #ccc; padding-bottom: 12px;">
                 <span style="font-size: 18px; font-weight: bold; color: #000; letter-spacing: 0.5px;">鉱脈地図</span>
-                <span style="font-size: 12px; color: #444; margin-left: 10px;">作●GESAKU</span>
+                <span style="font-size: 15px; color: #444; margin-left: 10px;">作●GESAKU</span>
             </div>
 
             <!-- 💡 (6) 【例題】セクションの新設（ルールのヘッダーと同じスタイル） -->
-            <hr class="modal-divider">
 
             <h3>【例題】</h3>
-            <p style="margin: 0 0 10px 0; font-size: 12px; color: #555;">デフォルトでロードされる問題（左）と、その正解の部屋の区切り（右）の形です。</p>
             
             <!-- 💡 問題と答えの画像を2カラムで美しく左右並列に配置 -->
             <div class="example-images-container" style="display: flex; justify-content: space-between; gap: 12px; margin: 12px 0;">
                 <div style="flex: 1; text-align: center; background: #fafafa; padding: 6px; border-radius: 6px; border: 1px solid #e8e8e8;">
-                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; font-weight: bold;">【問題】</p>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; font-weight: bold;">【例題】</p>
                     <img src="example_init.png" alt="例題" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;">
                 </div>
                 <div style="flex: 1; text-align: center; background: #fafafa; padding: 6px; border-radius: 6px; border: 1px solid #e8e8e8;">
-                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #4caf50; font-weight: bold;">【答え】</p>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; font-weight: bold;">【答え】</p>
                     <img src="example_solution.png" alt="例題答え" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;">
                 </div>
             </div>
@@ -111,7 +109,7 @@
                 </div>
                 
                 <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
-                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 解答手順のノーカットアニメーション</p>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方</p>
                     <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
                 </div>
 
