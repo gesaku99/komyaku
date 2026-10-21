@@ -138,6 +138,12 @@
                     <p>B1とC1に突然現れた赤のマス。下の方にある赤のマスに地続きでつながらなくてはなりません。ということはC3とC4は赤のマスにしておかないと地続きが叶わなくなります。ここでC2まで赤のマスにしてしまうと、d1c5が鉱脈として出ていないといけないブロックになってしまうので、C1は赤のマスではないということが分かります。またC1を緑のマスにしてしまうとまた赤のマスが地続きにできなくなります。なのでC2は青のマス。あとは赤マスを地続きにしてすべてのブロック分割が終わります。</p>
                 </div>
             </div>
+            <!-- 💡 (1) 「この例題を解く」ボタンの新設。別ウィンドウ/タブでデフォルトページを表示 -->
+            <div style="text-align: center; margin-top: 24px; margin-bottom: 8px;">
+                <button class="btn-common" onclick="window.open(window.location.origin + window.location.pathname, '_blank', 'noopener,noreferrer')" style="width: 180px; height: 36px; font-size: 13px; background-color: #007aff; color: #ffffff; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,122,255,0.3);">
+                    🚀 この例題を解く
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -160,6 +166,10 @@
                 <li><strong>色塗り</strong>：盤面上のマスをタップ/クリックすると、カラーパレットで選択された色でそのマスが塗られます。スワイプ/ドラッグすると連続して塗ることができます。</li>
                 <li><strong>消しゴム</strong>：同じ色で重ね塗りをすれば白マスに戻せます。</li>
             </ul>
+            <!-- 💡 (2) 通常の色塗りモードの解説用画像（中央揃え） -->
+            <div style="text-align: center; margin: 10px 0;">
+                <img src="howto_color.png" alt="色塗りモードの説明図" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+            </div>
 
             <hr class="modal-divider">
 
@@ -179,7 +189,11 @@
                     <h5>❓ 「？」マーク</h5>
                     <p>マスの中央付近をタップ/クリックすると、「？」マークを配置できます。色を仮置きする場合などに補助記号としてお使いください。再度タップ/クリックすれば消去できます。</p>
                 </div>
-            </div>
+                <!-- 💡 (2) ユーザー境界線モードの解説用画像（中央揃え） -->
+                <div style="text-align: center; margin: 12px 0 4px 0;">
+                    <img src="howto_memo.png" alt="境界線・メモモードの説明図" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                </div>
+            </div><!-- .mode-split -->
 
             <hr class="modal-divider">
 
