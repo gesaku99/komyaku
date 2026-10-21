@@ -205,6 +205,9 @@ canvas {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
+    /* 💡【重要】none ではなく pan-x pan-y pinch-zoom に設定、あるいは touch-action 自体を完全に削除します。
+       これにより、この暗転レイヤーの上で発生した2本指のピンチ操作がブラウザに100%透過して伝わるようになります。 */
+    touch-action: pan-x pan-y pinch-zoom !important;
 }
 .overlay-modal.active {
     opacity: 1;
