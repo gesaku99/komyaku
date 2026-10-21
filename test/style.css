@@ -13,12 +13,23 @@ body {
     margin: 0;
     padding: 10px;
     
+    /* 💡【解決】body全体での強制ロックを「pan-x pan-y pinch-zoom」に優しく解放します。
+       ゲーム画面側の暴発は、すぐ下にある canvas 単体の「touch-action: none;」が強固に身代わりとなってガードするため、プレイフィールは1ミリも変わりません。 */
+    touch-action: pan-x pan-y pinch-zoom; 
+    -webkit-overflow-scrolling: touch;
+
     /* 📱 iPhoneお守り：画面全体の勝手な引っ張りスクロールやバウンスを100%禁止 */
-    touch-action: none; 
-    -webkit-overflow-scrolling: auto;
+    /*touch-action: none; 
+    -webkit-overflow-scrolling: auto; */
     
     /* 📱 iPhoneお守り：素早い連打時に文字選択の青いハイライトが暴発するのを禁止 */
-    user-select: none;   
+    /*user-select: none;   
+    -webkit-user-select: none; */
+}
+/* 💡【解決】パズル画面（タイトルやパレットなど）だけ文字選択を安全に禁止し、
+   解説ウィンドウ（.overlay-modal）が開いている時は、スマホがピンチジェスチャーを喜んで受け付けるように仕分けします */
+.header-container, .controls-wrapper, .palette-container, .side-container {
+    user-select: none;
     -webkit-user-select: none;
 }
 h1 {
