@@ -88,7 +88,7 @@
             <p class="rule-txt">② 初めから出ている斜線は各ブロックの一番長い対角線（複数ある場合はすべて）です。ただし、対角線はその両端以外がブロック内部を通過するものだけを対象とし、ブロックの他の頂点やブロックの外部を通過するものは除外します。</p>
             
             <div class="rule-supplement">
-                <h4>ルール②の補足（除外されるNG対角線の例）</h4>
+                <h4>ルール②の補足（除外される対角線の例）</h4>
                 <p>以下のような対角線は除外され、これら以外の対角線の中で最長のものが黒い斜線として表示されます。</p>
                 <div style="text-align: center; margin: 8px 0;">
                     <img src="rules_error.png" alt="ルール②の補足" style="width: 100%; max-width: 240px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
@@ -99,6 +99,11 @@
                 </ul>
             </div>
 
+            <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方</p>
+                <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+            </div>
+
             <hr class="modal-divider">
 
             <h3>💡 例題解説</h3>
@@ -107,12 +112,12 @@
             <div class="walkthrough-steps">
                 <div class="step-card">
                     <h5>ステップ1：1本の鉱脈が通過するマスはすべて同じブロック！</h5>
-                    <p>鉱脈が複数のブロックにまたがることはありませんので、1本の鉱脈が通過するマスに同じ色をぬってしまいます。同じ長さの鉱脈は同じブロックに属する可能性がありますが、とりあえず別の色で塗ってしまうことをオススメします。後半で手が止まったときに、もしやあの2ブロックは同じブロックだったのでは？と振り返られるように脳みそにセットしておいてください。なお例題の緑ブロックと赤ブロックがこれに該当しますが、これらが同ブロックだとa5が頂点でなくなるので、ここはすんなり別ブロックと判定ができます。また、E1やE2のように一つの色のマス(この場合、青のマス)に囲まれたマスは他の色になれず、青で塗りつぶしてしまいましょう。</p>
+                    <p>鉱脈が複数のブロックにまたがることはありませんので、1本の鉱脈が通過するマスには同じ色をぬってしまいます。同じ長さの鉱脈はルール上同じブロックに属する可能性がありますが、とりあえず別の色で塗ってしまうことをオススメします。後半で手が止まったときに、「もしやあの2ブロックは同じブロックだったのでは？」と振り返られるように脳みそにセットしておいてください。(例題の緑ブロックと赤ブロックがこれに該当しますが、これらが同じブロックだとa5が頂点でなくなるので、ここはすんなり別ブロックと判定ができます。)<br>また、E1やE2のように一つの色のマス(この場合、青のマス)に囲まれたマスは他の色になれないので、青で塗りつぶしてしまいましょう。</p>
                 </div>
                 
                 <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
-                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方</p>
-                    <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方(ステップ1,2)</p>
+                    <video src="example_solve_step12.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
                 </div>
 
                 <div class="step-card">
@@ -121,27 +126,33 @@
                 </div>
                 <div class="step-card">
                     <h5>ステップ3：鉱脈が1本しかないのに、長方形ができそうになったら回避！</h5>
-                    <p>長方形ブロックは必ず2本の鉱脈が中点で交差するので、鉱脈が1本しかない場所が長方形になりそうな場所を探します。例題で言うと緑と赤のブロック。このまま閉じればどちらも長方形ブロック。ですがいずれも鉱脈は1本だけなので、いずれもこのまま閉じることはありません。B4のマス。ここが緑のブロックじゃないなら、即座にa1b5は緑のブロックの対角線になってしまいます。なのでB4は緑のマス。同様に考えてD4は赤のマスになります。</p>
+                    <p>長方形ブロックは必ず2本の鉱脈をもつので、鉱脈が1本しかない場所が長方形になりそうな場所を探します。例題で言うと緑と赤のブロック。このまま閉じればどちらも長方形ブロック。ですがどちらも鉱脈は1本だけなので、どちらもこのまま閉じることはありません。まずB4のマス、ここが緑のブロックじゃないなら、即座にa1b5は緑のブロックの対角線になってしまいます。なのでB4は緑のマスとなります。同様に考えてD4は赤のマスになります。</p>
                 </div>
+
+                <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方(ステップ3)</p>
+                    <video src="example_solve_step3.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+                </div>
+
                 <div class="step-card">
                     <h5>ステップ4：空白で残るマスは無い！ということは？</h5>
-                    <p>ここで中級手筋。B1とC1のマスにご注目。B1が緑のブロックにならない、C1が青のブロックにならないことは言いました。ここで、B1のマスが青のブロックになりうるかを考えてみましょう。もしB1のマスが青なら、かならずD1のマスに青色で地続きになる必要があります。このとき青でないことが決まっているC1のマスはどうなるでしょう。緑のマスにも赤のマスにも地続きになれず、孤立してしまいます。ということはつまり、B1のマスは青のマスになれないのです。同様に考えて、C1のマスも緑のマスになれません。つまり、B1とC1は青にも緑にもなれず、もちろん色を塗らずに終わることもできないので、これらは赤のマスとなります。</p>
+                    <p>ここで中級手筋。B1とC1のマスにご注目。B1が緑のブロックにならない、C1が青のブロックにならないことは言いました。ここで、B1のマスが青のブロックになりうるかを考えてみましょう。もしB1のマスが青なら、かならずD1のマスに青色で地続きになる必要があります。このとき青でないことが決まっているC1のマスはどうなるでしょう。緑のマスにも赤のマスにも地続きになれず、孤立してしまいます。ということはつまり、B1のマスは青のマスになれないのです。同様に考えて、C1のマスも緑のマスになれません。つまり、B1とC1は青にも緑にもなれず、もちろん色を塗らずに終わることもできず、その結果、これらは赤のマスとなります。</p>
                 </div>
                 
                 <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
-                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方(注：上にあるのと同じ動画です)</p>
-                    <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 例題の解き方(ステップ4,5)</p>
+                    <video src="example_solve_step45.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
                 </div>
 
                 <div class="step-card">
                     <h5>ステップ5：同じ色のマスは地続き！</h5>
-                    <p>B1とC1に突然現れた赤のマス。下の方にある赤のマスに地続きでつながらなくてはなりません。ということはC3とC4は赤のマスにしておかないと地続きが叶わなくなります。ここでC2まで赤のマスにしてしまうと、d1c5が鉱脈として出ていないといけないブロックになってしまうので、C1は赤のマスではないということが分かります。またC1を緑のマスにしてしまうとまた赤のマスが地続きにできなくなります。なのでC2は青のマス。あとは赤マスを地続きにしてすべてのブロック分割が終わります。</p>
+                    <p>B1とC1に突然現れた赤のマス。下の方にある赤のマスに地続きでつながらなくてはなりません。ということはC3とC4は赤のマスにしておかないと地続きが叶わなくなります。ここでC2まで赤のマスにしてしまうと、このブロックは対角線d1c5も鉱脈として出ていないといけないブロックになってしまうので、C1は赤のマスではないということが分かります。また、C1を緑のマスにしてしまうとまた赤のマスが地続きにできなくなります。なのでC2は青のマス。あとは赤マスを地続きにしてすべてのブロックの形が決まります。</p>
                 </div>
             </div>
             <!-- 💡 (1) 「この例題を解く」ボタンの新設。別ウィンドウ/タブでデフォルトページを表示 -->
             <div style="text-align: center; margin-top: 24px; margin-bottom: 8px;">
-                <button class="btn-common" onclick="window.open(window.location.origin + window.location.pathname, '_blank', 'noopener,noreferrer')" style="width: 180px; height: 36px; font-size: 13px; background-color: #007aff; color: #ffffff; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,122,255,0.3);">
-                    🚀 この例題を解く
+                <button class="btn-common" onclick="window.open(window.location.origin + window.location.pathname, '_blank', 'noopener,noreferrer')" style="width: 360px; height: 36px; font-size: 13px; background-color: #007aff; color: #ffffff; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,122,255,0.3);">
+                    🚀 この例題をKOMYAKU Playerで解いてみる
                 </button>
             </div>
         </div>
@@ -168,7 +179,7 @@
             </ul>
             <!-- 💡 (2) 通常の色塗りモードの解説用画像（中央揃え） -->
             <div style="text-align: center; margin: 10px 0;">
-                <img src="howto_color.png" alt="色塗りモードの説明図" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                <img src="howto_color.png" alt="カラーパレット" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
             </div>
 
             <hr class="modal-divider">
@@ -177,6 +188,9 @@
             <p>KOMYAKU Playerでは隣接マスが異なる色で塗られると自動的に境界線を描画しますが、そうでない場合に境界線だけを描きたいケースがあります。その他、問題を解く上でのメモとして補助記号を用意しています。</p>
             
             <div class="mode-split">
+                <div style="text-align: center; margin: 12px 0 4px 0;">
+                    <img src="example_marks.png" alt="補助記号使用例" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                </div>
                 <div class="mode-card">
                     <h5>📏 境界線を引く</h5>
                     <p>マス境界線の交差点(格子点)を始点にタテヨコにスワイプ/ドラッグすると、マス境界線上にブロック境界線を引くことができます。再度同じ場所をスワイプ/ドラッグすれば消去できます。<br><small>※ブロック境界線の両側のマスがすでに塗られている場合、そのブロック境界線は消去できません。</small></p>
@@ -189,27 +203,38 @@
                     <h5>❓ 「？」マーク</h5>
                     <p>マスの中央付近をタップ/クリックすると、「？」マークを配置できます。色を仮置きする場合などに補助記号としてお使いください。再度タップ/クリックすれば消去できます。</p>
                 </div>
-                <!-- 💡 (2) ユーザー境界線モードの解説用画像（中央揃え） -->
+            </div><!-- .mode-split -->
+
+            <hr class="modal-divider">
+            <h3>✏️ 3. オレンジアシスト線</h3>
+            <p>通常の色塗りモードで格子点(マス境界線の交点)を始点にドラッグするとオレンジ色の線が引けます。線の中央には線の長さを表す数値が表示され、各鉱脈の長さも同時に表示されるので、注目している格子点間の距離が注目している鉱脈よりも長くないかのチェックに使えます。また、注目している格子点間を結ぶ線がどのマスを通過するかも併せて確認することができます。<br><small>※各線の中央に表示する数値は、マス1辺の長さを1としたときの、各線の長さの2乗の値です。2乗しているのは整数値にするためで、線の長さの比較にはそのままお使いいただけます。</small></p>
+            
+            <div class="mode-split">
                 <div style="text-align: center; margin: 12px 0 4px 0;">
-                    <img src="howto_memo.png" alt="境界線・メモモードの説明図" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                    <img src="example_orange.png" alt="補助記号使用例" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
                 </div>
             </div><!-- .mode-split -->
 
             <hr class="modal-divider">
 
-            <h3>🔄 3. 手戻し/やり直し（Undo / Redo）</h3>
+            <h3>🔄 4. 手戻し/やり直し（Undo / Redo）</h3>
             <p>その問題に対するすべての操作を手戻し/やり直しできます。</p>
 
             <!-- 💡 (2) 「Clear」と「Check」ボタンの説明を新規追記 -->
             <hr class="modal-divider">
 
-            <h3>🗑️ 4. 盤面初期化（Clear）</h3>
+            <h3>🗑️ 5. 盤面初期化（Clear）</h3>
             <p>その問題を解く前の状態に初期化できます。<br><small>※間違って押してしまった場合はUndoボタンで戻れます。</small></p>
 
             <hr class="modal-divider">
 
-            <h3>💯 5. 正誤判定（Check）</h3>
+            <h3>💯 6. 正誤判定（Check）</h3>
             <p>ブロック境界線がすべて正しく引かれれば正解アニメーションが表示されます。すべて解き終えたはずなのに正解アニメーションが表示されない場合に押すと、不正解理由にあたる部分が赤マークで強調表示されます。<br><small>※もし何も表示されない場合は重解の可能性がありますのでお知らせいただけますと助かります。</small></p>
+
+            <!-- 💡 (2) ユーザー境界線モードの解説用画像（中央揃え） -->
+            <div style="text-align: center; margin: 12px 0 4px 0;">
+                <img src="howto_memo.png" alt="undo/redo/clear/checkボタン" style="width: 100%; max-width: 140px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+            </div>
         </div>
     </div>
 </div>
