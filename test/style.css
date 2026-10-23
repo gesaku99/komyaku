@@ -108,6 +108,8 @@ canvas {
     gap: 8px;
 }
 .btn-common {
+    /* 💡【追記】メインページのすべてのボタンフォントを Tenor Sans に美しく統一 */
+    font-family: 'Tenor Sans', sans-serif; 
     background-color: #333333;
     color: #ffffff;
     border: none;
@@ -340,3 +342,16 @@ canvas {
 }
 .step-card p, .mode-card p { margin: 0; font-size: 12px; color: #555; }
 .modal-body ul { margin: 0 0 10px 0; padding-left: 20px; }
+/* 💡 多言語切り替えボタン用の装飾スタイリング */
+.lang-switch-btn {
+    background-color: #333333;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: 'Tenor Sans', sans-serif;
+    transition: background-color 0.1s;
+}
+.lang-switch-btn:hover { background-color: #555555; }
