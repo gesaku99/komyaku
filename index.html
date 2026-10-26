@@ -15,7 +15,16 @@
 </head>
 <body>
 
-    <h1>KOMYAKU Player v0.9.3</h1>
+<!-- ─── 🪐 v1.0.0 タイトル＆解説トグルボタンエリア（縦並び・バージョン表記仕様） ─── -->
+<div class="header-container" style="display: flex; align-items: center; justify-content: center; gap: 16px; margin: 8px 0;">
+    <h1 style="margin: 0; font-size: 24px; font-weight: normal; line-height: 1.2;">
+        KOMYAKU Player <span style="font-size: 20px; color: #666; vertical-align: bottom; margin-left: 2px;">v1.0.0</span>
+    </h1>
+    <div class="doc-btn-group" style="display: flex; flex-direction: column; gap: 4px;">
+        <button class="btn-common doc-toggle-btn" onclick="openModal('rulesModal')" style="width: 100px; height: 22px; font-size: 11px; padding: 0; line-height: 22px; background-color: #333;">ルール・例題</button>
+        <button class="btn-common doc-toggle-btn" onclick="openModal('howtoModal')" style="width: 100px; height: 22px; font-size: 11px; padding: 0; line-height: 22px; background-color: #333;">操作方法</button>
+    </div>
+</div>
     <canvas id="puzzleCanvas"></canvas>
     
     <!-- スタジオモード専用のボタン置き場 -->
@@ -38,61 +47,271 @@
         </div>
     </div>
 
-    <!-- ⚙️ パズルゲームの初回起動シーケンス ➔ すべての準備が100%整ったこの部屋にデバッグウィンドウをドッキング！ -->
-    <!--
-    <script>
-    document.fonts.ready.then(function() {
-        // 1. 本番のパズルデータを読み込んで一発起動！
-        loadPuzzleFromUrlOrId("E95A000007C1084");
-        createPalette(); 
-        updateHistoryButtons(); 
+<!-- ─── 📑 v1.0.0 オーバーレイ解説モーダル（画像・動画シンクロ配置版） ─── -->
 
-        // 2. 🔍【確定版：スマホタッチ座標リアルタイム可視化デバッグウィンドウ】
-        // キャンバスも変数もすべてが100%この世に誕生し終わっているため、タイムアウト不要で200%確実に安全起動します！
-        const debugDiv = document.createElement("div");
-        debugDiv.id = "komyaku-debug-window";
-        debugDiv.style.position = "fixed";
-        debugDiv.style.top = "5px"; debugDiv.style.left = "5px";
-        debugDiv.style.width = "calc(100vw - 10px)"; debugDiv.style.height = "120px";
-        debugDiv.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-        debugDiv.style.color = "#00ff88"; debugDiv.style.padding = "10px";
-        debugDiv.style.borderRadius = "6px"; debugDiv.style.zIndex = "99999";
-        debugDiv.style.fontFamily = "monospace"; debugDiv.style.fontSize = "11px";
-        debugDiv.style.pointerEvents = "none"; debugDiv.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
-        debugDiv.style.lineHeight = "1.4";
-        
-        debugDiv.innerHTML = `
-            <div style="font-weight:bold; border-bottom:1px solid #00ff88; padding-bottom:3px; margin-bottom:5px;">📊 KOMYAKU COORD DEBUG</div>
-            <div id="db-raw">Raw Touch : X=---, Y=---</div>
-            <div id="db-rect">Rect Top : Left=---, Top=---, Width=---</div>
-            <div id="db-scale">Scale    : scaleX=---, canvasW=---</div>
-            <div id="db-final">Final (X*scale) : X=---, Y=---</div>
-        `;
-        document.body.appendChild(debugDiv);
+<!-- ① ルール・例題モーダル（日英両対応・前半ブロック） -->
+<div id="rulesModal" class="overlay-modal" onclick="closeModal('rulesModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🗺️ <span class="lang-ja">ルール・例題</span><span class="lang-en" style="display:none;">Rules & Example</span></h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+<button class="lang-switch-btn" onclick="toggleLanguage()">
+    <span class="lang-ja">English</span><span class="lang-en" style="display:none;">日本語</span>
+</button>
+                <button class="modal-close-x" onclick="closeModal('rulesModal')">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 4px;">
+<div class="lang-ja" style="font-size: 18px; font-weight: bold; color: #000; letter-spacing: 0.5px;">鉱脈地図</div>
+<div class="lang-en" style="display:none; text-align: left;">
+    <div style="font-size: 20px; font-weight: bold; color: #000; letter-spacing: 0.5px; line-height: 1.1;">KOMYAKU</div>
+    <div style="font-size: 11px; font-style: italic; color: #555; margin-top: 2px;">— Decode the Hidden Boundaries —</div>
+    <div style="font-size: 10px; color: #888; font-weight: normal; margin-top: 1px;">("Komyaku" means "Mineral Vein" in Japanese)</div>
+</div>
+                <span style="font-size: 12px; color: #444;" class="lang-ja">作● GESAKU</span>
+                <span style="font-size: 12px; color: #444; display:none;" class="lang-en">Created by GESAKU</span>
+            </div>
 
-        function updateDebugInfo(e, label) {
-            if (!e.touches || e.touches.length === 0) return;
-            const touch = e.touches[0]; // 1本目の指の生データを正確に取得
-            const rect = canvas.getBoundingClientRect();
+            <!-- 💡 お使いの最新実線スタイルを完全ホールド -->
+            <hr style="border: none; border-top: 3px solid #1a1a1a; margin: 0 0 18px 0; opacity: 1;">
+
+            <div class="example-images-container" style="display: flex; justify-content: space-between; gap: 12px; margin: 12px 0;">
+                <div style="flex: 1; text-align: center; background: #fafafa; padding: 6px; border-radius: 6px; border: 1px solid #e8e8e8;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; font-weight: bold;"><span class="lang-ja">【例題】</span><span class="lang-en" style="display:none;">【Example】</span></p>
+                    <img src="example_init.png" alt="Puzzle" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;">
+                </div>
+                <div style="flex: 1; text-align: center; background: #fafafa; padding: 6px; border-radius: 6px; border: 1px solid #e8e8e8;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #666; font-weight: bold;"><span class="lang-ja">【答え】</span><span class="lang-en" style="display:none;">【Solution】</span></p>
+                    <img src="example_solution.png" alt="Answer" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;">
+                </div>
+            </div>
+
+            <!-- 💡 お使いの最新区切り線クラスを完全ホールド -->
+            <hr class="modal-divider">
+
+            <h3><span class="lang-ja">【ルール】</span><span class="lang-en" style="display:none;">【Rules】</span></h3>
+            <div class="lang-ja">
+                <p class="rule-txt">① 点線上に境界線を引き、盤面をいくつかのブロックに分割します。境界線を挟むマスどうしが同じブロックになることはありません。また、使わないマスはありません。</p>
+                <p class="rule-txt">② 初めから出ている斜線は各ブロックの一番長い対角線（複数ある場合はすべて）です。ただし、対角線はその両端以外がブロック内部を通過するものだけを対象とし、ブロックの他の頂点やブロックの外部を通過するものは除外します。</p>
+            </div>
+            <div class="lang-en" style="display:none;">
+                <p class="rule-txt">① Draw partition lines along the dotted grid to divide the board into several blocks. Adjacent cells separated by a line cannot belong to the same block. No cells can be left unused.</p>
+                <p class="rule-txt">② The pre-existing diagonal lines represent the longest diagonals of each block (all of them if multiple exist). However, this only applies to diagonals whose body passes entirely through the interior of the block, excluding those that touch other vertices or pass outside the block.</p>
+            </div>
+<!-- 💡 4分割その2：ルール②の補足から例題解説ステップ2まで -->
+            <div class="rule-supplement">
+                <h4><span class="lang-ja">ルール②の補足（除外される対角線の例）</span><span class="lang-en" style="display:none;">Supplement for Rule ② (Examples of Excluded Diagonals)</span></h4>
+                <p class="lang-ja">以下のような対角線は除外され、これら以外の対角線の中で最長のものが黒い斜線として表示されます。</p>
+                <p class="lang-en" style="display:none;">The following types of diagonals are excluded. The longest diagonal among the remaining valid paths will be displayed as the black line.</p>
+                <div style="text-align: center; margin: 8px 0;">
+                    <img src="rules_error.png" alt="ルール②の補足" style="width: 100%; max-width: 240px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                </div>
+                <ul class="lang-ja">
+                    <li><strong>ブロックの外部を通過するもの。</strong>（赤楕円箇所）</li>
+                    <li><strong>ブロックの他の頂点を通過するもの。</strong>（赤丸箇所）</li>
+                </ul>
+                <ul class="lang-en" style="display:none;">
+                    <li><strong>Those passing outside the block</strong> (Indicated by the red oval)</li>
+                    <li><strong>Those touching or passing through other vertices of the block</strong> (Indicated by the red circle)</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 <span class="lang-ja">例題の解き方</span><span class="lang-en" style="display:none;">How to Solve</span></p>
+                <video src="example_solve.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+            </div>
+
+            <hr class="modal-divider">
+
+            <h3>💡 <span class="lang-ja">例題解説</span><span class="lang-en" style="display:none;">Walkthrough Guide</span></h3>
+            <p class="lang-ja">初期状態で配置されている黒い斜線（以下、「鉱脈」）の長さに注目して、これ以上に長い対角線が同じブロックに内包されないようにブロックを分割していきます。</p>
+            <p class="lang-en" style="display:none;">Focus on the lengths of the pre-drawn black diagonal lines (referred to as "Veins"). Divide the blocks carefully so that no longer valid diagonals can accidentally be formed within the same room.</p>
+
+            <div class="walkthrough-steps">
+                <div class="step-card">
+                    <h5><span class="lang-ja">ステップ1：1本の鉱脈が通過するマスはすべて同じブロック！</span><span class="lang-en" style="display:none;">Step 1: All cells crossed by a single Vein belong to the same block!</span></h5>
+                    <p class="lang-ja">鉱脈が複数のブロックにまたがることはありませんので、1本の鉱脈が通過するマスには同じ色をぬってしまいます。同じ長さの鉱脈はルール上同じブロックに属する可能性がありますが、とりあえず別の色で塗ってしまうことをオススメします。後半で手が止まったときに、「もしやあの2ブロックは同じブロックだったのでは？」と振り返られるように脳みそにセットしておいてください。(例題の緑ブロックと赤ブロックがこれに該当しますが、これらが同じブロックだとa5が頂点でなくなるので、ここはすんなり別ブロックと判定ができます。)<br>また、E1やE2のように一つの色のマス(この場合、青のマス)に囲まれたマスは他の色になれないので、青で塗りつぶしてしまいましょう。</p>
+                    <p class="lang-en" style="display:none;">A single Vein can never span across multiple different rooms, so fill all cells crossed by one Vein with the same color first. Even if two veins of the same length might technically belong to the same room, we highly recommend coloring them differently for now. Keep it in mind so you can look back later if you get stuck. (In this example, the green and red blocks are separate because if they merged, corner 'a5' would no longer be a valid vertex).<br><br>Also, spaces completely enclosed by a single color like 'E1' or 'E2' (surrounded by blue) cannot take any other color, so paint them blue right away.</p>
+                </div>
+                
+                <!-- 💡 元ファイルに実在する動画タグとテキストを完全維持 -->
+                <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 <span class="lang-ja">例題の解き方(ステップ1,2)</span><span class="lang-en" style="display:none;">How to Solve (Step 1,2)</span></p>
+                    <video src="example_solve_step12.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px;"></video>
+                </div>
+
+                <div class="step-card">
+                    <h5><span class="lang-ja">ステップ2：外周に足を下ろす鉱脈からは境界線発生！</span><span class="lang-en" style="display:none;">Step 2: Veins anchoring to the outer perimeter generate absolute boundaries!</span></h5>
+                    <p class="lang-ja">鉱脈の両端はその鉱脈を含むブロックの頂点にあたります。なので鉱脈が外周に足を下ろす場合、そこから境界線が発生します。例題のb1やd1のように、B1やC1のマスが何色になるか決まってない段階でも、b1b2、d1d2部分に境界線が引けます。</p>
+                    <p class="lang-en" style="display:none;">Both ends of a Vein correspond exactly to the vertices of that room. Therefore, when a vein touches the outer border of the grid, a definitive boundary line always stems from that vertex. Even if the colors of 'B1' or 'C1' are not yet decided, you can immediately draw lines along 'b1-b2' and 'd1-d2'.</p>
+                </div>
+<!-- 💡 4分割その3：例題解説ステップ3からルール・例題モーダルの終わりまで -->
+                <div class="step-card">
+                    <h5><span class="lang-ja">ステップ3：鉱脈が1本しかないのに、長方形ができそうになったら回避！</span><span class="lang-en" style="display:none;">Step 3: Avoid creating full rectangles if they only contain a single Vein!</span></h5>
+                    <p class="lang-ja">長方形ブロックは必ず2本の鉱脈をもつので、鉱脈が1本しかない場所が長方形になりそうな場所を探します。例題で言うと緑と赤のブロック。このまま閉じればどちらも長方形ブロック。ですがどちらも鉱脈は1本だけなので、どちらもこのまま閉じることはありません。まずB4のマス、ここが緑のブロックじゃないなら、即座にa1b5は緑のブロックの対角線になってしまいます。なのでB4は緑のマスとなります。同様に考えてD4は赤のマスになります。</p>
+                    <p class="lang-en" style="display:none;">A perfectly rectangular block will always require exactly two internal veins. Look for areas where a room might prematurely close into a rectangle with only one vein inside. In our example, if closed immediately, both the green and red rooms would become rectangles with only one vein, which violates the rule. Therefore, cell 'B4' must expand to green to prevent a premature close. Following the exact same logic, cell 'D4' must become red.</p>
+                </div>
+
+                <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 <span class="lang-ja">例題の解き方(ステップ3)</span><span class="lang-en" style="display:none;">How to Solve (Step 3)</span></p>
+                    <video src="example_solve_step3.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+                </div>
+
+                <div class="step-card">
+                    <h5><span class="lang-ja">ステップ4：空白で残るマスは無い！ということは？</span><span class="lang-en" style="display:none;">Step 4: No empty cells allowed! What does that imply?</span></h5>
+                    <p class="lang-ja">ここで中級手筋。B1とC1のマスにご注目。B1が緑のブロックにならない、C1が青のブロックにならないことは言いました。ここで、B1のマスが青のブロックになりうるかを考えてみましょう。もしB1のマスが青なら、かならずD1のマスに青色で地続きになる必要があります。このとき青でないことが決まっているC1のマスはどうなるでしょう。緑のマスにも赤のマスにも地続きになれず、孤立してしまいます。ということはつまり、B1のマスは青のマスになれないのです。同様に考えて、C1のマスも緑のマスになれません。つまり、B1とC1は青にも緑にもなれず、もちろん色を塗らずに終わることもできず、その結果、これらは赤のマスとなります。</p>
+                    <p class="lang-en" style="display:none;">Now for an intermediate strategy. Focus closely on 'B1' and 'C1'. We know 'B1' cannot be green, and 'C1' cannot be blue. What happens if we try to make 'B1' blue? It would have to form a continuous chain all the way to 'D1' using blue. This would completely isolate 'C1', leaving it unable to connect continuously to either green or red. Therefore, 'B1' can never be blue. Applying the same logic, 'C1' can never be green. Since they can't be empty, 'B1' and 'C1' can only resolve to red!</p>
+                </div>
+
+                <div style="text-align: center; margin: 12px 0; background: #000; padding: 6px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; color: #aaa;">🎬 <span class="lang-ja">例題の解き方(ステップ4,5)</span><span class="lang-en" style="display:none;">How to Solve (Step 4,5)</span></p>
+                    <video src="example_solve_step45.mp4" controls autoplay loop muted playsinline style="width: 100%; max-width: 240px; display: block; margin: 0 auto; border-radius: 4px CONTAINER;"></video>
+                </div>
+
+                <div class="step-card">
+                    <h5><span class="lang-ja">ステップ5：同じ色のマスは地続き！</span><span class="lang-en" style="display:none;">Step 5: Matching colored cells must form a single continuous path!</span></h5>
+                    <p class="lang-ja">B1とC1に突然現れた赤のマス。下の方にある赤のマスに地続きでつながらなくてはなりません。ということはC3とC4は赤のマスにしておかないと地続きが叶わなくなります。ここでC2まで赤のマスにしてしまうと、このブロックは対角線d1c5も鉱脈として出ていないといけないブロックになってしまうので、C1は赤のマスではないということが分かります。また、C1を緑のマスにしてしまうとまた赤のマスが地続きにできなくなります。なのでC2は青のマス。あとは赤マスを地続きにしてすべてのブロックの形が決まります。</p>
+                    <p class="lang-en" style="display:none;">The red pixels newly placed at 'B1' and 'C1' must link continuously down to the lower red mass. To fulfill this, 'C3' and 'C4' must become red. If you paint 'C2' red as well, it would create an illegal block shape that requires an extra vein at 'd1-c5', which isn't on the board. Thus, we deduce 'C2' must become blue. The rest of the puzzle elegantly untangles by completing the continuous path of red cells!</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 24px; margin-bottom: 8px;">
+                <button class="btn-common" onclick="window.open(window.location.origin + window.location.pathname, '_blank', 'noopener,noreferrer')" style="width: 360px; height: 36px; font-size: 13px; background-color: #007aff; color: #ffffff; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,122,255,0.3);">
+                    <span class="lang-ja">🚀 この例題をKOMYAKU Playerで解いてみる</span>
+                    <span class="lang-en" style="display:none;">🚀 Play this Example on KOMYAKU Player</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ② 操作方法モーダル（日英両対応・最終完全版） -->
+<div id="howtoModal" class="overlay-modal" onclick="closeModal('howtoModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>🎮 <span class="lang-ja">KOMYAKU Player 操作方法</span><span class="lang-en" style="display:none;">KOMYAKU Player Controls</span></h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+<button class="lang-switch-btn" onclick="toggleLanguage()">
+    <span class="lang-ja">English</span><span class="lang-en" style="display:none;">日本語</span>
+</button>
+                <button class="modal-close-x" onclick="closeModal('howtoModal')">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <p class="lang-ja">KOMYAKU Playerは、鉱脈地図の問題とカラーパレットと4つのボタン(Undo/Redo/Clear/Check)で構成されます。</p>
+            <p class="lang-en" style="display:none;">KOMYAKU Player consists of the Komyaku Map puzzle grid, a color palette, and 4 functional buttons (Undo/Redo/Clear/Check).</p>
+            <hr class="modal-divider">
+
+            <!-- 🎨 通常の色塗りモード -->
+            <h3>🎨 <span class="lang-ja">1. 通常の色塗りモード（カラーパレット 1〜9番）</span><span class="lang-en" style="display:none;">1. Normal Coloring Mode (Palette 1-9)</span></h3>
+            <p class="lang-ja">カラーパレットには9つの色が用意されています。選択した色でマスを塗ったり白マスに戻したりできます。</p>
+            <p class="lang-en" style="display:none;">The color palette offers 9 distinct colors. You can paint cells with the active color or erase them back to blank tiles.</p>
+            <ul class="lang-ja">
+                <li><strong>色塗り</strong>：盤面上のマスをタップ/クリックすると、カラーパレットで選択された色でそのマスが塗られます。スワイプ/ドラッグすると連続して塗ることができます。</li>
+                <li><strong>消しゴム</strong>：同じ色で重ね塗りをすれば白マスに戻せます。</li>
+            </ul>
+            <ul class="lang-en" style="display:none;">
+                <li><strong>Painting cells</strong>: Tap or click any cell to paint it with your active color. Drag or swipe across the grid to color multiple cells continuously.</li>
+                <li><strong>Eraser</strong>: Overwriting a colored cell with the exact same color resets it back to a blank white cell.</li>
+            </ul>
+
+            <div style="text-align: center; margin: 10px 0;">
+                <img src="howto_color.png" alt="カラーパレット" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+            </div>
+            <hr class="modal-divider">
+
+            <!-- ✏️ ユーザー境界線モード -->
+            <h3>✏️ <span class="lang-ja">2. ユーザー境界線モード（カラーパレット 10番・白ペン）</span><span class="lang-en" style="display:none;">2. User Boundary Line Mode (Palette 10 / White Pen)</span></h3>
+            <p class="lang-ja">KOMYAKU Playerでは隣接マスが異なる色で塗られると自動的に境界線を描画しますが、そうでない場合に境界線だけを描きたいケースがあります。その他、問題を解く上でのメモとして補助記号を用意しています。</p>
+            <p class="lang-en" style="display:none;">KOMYAKU Player automatically draws border lines when adjacent cells have different colors, but you can manually draw lines if needed. It also features helpful sub-markers for note-taking.</p>
             
-            const currentRectW = rect.width || 275;
-            const currentRectH = rect.height || 275;
-            
-            const scaleX = canvas.width / currentRectW;
-            const scaleY = canvas.height / currentRectH;
-            
-            const finalX = (touch.clientX - rect.left) * scaleX;
-            const finalY = (touch.clientY - rect.top) * scaleY;
+            <div class="mode-split">
+                <div style="text-align: center; margin: 12px 0 4px 0;">
+                    <img src="example_marks.png" alt="補助記号使用例" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                </div>
+                <div class="mode-card">
+                    <h5>📏 <span class="lang-ja">境界線を引く</span><span class="lang-en" style="display:none;">Drawing Room Boundaries</span></h5>
+                    <p class="lang-ja">マス境界線の交差点(格子点)を始点にタテヨコにスワイプ/ドラッグすると、マス境界線上にブロック境界線を引くことができます。再度同じ場所をスワイプ/ドラッグすれば消去できます。<br><small>※ブロック境界線の両側のマスがすでに塗られている場合、そのブロック境界線は消去できません。</small></p>
+                    <p class="lang-en" style="display:none;">Swipe or drag horizontally/vertically from any grid vertex intersection to manually place block boundaries. Swipe over an existing manually-drawn line again to erase it.<br><small>*You cannot erase boundaries if the cells on both sides are already painted.</small></p>
+                </div>
+                <div class="mode-card">
+                    <h5>❌ <span class="lang-ja">「✕」マーク</span><span class="lang-en" style="display:none;">"X" Memo Mark</span></h5>
+                    <p class="lang-ja">マスの四辺の中央付近をタップ/クリックすると、「✕」マークを配置できます。ブロック境界線が引けないことが確定した場所に補助記号としてお使いください。再度タップ/クリックすれば消去できます。</p>
+                    <p class="lang-en" style="display:none;">Tap or click near the center of any cell's edge to place an "X" mark. Use this note marker where you are absolutely certain a room boundary line cannot pass. Tap it again to clear it.</p>
+                </div>
+                <div class="mode-card">
+                    <h5>❓ <span class="lang-ja">「？」マーク</span><span class="lang-en" style="display:none;">"?" Memo Mark</span></h5>
+                    <p class="lang-ja">マスの中央付近をタップ/クリックすると、「？」マークを配置できます。色を仮置きする場合などに補助記号としてお使いください。再度タップ/クリックすれば消去できます。</p>
+                    <p class="lang-en" style="display:none;">Tap or click near the dead center of a cell to drop a "?" mark. Excellent for keeping tabs on spaces where colors are temporarily placed as a guess. Tap again to clear.</p>
+                </div>
+            </div>
 
-            document.getElementById("db-raw").innerText = `[${label}] Raw Touch : clientX=${Math.round(touch.clientX)}, clientY=${Math.round(touch.clientY)}`;
-            document.getElementById("db-rect").innerText = `Rect Border : left=${Math.round(rect.left)}, top=${Math.round(rect.top)}, width=${Math.round(currentRectW)}`;
-            document.getElementById("db-scale").innerText = `Scale Match : scaleX=${scaleX.toFixed(2)}, canvasW=${canvas.width}`;
-            document.getElementById("db-final").innerText = `🔥 Final Sent: X=${Math.round(finalX)}, Y=${Math.round(finalY)}`;
-        }
+            <hr class="modal-divider">
 
-        window.addEventListener('touchstart', (e) => { updateDebugInfo(e, 'START'); }, { passive: true });
-        window.addEventListener('touchmove', (e) => { updateDebugInfo(e, 'MOVE'); }, { passive: true });
-    });
-    </script>-->
+            <!-- ✏️ オレンジアシスト線 -->
+            <h3>✏️ <span class="lang-ja">3. オレンジアシスト線</span><span class="lang-en" style="display:none;">3. Orange Assist Guide Lines</span></h3>
+            <p class="lang-ja">通常の色塗りモードで格子点(マス境界線の交点)を始点にドラッグするとオレンジ色の線が引けます。線の中央には線の長さを表す数値が表示され、各鉱脈の長さも同時に表示されるので、注目している格子点間の距離が注目している鉱脈よりも長くないかのチェックに使えます。また、注目している格子点間を結ぶ線がどのマスを通過するかも併せて確認することができます。<br><small>※各線の中央に表示する数値は、マス1辺の長さを1としたときの、各線の長さの2乗の値です。2乗しているのは整数値にするためで、線の長さの比較にはそのままお使いいただけます。</small></p>
+            <p class="lang-en" style="display:none;">In normal coloring mode, dragging from a grid intersection draws an orange guide line. A number showing the distance's squared value appears in the middle, while checking if the current path outgrows the vein length. It also previews exactly which cells the straight line path crosses over.<br><small>*The displayed number represents the squared length of the line (with 1 cell unit = 1). Keeping values squared avoids decimals, providing an intuitive, direct integer comparison tool for diagonals.</small></p>
+
+            <div class="mode-split">
+                <div style="text-align: center; margin: 12px 0 4px 0;">
+                    <img src="example_orange.png" alt="補助記号使用例" style="width: 100%; max-width: 280px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                </div>
+            </div><!-- .mode-split -->
+            <hr class="modal-divider">
+
+            <!-- 🔄 各種ボタン系（4,5,6） -->
+            <h3>🔄 <span class="lang-ja">4. 手戻し/やり直し（Undo / Redo）</span><span class="lang-en" style="display:none;">4. History Management (Undo / Redo)</span></h3>
+            <p class="lang-ja">その問題に対するすべての操作を手戻し/やり直しできます。</p>
+            <p class="lang-en" style="display:none;">Seamlessly step backward (Undo) or forward (Redo) through all coloring, line-drawing, and memo marking operations performed on the active puzzle.</p>
+
+            <hr class="modal-divider">
+
+            <h3>🗑️ <span class="lang-ja">5. 盤面初期化（Clear）</span><span class="lang-en" style="display:none;">5. Clear Board Initialization</span></h3>
+            <p class="lang-ja">その問題を解く前の状態に初期化できます。<br><small>※間違って押してしまった場合はUndoボタンで戻れます。</small></p>
+            <p class="lang-en" style="display:none;">Instantly wipes all grid colors, custom boundary lines, and note markers, completely resetting the board back to its initial blank problem state.<br><small>*Accidentally cleared the board? Just click the Undo button to recover everything safely.</small></p>
+
+            <hr class="modal-divider">
+
+            <h3>💯 <span class="lang-ja">6. 正誤判定（Check）</span><span class="lang-en" style="display:none;">6. Solved Verification & Grading (Check)</span></h3>
+            <p class="lang-ja">ブロック境界線がすべて正しく引かれれば自動的に正解アニメーションが再生されます。もしすべて解き終えたはずなのに正解アニメーションが再生されない場合に押すと、不正解理由にあたる部分が赤マークで強調表示されます。<br><small>※もし解き終えて正解アニメーションが自動的に再生されない状況で、Checkボタンを押しても何も強調表示されない場合は、重解の可能性がありますのでお知らせいただけますと助かります。</small></p>
+            <p class="lang-en" style="display:none;">When the grid lines perfectly partition the solution, the celebratory win animation launches automatically. If you feel you have finished but the game doesn't trigger the success animation, click Check to reveal errors highlighted in red markings.<br><small>*If your solution fails to auto-complete and pressing Check shows no red markings, a rare duplicate alternative solution might exist. Please contact us if this happens!</small></p>
+            <!-- 💡 (2) ユーザー境界線モードの解説用画像（中央揃え） -->
+            <div style="text-align: center; margin: 12px 0 4px 0;">
+                <img src="howto_memo.png" alt="undo/redo/clear/checkボタン" style="width: 100%; max-width: 140px; border-radius: 6px; border: 1px solid #e8e8e8; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 💡 モーダル開閉 ＆ 日英言語動的切り替え制御スクリプト -->
+<script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) { modal.classList.add('active'); document.body.style.overflow = 'hidden'; }
+}
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) { modal.classList.remove('active'); document.body.style.overflow = ''; }
+}
+
+// 🌐 多言語グローバル化・表示切替システム
+let currentGlobalLanguage = 'ja';
+
+function toggleLanguage() {
+    currentGlobalLanguage = (currentGlobalLanguage === 'ja') ? 'en' : 'ja';
+    
+    const jaElements = document.querySelectorAll('.lang-ja');
+    const enElements = document.querySelectorAll('.lang-en');
+    
+    if (currentGlobalLanguage === 'ja') {
+        jaElements.forEach(el => el.style.display = '');
+        enElements.forEach(el => el.style.display = 'none');
+    } else {
+        jaElements.forEach(el => el.style.display = 'none');
+        enElements.forEach(el => el.style.display = '');
+    }
+}
+</script>
 </body>
 </html>

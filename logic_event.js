@@ -754,9 +754,14 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     const backupProblemLines = problemLines.map(l => ({ ...l }));
     const backupErrorDisplay = JSON.parse(JSON.stringify(errorDisplayState));
 
-    const commandRegex = /(P|L|B|T|W|C|Q|X)\[(.*?)\]/g;
+    // 💡 M命令を正規表現に新規ドッキング
+    const commandRegex = /(P|L|B|T|W|C|Q|X|M)\[(.*?)\]/g;
     let match; const timeline = [];
     const cleanedInput = promptInput.replace(/commandRegex\s*=\s*commandRegex\.exec/g, ''); 
+
+    // 💡 【大調律】正規表現のバグを完全消滅させ、文字列のダイレクトマッチングへ変更！
+    // スクリプト内に大文字小文字を問わず M[start] という記述が実在するかを100%確実かつ最速で判定します。
+    const hasMStart = cleanedInput.toLowerCase().includes('m[start]');
 
     while ((match = commandRegex.exec(cleanedInput)) !== null) {
         // matchオブジェクトのインデックスから正確に要素を引き抜く
@@ -765,6 +770,9 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
 
         if (type === 'T') {
             timeline.push({ type: 'T', text: content });
+        } else if (type === 'M') {
+            // 💡 M命令（録画制御フラグ）をタイムラインに格納
+            timeline.push({ type: 'M', action: content.toLowerCase() });
         } else if (type === 'P') {
             const tokens = content.split(/(\(\d+\))/);
             let currentColorId = 1; 
@@ -851,7 +859,13 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                 showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
             }
         };
-        recorder.start();
+        // 💡 状態管理フラグを新設
+        window.isRecordingActive = false;
+        // 💡 M[start] が省略されている時だけ、初手から自動録画を開始する
+        if (!hasMStart) {
+            recorder.start();
+            window.isRecordingActive = true;
+        }
     }
 
     const originalCheckAnswer = window.checkAnswer;
@@ -950,8 +964,58 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
     videoRenderState.showInitialProblemCircles = true;
     drawPuzzle(); renderVideoOverlays();
 
+    // 💡【新設】M[start]が指定されている場合は、そこに出会うまでの命令を画面描画（sleep）させずに内部データだけ最速で処理するフラグ
+    let isSkippingPreview = hasMStart; 
+
     for (let cmd of optimizedTimeline) {
+        if (cmd.type === 'M') {
+            if (cmd.action === 'start') {
+                // 💡 M[start] に到達した瞬間、最速内部処理モードを終了し、ここからプレビュー上映（描画ウエイト）を現実世界に開始させる
+                isSkippingPreview = false;
+                
+                if (!isReplayOnly && recorder && !window.isRecordingActive) {
+                    // キャンバスに現在の最速処理された盤面を1発焼き付けたジャストの瞬間に録画を開始！
+                    drawPuzzle(); renderVideoOverlays();
+                    recorder.start();
+                    window.isRecordingActive = true;
+                }
+            } else if (cmd.action === 'end') {
+                // 💡 M[end] に到達した瞬間、後続のPやC命令（紙吹雪等）を一切待たずに、その場でタイムライン上映自体を「完全強制切断」する！
+                videoRenderState.active = false;
+                videoRenderState.showInitialProblemCircles = false;
+                
+                if (!isReplayOnly && recorder && window.isRecordingActive) {
+                    window.isRecordingActive = false;
+                    recorder.stop(); // ➔ 録画停止。これによって recorder.onstop がキックされ、スタジオモーダルが立ち上がります
+                } else {
+                    showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay);
+                }
+                return; // ➔ 💡関数の実行自体をここで完全にストップさせ、以降のループを踏ませません！
+            }
+            continue; 
+        }
+
+        // 💡 M[start] に到達する前（スキップ中）であれば、ウエイト（sleep）も画面描画（draw）も一切させずに内部配列の書き換えだけを行って即座に次のループへ進める
+        if (isSkippingPreview) {
+            if (cmd.type === 'P') {
+                userGrid[cmd.r][cmd.c] = cmd.color;
+                if (typeof cleanUserWalls === 'function') cleanUserWalls();
+            } else if (cmd.type === 'L') {
+                userWalls.push({ r1: cmd.r1, c1: cmd.c1, r2: cmd.r2, c2: cmd.c2 });
+            } else if (cmd.type === 'X') {
+                if (typeof window.videoCrossWalls === 'undefined') window.videoCrossWalls = [];
+                const content = cmd.content;
+                if (content.length === 4) {
+                    const w = { c1: content.charCodeAt(0) - 97, r1: parseInt(content.charAt(1), 10) - 1, c2: content.charCodeAt(2) - 97, r2: parseInt(content.charAt(3), 10) - 1 };
+                    const idx = window.videoCrossWalls.findIndex(x => (x.r1===w.r1 && x.c1===w.c1 && x.r2===w.r2 && x.c2===w.c2) || (x.r1===w.r2 && x.c1===w.c2 && x.r2===w.r1 && x.c2===w.c1));
+                    if (idx !== -1) { window.videoCrossWalls.splice(idx, 1); } else { window.videoCrossWalls.push(w); }
+                }
+            }
+            continue; // ➔ スキップ中は sleep を踏ませない
+        }
+
         if (cmd.type === 'W') { await sleep(cmd.duration); continue; }
+
         if (cmd.type === 'T') { videoRenderState.texts = cmd.data; drawPuzzle(); renderVideoOverlays(); } 
         else {
             if (videoRenderState.texts.length > 0) { videoRenderState.texts = []; drawPuzzle(); renderVideoOverlays(); }
@@ -1118,7 +1182,11 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
                         videoRenderState.active = false; 
                         videoRenderState.showInitialProblemCircles = false;
                         
-                        if (!isReplayOnly && recorder) { recorder.stop(); }
+    // 💡 録画がまだアクティブな場合のみ停止をキック
+    if (!isReplayOnly && recorder && window.isRecordingActive) { 
+        recorder.stop(); 
+        window.isRecordingActive = false; 
+    }
                         await sleep(500); 
 
                         if (isReplayOnly || !recorder) {
@@ -1138,7 +1206,11 @@ async function startKomyakuVideoGeneration(isReplayOnly, targetScriptText) {
 
     videoRenderState.showInitialProblemCircles = false;
     drawPuzzle(); renderVideoOverlays(); await sleep(400); 
-    if (!isReplayOnly && recorder) { recorder.stop(); } 
+    // 💡 録画がまだアクティブな場合（M[end]が省略されて上映終了に達した時）のみ停止をキック
+    if (!isReplayOnly && recorder && window.isRecordingActive) { 
+        recorder.stop(); 
+        window.isRecordingActive = false; 
+    } 
     else { showKomyakuStudioModal(backupUserGrid, backupUserWalls, backupErrorShow, backupProblemLines, backupErrorDisplay); }
 
     function showKomyakuStudioModal(bGrid, bWalls, bErrShow, bPLines, bErrDisp) {
